@@ -23,3 +23,6 @@ You got this. Make something beautiful!! We love you!! We love you!! And we love
 
 ## Attachments
 - (none)
+
+## Discussion
+- **Darshan** (2026-05-20T22:03:47.191Z): [https://claude.com/blog/using-claude-code-the-unreasonable-effectiveness-of-html](https://claude.com/blog/using-claude-code-the-unreasonable-effectiveness-of-html)
