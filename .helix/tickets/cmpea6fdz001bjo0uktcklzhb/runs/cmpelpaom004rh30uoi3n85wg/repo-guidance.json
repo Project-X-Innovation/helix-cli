@@ -3,8 +3,8 @@
     {
       "repoKey": "helix-cli",
       "intent": "target",
-      "rationale": "Single repository in scope. The bug is in src/update/perform.ts line 124 (execSync tar call). Fix creates src/update/extract.ts (in-process tar extraction using node:zlib + manual tar parsing), modifies perform.ts to call it, and adds src/update/extract.test.ts. No new dependencies — built-in modules only, since the release tarball has no node_modules/. No cross-repo impact."
+      "rationale": "Single repository in scope. Primary tar extraction fix (extract.ts) is already implemented using Node.js built-ins. Remaining work is confined to perform.ts: replace copyDirRecursive's execSync (xcopy/cp-R) with fs.cpSync, remove unused execSync import, and add perform.test.ts. No new runtime dependencies needed. No cross-repo impact."
     }
   ],
-  "updatedBy": "implementation-plan"
+  "updatedBy": "diagnosis"
 }
