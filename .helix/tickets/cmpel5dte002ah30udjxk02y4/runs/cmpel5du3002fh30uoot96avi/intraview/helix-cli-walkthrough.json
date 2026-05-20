@@ -1,0 +1,24 @@
+{
+  "title": "HTML Heading Extraction - CLI Changes",
+  "description": "Walkthrough of CLI changes to support dual-format heading extraction for hlx library show",
+  "steps": [
+    {
+      "file": "src/library/show.ts",
+      "line": 9,
+      "title": "Added filePath to local type",
+      "description": "Extended LibraryItemDetail.item with optional filePath field to consume the server's new API response."
+    },
+    {
+      "file": "src/library/show.ts",
+      "line": 48,
+      "title": "HTML heading regex (new, tried first)",
+      "description": "Matches <h1>-<h6> tags with optional id attribute. Extracts level, id, and raw text (stripping nested HTML tags). Uses id for anchor lookup when present, falls back to slugify()."
+    },
+    {
+      "file": "src/library/show.ts",
+      "line": 70,
+      "title": "Markdown heading regex (preserved as fallback)",
+      "description": "Original Markdown regex /^(#{1,6})\\s+(.+)$/ kept unchanged. Only runs if the HTML pattern doesn't match, ensuring backward compatibility."
+    }
+  ]
+}
