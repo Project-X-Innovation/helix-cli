@@ -1,6 +1,6 @@
-import { execSync } from "node:child_process";
 import {
   copyFileSync,
+  cpSync,
   existsSync,
   mkdirSync,
   renameSync,
@@ -31,12 +31,7 @@ export function getInstallRoot(): string {
  * Used as a fallback when rename fails (e.g. cross-filesystem EXDEV).
  */
 function copyDirRecursive(src: string, dest: string): void {
-  execSync(
-    process.platform === "win32"
-      ? `xcopy "${src}" "${dest}" /E /I /Q /Y`
-      : `cp -R "${src}" "${dest}"`,
-    { stdio: "pipe" },
-  );
+  cpSync(src, dest, { recursive: true });
 }
 
 /**

@@ -1,0 +1,42 @@
+{
+  "title": "Replace copyDirRecursive shell-out with fs.cpSync",
+  "description": "Eliminated the last execSync shell dependency in the update module by replacing xcopy/cp-R with fs.cpSync, and added perform.test.ts.",
+  "steps": [
+    {
+      "file": "src/update/perform.ts",
+      "line": 1,
+      "title": "Removed child_process import",
+      "description": "The import { execSync } from 'node:child_process' was removed entirely. After replacing copyDirRecursive, no code in perform.ts calls execSync. The cpSync function was added to the node:fs import on line 3."
+    },
+    {
+      "file": "src/update/perform.ts",
+      "line": 33,
+      "title": "copyDirRecursive now uses fs.cpSync",
+      "description": "The function body was replaced from execSync with platform-conditional xcopy/cp-R to a single cpSync(src, dest, { recursive: true }) call. This is cross-platform, in-process, and has no external binary dependency. The function signature and JSDoc are unchanged."
+    },
+    {
+      "file": "src/update/perform.ts",
+      "line": 41,
+      "title": "safeRename EXDEV fallback is the sole caller",
+      "description": "safeRename calls copyDirRecursive at line 48 when renameSync throws EXDEV (cross-filesystem). The try/catch at line 158 in performStagedUpdate catches any errors from the swap phase including copy failures, preserving the fail-closed behavior."
+    },
+    {
+      "file": "src/update/perform.test.ts",
+      "line": 44,
+      "title": "getInstallRoot tests",
+      "description": "Two tests verify getInstallRoot() returns a valid path: it resolves to an existing directory, and the directory contains package.json. This validates the import.meta.url resolution logic."
+    },
+    {
+      "file": "src/update/perform.test.ts",
+      "line": 58,
+      "title": "Static module structure verification",
+      "description": "Reads the perform.ts source file and asserts it does NOT contain execSync or child_process, and DOES contain cpSync. This is a guard against regression — if someone re-adds a shell dependency, this test will fail."
+    },
+    {
+      "file": "src/update/perform.test.ts",
+      "line": 78,
+      "title": "cpSync-based directory copy test",
+      "description": "Creates a nested directory structure matching the update payload layout (dist/, skill-content/, package.json, build-metadata.json), copies via cpSync (same API call as copyDirRecursive), and verifies all files exist with correct content."
+    }
+  ]
+}
