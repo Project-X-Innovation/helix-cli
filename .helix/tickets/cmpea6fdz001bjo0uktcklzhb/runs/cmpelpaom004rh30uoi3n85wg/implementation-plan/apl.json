@@ -1,52 +1,40 @@
 {
   "questions": [
-    "What is the correct step ordering for replacing the tar extraction and adding tests?",
-    "Which files need to be created vs modified?",
-    "What tar format features must the in-process parser handle for the CI-produced tarball?",
-    "How should tests create representative .tgz payloads without external dependencies?",
-    "What verification checks confirm the fix eliminates the Windows GNU tar failure?"
+    "What specific code changes are needed in perform.ts to replace the shell-based directory copy?",
+    "What should perform.test.ts cover given copyDirRecursive is a private function?",
+    "Should the execSync import be fully removed from perform.ts after replacing copyDirRecursive?"
   ],
   "answers": [
     {
-      "answer": "The implementation has 4 ordered steps: (1) Create src/update/extract.ts with the extractTarGz function, (2) Modify src/update/perform.ts to import and call extractTarGz replacing the execSync tar call, (3) Create src/update/extract.test.ts with 5 test cases, (4) Run quality gates (build, test, version check). Step 2 depends on step 1 (import target must exist). Step 3 also depends on step 1 (tests import the extraction function). Step 4 depends on all prior steps.",
+      "answer": "Three changes in perform.ts: (1) Delete line 1 — remove `import { execSync } from 'node:child_process'` entirely, as no code in perform.ts will call execSync after the replacement. (2) Add `cpSync` to the existing `node:fs` import (lines 2-9) alongside copyFileSync, existsSync, mkdirSync, renameSync, rmSync, writeFileSync. (3) Replace the copyDirRecursive function body (lines 33-39) from execSync with platform-conditional xcopy/cp-R to a single `cpSync(src, dest, { recursive: true })` call. The function signature, JSDoc, safeRename, and all other code remain identical.",
       "evidence": [
-        "src/update/perform.ts:122-131 — the extraction block to replace, depends on the new extract.ts function",
-        "tech-research/tech-research.md — decided on built-in modules, separate extract.ts file, test structure",
-        "package.json scripts — build: tsc, test: tsc && node --test dist/**/*.test.js"
+        "perform.ts:1 — import { execSync } from 'node:child_process' — only used at line 34",
+        "perform.ts:2-9 — existing node:fs imports where cpSync will be added",
+        "perform.ts:33-39 — copyDirRecursive body with execSync xcopy/cp-R to be replaced",
+        "tech-research/tech-research.md — Option A chosen: fs.cpSync(src, dest, { recursive: true })",
+        "Context7 Node.js docs confirm cpSync(src, dest, { recursive: true }) is a direct cross-platform replacement"
       ]
     },
     {
-      "answer": "Two new files are created: src/update/extract.ts (extraction function) and src/update/extract.test.ts (test file with 5 test cases). One file is modified: src/update/perform.ts (import added, execSync tar call replaced with extractTarGz call at lines 122-131). No other files are changed — package.json stays the same (zero new dependencies), tsconfig.json stays the same, and no CI workflow files are touched.",
+      "answer": "perform.test.ts should contain 4 test cases: (1) getInstallRoot() returns a non-empty string resolving to an existing directory, (2) getInstallRoot() returns a path whose parent contains package.json, (3) a static verification reading perform.ts source to confirm no execSync/child_process references remain and cpSync is present, (4) a behavioral test that cpSync(src, dest, { recursive: true }) correctly copies a nested directory structure (directly exercising the same API that copyDirRecursive delegates to). copyDirRecursive and safeRename are both module-private — they cannot be imported for direct testing. getInstallRoot() is the only non-performStagedUpdate export and has testable import.meta.url logic.",
       "evidence": [
-        "tech-research/tech-research.md Summary Table — files created: extract.ts, extract.test.ts; files modified: perform.ts; files NOT changed: package.json, tsconfig.json, build-release.yml",
-        "tech-research/apl.json — confirmed no npm dependency needed because release tarball has no node_modules/"
+        "perform.ts:24 — getInstallRoot is exported (testable directly)",
+        "perform.ts:33 — copyDirRecursive has no export keyword (module-private)",
+        "perform.ts:46 — safeRename has no export keyword (module-private)",
+        "tech-research/tech-research.md Decision 2 — keep copyDirRecursive private; test indirectly",
+        "tech-research/tech-research.md Decision 4 — perform.test.ts scope defined"
       ]
     },
     {
-      "answer": "The parser must handle: (1) 512-byte header blocks with name (bytes 0-99), size (bytes 124-135 as octal), typeflag (byte 156), and USTAR prefix (bytes 345-499). (2) Regular files (typeflag '0' or '\\0') — write data blocks. (3) Directories (typeflag '5') — create with mkdirSync. (4) PAX extended headers (typeflag 'x' or 'g') — skip data blocks. (5) End-of-archive: two consecutive all-zero 512-byte blocks. (6) Data padding to 512-byte boundaries. The CI tarball is created by GNU tar on ubuntu-latest with simple content (short paths, no symlinks, no special attributes).",
+      "answer": "Yes. After replacing copyDirRecursive's body with cpSync, the execSync import on perform.ts line 1 has zero remaining callers within perform.ts. It must be removed entirely. The cpSync function is available from the existing node:fs import on lines 2-9. The child_process import line should be deleted. Other files in the update module that use child_process (check.ts for 'gh auth token', validate.ts for spawnSync('node')) have their own imports and are unaffected.",
       "evidence": [
-        "tech-research/tech-research.md — Core API/Methods section and Decision 3 (PAX), Decision 5 (USTAR prefix)",
-        ".github/workflows/build-release.yml:37-43 — tar -czf with dist/, skill-content/, package.json, build-metadata.json",
-        "scout/reference-map.json facts — tarball is standard .tgz with top-level entries, no nested prefix"
-      ]
-    },
-    {
-      "answer": "Tests create .tgz payloads programmatically using Node.js built-in modules: gzipSync (from node:zlib) wrapping manually constructed tar blocks. A test helper function builds 512-byte headers (name, size, typeflag, checksum fields) followed by data blocks padded to 512 bytes, terminated by two zero blocks. This requires zero additional dependencies and follows the project's pattern of programmatic fixture creation (observed in src/skill/skill.test.ts).",
-      "evidence": [
-        "tech-research/tech-research.md — Decision 7: Test tarball creation approach",
-        "src/skill/skill.test.ts — existing tests create fixtures programmatically with writeFileSync/mkdirSync",
-        "package.json — zero runtime deps; only devDeps are @types/node and typescript"
-      ]
-    },
-    {
-      "answer": "Five verification checks confirm the fix: CHK-01 (build passes, extract.js generated), CHK-02 (all tests pass including 5 new extraction tests), CHK-03 (grep confirms no tar invocation remains in update module, extract.ts has only node:* imports), CHK-04 (node dist/index.js --version works), CHK-05 (extraction tests specifically pass including the colon-in-path test that reproduces the original GNU tar failure mode). The colon-in-path test in CHK-05 directly validates that the extraction now succeeds where the old execSync('tar ...') approach would have failed.",
-      "evidence": [
-        "ticket.md acceptance criteria #1-5 — Windows tar fix, cross-platform, no tar in grep, test passes, quality gates",
-        "tech-research/tech-research.md Test Strategy — Test 2 specifically tests colon-in-path",
-        "diagnosis/diagnosis-statement.md — root cause is GNU tar colon interpretation in path arguments"
+        "perform.ts:1 — import { execSync } from 'node:child_process' — only used by copyDirRecursive at line 34",
+        "perform.ts:34 — the sole execSync call in perform.ts, replaced by cpSync",
+        "check.ts:1 — has its own execSync import for 'gh auth token'",
+        "validate.ts:1 — has its own spawnSync import for node --version"
       ]
     }
   ],
-  "statement": "The implementation plan consists of 4 atomic, ordered steps: (1) Create src/update/extract.ts with an extractTarGz function using only node:zlib, node:fs, and node:path built-in modules to decompress and parse tar archives synchronously via buffer-based 512-byte block parsing. (2) Modify src/update/perform.ts to import extractTarGz and replace the execSync('tar -xzf ...') call at lines 122-131, preserving the existing try/catch error contract. (3) Create src/update/extract.test.ts with 5 test cases covering successful extraction, colon-in-path (original failure mode), corrupt tarball, empty archive, and PAX header handling. (4) Run quality gates (npm run build, npm test, node dist/index.js --version). No new dependencies are added — the zero-dependency design is preserved. No CI workflow, build system, or other update module files are changed.",
+  "statement": "The implementation plan consists of 3 atomic, ordered steps: (1) Modify src/update/perform.ts to replace copyDirRecursive's execSync-based xcopy/cp-R body with cpSync(src, dest, { recursive: true }), remove the unused node:child_process import, and add cpSync to the existing node:fs import. (2) Create src/update/perform.test.ts with 4 test cases covering getInstallRoot(), static verification of no execSync, and cpSync-based directory copy behavior. (3) Run quality gates (npm run build, npm test, node dist/index.js --version). No new dependencies are added. No files other than perform.ts are modified. The primary tar extraction fix (extract.ts) is already complete and requires no changes.",
   "followups": []
 }
