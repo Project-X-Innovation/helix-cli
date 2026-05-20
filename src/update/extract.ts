@@ -1,6 +1,6 @@
 import { gunzipSync } from "node:zlib";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { join, resolve, dirname } from "node:path";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
 
 /**
  * Read a null-terminated ASCII string from a tar header buffer at `offset`,
@@ -100,6 +100,7 @@ export function extractTarGz(tarballPath: string, destDir: string): void {
 
     // Full entry name: if USTAR prefix is non-empty, prepend it
     let entryName = prefix ? `${prefix}/${name}` : name;
+    entryName = entryName.replaceAll("\\", "/");
 
     // Strip leading slashes for safety
     entryName = entryName.replace(/^\/+/, "");
@@ -112,7 +113,12 @@ export function extractTarGz(tarballPath: string, destDir: string): void {
     }
 
     const fullPath = resolve(destDir, entryName);
-    if (!fullPath.startsWith(resolvedDest)) {
+    const relativePath = relative(resolvedDest, fullPath);
+    if (
+      relativePath === ".." ||
+      relativePath.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) ||
+      isAbsolute(relativePath)
+    ) {
       throw new Error(
         `Path traversal detected: entry "${entryName}" resolves outside destination`,
       );

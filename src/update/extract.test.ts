@@ -318,4 +318,31 @@ describe("extractTarGz", () => {
       "Should throw on truncated tar entry",
     );
   });
+
+  it("throws on Windows-style backslash traversal entries", () => {
+    tmpDir = mkdtempSync(join(tmpdir(), "extract-"));
+    const destDir = join(tmpDir, "staged");
+    mkdirSync(destDir, { recursive: true });
+
+    const tgz = createTestTarGz([
+      {
+        name: "..\\outside\\evil.txt",
+        content: "owned\n",
+      },
+    ]);
+
+    const tarballPath = join(tmpDir, "backslash-traversal.tgz");
+    writeFileSync(tarballPath, tgz);
+
+    assert.throws(
+      () => extractTarGz(tarballPath, destDir),
+      (err: unknown) =>
+        err instanceof Error && err.message.includes("Path traversal detected"),
+      "Should reject backslash-based path traversal",
+    );
+    assert.ok(
+      !existsSync(join(tmpDir, "outside", "evil.txt")),
+      "Traversal payload must not be written outside destination",
+    );
+  });
 });
