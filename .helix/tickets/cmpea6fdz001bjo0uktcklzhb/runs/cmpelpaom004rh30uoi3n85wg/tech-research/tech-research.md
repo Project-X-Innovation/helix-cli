@@ -1,372 +1,301 @@
-# Tech Research — BLD-527 (Continuation): Replace tar extraction with in-process JS library
+# Tech Research — BLD-527 (Continuation): Replace copyDirRecursive shell-out with fs.cpSync
 
 ## Technology Foundation
 
-- **Runtime**: Node.js >= 18 (declared in `package.json` engines)
+- **Runtime**: Node.js >= 18 (declared in `package.json` engines, line 17)
 - **Module system**: ESM (`"type": "module"`, ES2022 target, Node16 resolution)
 - **Build**: TypeScript 6.x compiled via `tsc` to `dist/`
 - **Test runner**: Node.js built-in `node:test` (describe/it) + `node:assert` (strict)
 - **Current runtime dependencies**: Zero — entire codebase uses only `node:*` built-in modules and relative path imports
 - **Release tarball contents**: `dist/`, `skill-content/`, `package.json`, `build-metadata.json` only (no `node_modules/`)
 
+### Current Branch State
+
+The primary tar extraction bug is **already fixed** on this branch:
+
+| Component | Status | Location |
+|-----------|--------|----------|
+| In-process tar.gz extraction | Done | `src/update/extract.ts` (149 lines) — `gunzipSync` + manual USTAR header parsing |
+| Extraction tests | Done | `src/update/extract.test.ts` (322 lines) — 6 test cases covering CI layout, colon-in-path, corruption, empty archive, PAX headers, truncated entry |
+| `perform.ts` extraction call site | Done | Line 125 calls `extractTarGz(tarballPath, stagingDir)` instead of `execSync('tar -xzf ...')` |
+
+**Remaining issue**: `copyDirRecursive` in `perform.ts` (lines 33–39) still shells out to `xcopy` (Windows) or `cp -R` (POSIX) via `execSync` for the EXDEV cross-filesystem rename fallback. This is an unnecessary shell dependency that should be replaced with `fs.cpSync`.
+
 ## Architecture Decision
 
 ### Problem
 
-The extraction step at `src/update/perform.ts:124` uses `execSync('tar -xzf ...')` which fails on Windows when GNU tar (from Git for Windows) is first in PATH. GNU tar interprets drive-letter colons (`C:\...`) as remote-host syntax. The fix must replace this with in-process extraction.
+`perform.ts` lines 33–39 define `copyDirRecursive`, which uses `execSync` with platform-conditional commands:
 
-### Critical Constraint Discovered: No `node_modules/` in Release Tarball
+```typescript
+function copyDirRecursive(src: string, dest: string): void {
+  execSync(
+    process.platform === "win32"
+      ? `xcopy "${src}" "${dest}" /E /I /Q /Y`
+      : `cp -R "${src}" "${dest}"`,
+    { stdio: "pipe" },
+  );
+}
+```
 
-Evidence collected in this step reveals a constraint that was not addressed in the diagnosis:
-
-1. **Every import in the entire codebase** is from `node:*` built-in modules or relative paths — zero third-party imports (confirmed via grep of all `src/` imports).
-2. **The CI workflow** (`.github/workflows/build-release.yml:37-43`) creates the tarball with only `dist/`, `skill-content/`, `package.json`, `build-metadata.json` — no `node_modules/`.
-3. **No bundler** is used — the build step is solely `tsc` (TypeScript compiler), which produces individual `.js` files that reference external packages via bare specifiers (e.g., `import { x } from 'tar'`).
-4. **GitHub-release-installed copies** have no `node_modules/` directory, so bare specifier imports would fail at runtime with `ERR_MODULE_NOT_FOUND`.
-
-This means adding an npm package like `tar` (node-tar) as a `dependencies` entry in `package.json` would **not resolve at runtime** for the primary install path (GitHub release) without either: (a) bundling the dependency into `dist/` using a tool like esbuild, or (b) including `node_modules/` in the release tarball (CI workflow change, explicitly out of scope).
+This function is called by `safeRename` (line 53) when `renameSync` fails with EXDEV (cross-filesystem). While not a tar invocation (acceptance criteria #3 is already satisfied), it is an unnecessary shell dependency with the same class of risk as the original tar bug: platform-specific binary availability, PATH ordering, and path-quoting edge cases.
 
 ### Options Considered
 
-#### Option A: `tar` (node-tar) as runtime dependency — REJECTED
+#### Option A: Replace with `fs.cpSync(src, dest, { recursive: true })` — CHOSEN
 
-Add `tar` (isaacs/node-tar v7.5+) to `dependencies`. Replace `execSync` with `tar.x({ file: tarballPath, C: stagingDir })`.
-
-**Pros:**
-- Battle-tested — used by npm itself for all package extraction
-- TypeScript-native (rewritten in TS for v7), ESM/CJS hybrid via tshy
-- Security-hardened against filesystem-based attacks
-- High-level API: `tar.x({ file, C })` is a near drop-in replacement for `execSync('tar -xzf ... -C ...')`
-- Runtime deps are all pure JS: @isaacs/fs-minipass, chownr, minipass, minizlib, yallist
-
-**Cons — CRITICAL:**
-- **Runtime resolution failure**: The compiled output would contain `import { extract } from 'tar'`. Node.js resolves bare specifiers via `node_modules/`. The release tarball has no `node_modules/`. For GitHub-release-installed copies (the primary install path), the import would fail with `ERR_MODULE_NOT_FOUND`.
-- To fix the resolution, we would need either:
-  - **(a) Bundle with esbuild**: Add esbuild as devDep, change the build script to inline `tar` into dist output. Risks: esbuild may break `import.meta.url` (used at `perform.ts:24` for install root resolution); changes the build architecture beyond the extraction fix scope.
-  - **(b) Include `node_modules/tar` in the tarball**: Requires CI workflow file change (`.github/workflows/build-release.yml`), which is explicitly out of scope.
-- Adds 5 transitive runtime dependencies to a zero-dependency project
-- Breaks the project's established zero-dependency pattern
-
-#### Option B: `tar-stream` + manual file writing — REJECTED
-
-Use tar-stream (mafintosh/tar-stream, Context7 benchmark 90.6) for streaming tar parsing, paired with `node:zlib` for gzip and manual `node:fs` calls for file writing.
+Replace the function body with a single `fs.cpSync` call. Remove the `execSync` import from `node:child_process` (now unused). Add `cpSync` to the existing `node:fs` import.
 
 **Pros:**
-- Lower-level streaming API, well-maintained
-- High Context7 reputation
+- Cross-platform in a single call — no platform branching needed
+- In-process — no external binary, no PATH dependency, no path-quoting issues
+- Available since Node 16.7.0; project requires >=18
+- Consistent with the zero-dependency, `node:*`-only import pattern used throughout the codebase
+- Eliminates the last remaining `execSync` call in `perform.ts`, allowing full removal of the `node:child_process` import
+- `force: true` (default) handles existing files; `recursive: true` copies the full tree
+- Throws on failure, preserving the existing error propagation via `safeRename`'s caller try/catch (line 163)
 
 **Cons:**
-- Same runtime resolution blocker as Option A (no `node_modules/` in release tarball)
-- Requires manual gzip pipe (`createGunzip()` → tar-stream extractor)
-- Requires manual directory creation and file writing per entry
-- Significantly more implementation code than node-tar's high-level API
-- Two packages needed (tar-stream for parsing, manual code for fs operations)
+- None material. `fs.cpSync` is stable, cross-platform, and directly equivalent
 
-#### Option C: Node.js built-in modules — `node:zlib` + manual tar parsing — CHOSEN
+#### Option B: Keep current `execSync` with `xcopy`/`cp -R` — REJECTED
 
-Implement extraction entirely with Node.js built-in modules: `node:zlib` for gzip decompression, manual tar header parsing for file/directory extraction, `node:fs` for writing.
+Leave the code unchanged.
 
 **Pros:**
-- **Zero new dependencies** — preserves the project's zero-dependency design
-- **No build system changes** — `tsc` remains the only build step
-- **No CI changes** — tarball shape and workflow are completely unmodified
-- **No runtime resolution issues** — only `node:*` imports, always available in any Node.js environment
-- **Smallest change surface** — new helper function + replacement of one execSync call
-- **Platform-independent by design** — no external binary, no PATH dependency, no path-quoting issues
-- **Consistent with codebase patterns** — all 50+ existing imports are `node:*` or relative paths
+- No change, no risk of introducing a regression
 
 **Cons:**
-- Implements tar parsing (~60-80 lines) rather than using a library
-- Less battle-tested than node-tar for general tar edge cases
-- No third-party security hardening for path traversal
+- Retains unnecessary shell dependency in the update module
+- `xcopy` has path-quoting edge cases on Windows (similar class of bug to the original tar issue)
+- Inconsistent with the fix direction: the ticket eliminated the external tar binary for extraction, but left an external binary for copying
+- The user's continuation context explicitly requests this replacement
 
-**Mitigations for cons:**
-- The tarball is created by our own CI from known, simple content: short paths (longest: ~30 chars), no symlinks, no special attributes, no long filenames. Exotic tar format edge cases are not a realistic concern.
-- Path traversal protection is straightforward: resolve target path and verify it starts with the destination directory. This is a 3-line check.
-- Comprehensive test coverage validates the parser against representative payloads including error cases.
+#### Option C: Use `fs.promises.cp()` (async) — REJECTED
 
-### Chosen Option: C — Node.js built-in modules
+Use the async variant instead of the synchronous one.
 
-**Rationale:** Option C is the only approach that works within all project constraints simultaneously:
+**Pros:**
+- Non-blocking
 
-| Constraint | Option A (node-tar) | Option B (tar-stream) | Option C (built-in) |
-|-----------|---------------------|----------------------|---------------------|
-| No external binary | Yes | Yes | Yes |
-| Resolves at runtime (no node_modules) | **No** | **No** | Yes |
-| No build system changes | **No** (needs bundler) | **No** (needs bundler) | Yes |
-| No CI workflow changes | Yes | Yes | Yes |
-| Zero new dependencies | No (6 transitive) | No (3+ transitive) | Yes |
-| Consistent with codebase patterns | No (first 3rd-party import) | No (first 3rd-party import) | Yes |
+**Cons:**
+- `safeRename` (line 46) and `copyDirRecursive` (line 33) are synchronous functions
+- Making them async would require making `safeRename` async, which propagates to every call site in the swap block (lines 163–186)
+- No benefit: the copy is small (dist/, skill-content/, two JSON files), brief in duration, and runs during an interactive `hlx update` where blocking for milliseconds is acceptable
 
-Options A and B both fail the runtime resolution constraint because the release tarball does not include `node_modules/`. Resolving this requires either bundling (build system change) or CI changes — both exceed the stated scope. Option C leverages the same `node:*`-only import pattern used throughout the entire codebase.
+### Chosen Option: A — `fs.cpSync`
+
+**Rationale:** `fs.cpSync` is a direct, in-process, cross-platform replacement. It removes the last `execSync` call in `perform.ts`, aligning the module fully with the in-process approach taken for extraction. The project's Node >=18 requirement guarantees availability. No other option offers a better tradeoff.
 
 ## Core API/Methods
 
-### New function: `extractTarGz(tarballPath: string, destDir: string): void`
+### `fs.cpSync(src, dest, options)` — from `node:fs`
 
-**Location**: New file `src/update/extract.ts` (preferred for testability and separation of concerns)
+Per Context7 Node.js docs:
 
-**Approach — synchronous buffer-based parsing:**
-1. Read the `.tgz` file: `readFileSync(tarballPath)`
-2. Decompress: `gunzipSync(compressed)` to get raw tar data as a `Buffer`
-3. Parse tar entries in a loop over 512-byte blocks:
-   - Read 512-byte header block at current offset
-   - If block is all zeros, check next block — two consecutive zero blocks mark end of archive
-   - Parse header fields:
-     - `name`: bytes 0-99 (null-terminated ASCII string)
-     - `prefix`: bytes 345-499 (USTAR prefix, prepended to name with `/` separator)
-     - `size`: bytes 124-135 (octal ASCII number)
-     - `typeflag`: byte 156 (single character: `'0'`/`'\0'` = file, `'5'` = directory, `'x'` = PAX extended header, `'g'` = global PAX header)
-   - **Typeflag `'5'` (directory)**: `mkdirSync(fullPath, { recursive: true })`
-   - **Typeflag `'0'` or `'\0'` (regular file)**: Ensure parent directory exists, write `size` bytes of data from the next blocks
-   - **Typeflag `'x'` or `'g'` (PAX headers)**: Skip `size` bytes of data, then continue to next entry
-   - Advance offset past data blocks (padded to 512-byte boundary: `Math.ceil(size / 512) * 512`)
-4. **Path safety**: Resolve the target path with `path.resolve(destDir, entryName)` and verify it starts with `path.resolve(destDir)` — reject path traversal attempts
+- **`src`** (string) — source path to copy
+- **`dest`** (string) — destination path to copy to
+- **`options.recursive`** (boolean, default `false`) — must be set to `true` to copy directory trees
+- **`options.force`** (boolean, default `true`) — overwrite existing files/directories
+- **`options.dereference`** (boolean, default `false`) — dereference symlinks (not relevant; no symlinks in payload)
+- **`options.errorOnExist`** (boolean, default `false`) — throw if destination exists when force is false
+- **Throws** on failure — integrates with existing try/catch at `perform.ts:163`
 
-### Modified call site in `performStagedUpdate`
-
-Replace the extraction block at `src/update/perform.ts` lines 122-131:
+Usage in `copyDirRecursive`:
 
 ```
-// Current (lines 122-131):
-try {
-  execSync(`tar -xzf "${tarballPath}" -C "${stagingDir}"`, {
-    stdio: "pipe", timeout: 30_000,
-  });
-} catch (err: unknown) {
-  const msg = err instanceof Error ? err.message : String(err);
-  return { success: false, error: `Extraction failed: ${msg}` };
-}
-
-// Replacement:
-try {
-  extractTarGz(tarballPath, stagingDir);
-} catch (err: unknown) {
-  const msg = err instanceof Error ? err.message : String(err);
-  return { success: false, error: `Extraction failed: ${msg}` };
+function copyDirRecursive(src: string, dest: string): void {
+  cpSync(src, dest, { recursive: true });
 }
 ```
-
-The error-handling structure (catch -> return `{ success: false, error }`) is preserved exactly. The `extractTarGz` function throws on error, which is caught by the existing try/catch.
 
 ### Import changes in `perform.ts`
 
-- Add: `import { extractTarGz } from "./extract.js";`
-- The `execSync` import at line 1 **must remain** because `copyDirRecursive` (line 33) still uses it for the EXDEV fallback. This is not a tar invocation and is explicitly out of scope per acceptance criteria #3.
+- **Remove**: `import { execSync } from "node:child_process";` (line 1) — no remaining callers
+- **Add `cpSync`** to existing `node:fs` import (lines 2–9):
+  ```
+  import {
+    copyFileSync,
+    cpSync,
+    existsSync,
+    mkdirSync,
+    renameSync,
+    rmSync,
+    writeFileSync,
+  } from "node:fs";
+  ```
 
 ## Technical Decisions
 
-### Decision 1: Synchronous vs streaming extraction
+### Decision 1: Remove `node:child_process` import entirely from `perform.ts`
 
-**Chosen: Synchronous** (`readFileSync` + `gunzipSync` + buffer parsing)
-
-Rationale:
-- The existing extraction code is synchronous (`execSync` with a 30s timeout)
-- The tarball is small: CLI payload is < 5MB compressed, < 15MB uncompressed
-- `gunzipSync` + buffer-based tar parsing is simpler than setting up a streaming pipeline with proper error handling
-- No memory concern: a 15MB buffer is trivial for Node.js (V8 heap default is 1.5GB+)
-- Maintains the same blocking behavior as the original code
-
-Rejected alternative: Streaming pipeline (`createReadStream` -> `createGunzip` -> transform stream). Adds significant complexity (stream error propagation, backpressure handling) with no benefit for this payload size.
-
-### Decision 2: Separate file vs inline function
-
-**Chosen: New file `src/update/extract.ts`**
+**Chosen: Yes — remove the import**
 
 Rationale:
-- Easier to unit test in isolation: import `extractTarGz` directly without mocking the full update flow
-- Keeps `perform.ts` focused on orchestration (download -> extract -> validate -> swap -> cleanup)
-- The tar parsing logic is self-contained (~60-80 lines) and logically distinct
-- Test file becomes `src/update/extract.test.ts`, following the project pattern of co-located test files
+- After replacing `copyDirRecursive`, `execSync` has zero callers in `perform.ts`
+- The import is dead code and should be cleaned up
+- Other files in the update module that use `child_process` (`check.ts:1` for `gh auth token`, `validate.ts:1` for `spawnSync('node')`) are unaffected — they have their own imports
 
-### Decision 3: PAX extended header handling
+Evidence:
+- `perform.ts:1` — `import { execSync } from "node:child_process"` — only used at line 34
+- `perform.ts:34` — the sole `execSync` call, replaced by `cpSync`
 
-**Chosen: Skip PAX headers gracefully**
+### Decision 2: Do NOT export `copyDirRecursive` for testing
 
-Rationale:
-- GNU tar on Ubuntu (used in CI, `build-release.yml:17` specifies `ubuntu-latest`) defaults to POSIX.1-2001 (pax) format
-- For our simple payload (short paths, normal UIDs, no special attributes), PAX extended headers are unlikely but possible
-- Correct handling: when typeflag is `'x'` or `'g'`, read and discard the data blocks, then proceed to the next entry which contains the actual file/directory
-- This is a ~5-line addition that prevents silent extraction failure on unexpected header types
-
-### Decision 4: Path traversal protection
-
-**Chosen: Basic validation — reject entries that escape the destination directory**
+**Chosen: Keep `copyDirRecursive` private; test indirectly**
 
 Rationale:
-- We control the tarball source (our own CI), so malicious content is not a realistic threat
-- But defense-in-depth is good practice for any extraction code
-- Implementation: `const resolved = path.resolve(destDir, name); if (!resolved.startsWith(path.resolve(destDir))) throw new Error(...)`
-- Also strip leading `/` from entry names and reject entries containing `..` path components
-- This matches the essential checks that node-tar performs
+- `copyDirRecursive` is a 1-line function after the fix: `cpSync(src, dest, { recursive: true })`
+- There is no meaningful logic to test in the function body itself — it is a trivial delegation
+- The meaningful behavior to verify is that `safeRename` correctly falls back to copy+delete on EXDEV
+- Testing `safeRename` indirectly through `performStagedUpdate` requires mocking the full download/extract/validate chain — too high setup cost for a 1-line function
+- Instead, `perform.test.ts` should test `getInstallRoot()` (already exported) and document the EXDEV path as covered by integration-level verification
+- The user's continuation context mentions `perform.test.ts` — a lightweight test file covering `getInstallRoot()` and confirming no remaining `execSync` tar calls satisfies the intent
 
-### Decision 5: USTAR prefix handling
+### Decision 3: Do NOT incorporate `getTarExecutable()` from user's continuation context
 
-**Chosen: Support USTAR prefix field (bytes 345-499)**
-
-Rationale:
-- The USTAR format (identified by magic `"ustar\0"` at bytes 257-262) splits long paths into a `prefix` (bytes 345-499) and `name` (bytes 0-99)
-- Full path is `prefix + "/" + name` when prefix is non-empty
-- Our paths are short (longest: `dist/update/perform.js` = 23 chars), so prefix is likely always empty
-- But supporting it is a 3-line addition (`if (prefix) fullName = prefix + '/' + name`) and prevents a class of bugs if the tarball format changes
-
-### Decision 6: `execSync` import retention in `perform.ts`
-
-**Chosen: Keep the `execSync` import**
+**Chosen: Do not add any tar executable resolution function**
 
 Rationale:
-- `copyDirRecursive` at `perform.ts:33` uses `execSync` for the EXDEV cross-filesystem fallback (`xcopy` on Windows, `cp -R` on POSIX)
-- This is NOT a tar invocation — acceptance criteria #3 says "no remaining external **tar** invocation"
-- The import must remain for `copyDirRecursive` to function
+- The ticket's "Do Not Re-Decide" section explicitly states: *"Do not paper over the bug by detecting and rejecting GNU tar at runtime, or by hardcoding `C:\Windows\System32\tar.exe`. The fix must remove the shell dependency entirely."*
+- The in-process extraction in `extract.ts` already fully eliminates the external tar dependency
+- `getTarExecutable()` does not exist on the current branch — the superior in-process approach is already in place
+- Adding it would reintroduce an external binary dependency that the extraction fix eliminates
 
-### Decision 7: Test tarball creation approach
+Evidence:
+- Ticket "Do Not Re-Decide" constraints
+- `extract.ts` already provides complete in-process extraction — no external binary invoked
+- `perform.ts:125` calls `extractTarGz()`, not any shell-based tar command
 
-**Chosen: Programmatic tarball creation using `node:zlib` (gzipSync) + manual tar block construction**
+### Decision 4: `perform.test.ts` scope
+
+**Chosen: Lightweight test file covering `getInstallRoot()` and confirming module structure**
 
 Rationale:
-- Tests need to create representative `.tgz` payloads to extract
-- Using the same built-in modules (in reverse — creating instead of parsing) keeps tests self-contained with zero test-only dependencies
-- A helper function `createTestTarGz(entries)` builds tar blocks manually:
-  - 512-byte header per entry (name, size, typeflag, checksum)
-  - Data blocks padded to 512 bytes
-  - Two zero blocks to terminate
-  - Wrapped in `gzipSync()`
-- This mirrors the extraction approach and ensures end-to-end coverage
-- Alternative (rejected): Check in a fixture `.tgz` file. Opaque binary fixtures are harder to maintain and review.
+- `getInstallRoot()` (line 24) is the only non-`performStagedUpdate` export and has testable behavior: it resolves the package install root relative to the running file's location using `import.meta.url`
+- `copyDirRecursive` after the fix is `cpSync(src, dest, { recursive: true })` — a trivial delegation to a Node.js built-in; the built-in itself does not need unit testing
+- `safeRename` is module-private and exercises `renameSync` with fallback to `copyDirRecursive` — testing it requires either exporting it or mocking `renameSync` to throw EXDEV
+- The primary verification that the EXDEV path works is the user's local e2e simulation (confirmed passing) and the behavioral verification step
+- `perform.test.ts` adds value by: (a) testing `getInstallRoot()`, (b) being a named test file that confirms the module compiles and loads
+
+## Technical Checks
+
+[TCK-01] copyDirRecursive uses fs.cpSync instead of execSync
+- Decision Reference: "Replace copyDirRecursive body with fs.cpSync(src, dest, { recursive: true })"
+  (from Architecture Decision, Option A)
+- Verification Method: code-inspection
+- Expected Evidence: `perform.ts` lines 33-39 contain `cpSync(src, dest, { recursive: true })`. No `execSync` call remains in `copyDirRecursive`.
+
+[TCK-02] node:child_process import removed from perform.ts
+- Decision Reference: "Remove node:child_process import entirely from perform.ts"
+  (from Technical Decision 1)
+- Verification Method: code-inspection
+- Expected Evidence: `perform.ts` has no `import` from `"node:child_process"`. The `cpSync` function is imported from `"node:fs"`.
+
+[TCK-03] cpSync added to node:fs import in perform.ts
+- Decision Reference: "Add cpSync to existing node:fs import"
+  (from Core API/Methods, import changes)
+- Verification Method: code-inspection
+- Expected Evidence: The `node:fs` import in `perform.ts` includes `cpSync` alongside the existing imports (`copyFileSync`, `existsSync`, `mkdirSync`, `renameSync`, `rmSync`, `writeFileSync`).
+
+[TCK-04] No getTarExecutable function exists in the update module
+- Decision Reference: "Do NOT incorporate getTarExecutable() from user's continuation context"
+  (from Technical Decision 3)
+- Verification Method: code-inspection
+- Expected Evidence: Grep for `getTarExecutable` across `src/update/` returns zero results. No function resolves or selects an external tar binary.
+
+[TCK-05] No remaining external tar invocation in update module
+- Decision Reference: "In-process extraction eliminates external tar dependency"
+  (from prior tech-research Architecture Decision, already implemented)
+- Verification Method: code-inspection
+- Expected Evidence: Grep for `execSync` and `spawnSync` in `src/update/` finds only: (1) `check.ts:30` — `execSync('gh auth token')` for GitHub auth, (2) `validate.ts:38` — `spawnSync('node')` for version check. Neither is a tar invocation. `perform.ts` has zero `execSync`/`spawnSync` calls.
+
+[TCK-06] perform.test.ts exists and passes
+- Decision Reference: "perform.test.ts scope — lightweight test file"
+  (from Technical Decision 4)
+- Verification Method: behavioral
+- Expected Evidence: `src/update/perform.test.ts` exists. `npm test` includes it in the test run and all tests pass.
 
 ## Cross-Platform Considerations
 
-| Platform | Current Behavior | After Fix |
-|----------|-----------------|-----------|
-| **Windows + Git for Windows** | **BROKEN** — GNU tar interprets `C:` as remote host: `Cannot connect to C: resolve failed` | Fixed — no external tar binary invoked; `gunzipSync` + buffer parsing is platform-independent |
-| **Windows + only bsdtar** | Works (bsdtar handles Windows paths) | Fixed — extraction is now in-process regardless |
-| **macOS** | Works (BSD tar) | No regression — same extraction result via different mechanism |
-| **Linux** | Works (GNU tar, no drive letters) | No regression — same extraction result via different mechanism |
+| Platform | `copyDirRecursive` before fix | `copyDirRecursive` after fix |
+|----------|-------------------------------|------------------------------|
+| **Windows** | `execSync('xcopy ...')` — depends on xcopy availability and path quoting | `cpSync(src, dest, { recursive: true })` — in-process, no binary dependency |
+| **macOS** | `execSync('cp -R ...')` — depends on cp availability | Same in-process call |
+| **Linux** | `execSync('cp -R ...')` — depends on cp availability | Same in-process call |
 
-Key cross-platform notes:
-- `gunzipSync` and `readFileSync` are platform-independent Node.js built-in APIs
-- Tar archives always store paths with forward slashes (`/`) regardless of creation platform
-- `path.join()` and `mkdirSync()` correctly handle platform-specific separators when writing to the filesystem
-- The test for paths containing colons (mimicking Windows drive letters) validates the original failure mode is eliminated
+Key platform notes:
+- `fs.cpSync` is implemented within the Node.js runtime and handles platform-specific filesystem operations internally
+- No path-quoting issues because paths are passed as function arguments, not interpolated into a shell command string
+- The EXDEV fallback triggers when staging and install directories are on different filesystems — this can happen on any platform but is most common on Linux with separate mount points
 
 ## Performance Expectations
 
-| Metric | Current (`execSync tar`) | After (in-process) |
-|--------|-------------------------|---------------------|
-| Extraction time (~5MB .tgz) | ~200-500ms (process spawn + extraction) | ~50-100ms (no process spawn overhead) |
-| Memory peak | Low (external process) | Low (~15MB buffer for uncompressed tar, freed after extraction) |
-| CPU profile | Spawns external process | Single-threaded, brief buffer operations |
+| Metric | Current (`execSync xcopy/cp -R`) | After (`fs.cpSync`) |
+|--------|----------------------------------|---------------------|
+| Copy time (small dir tree) | ~100-300ms (process spawn + copy) | ~10-50ms (no process spawn overhead) |
+| Memory peak | Low (external process) | Low (in-process filesystem operations) |
+| Platform uniformity | Platform-branching code | Single cross-platform call |
 
-The in-process approach should be **faster** than `execSync` because it eliminates process spawn overhead. Memory usage is trivially small for this payload size.
+The EXDEV fallback copies a small payload: `dist/` (compiled JS), `skill-content/`, `package.json`, `build-metadata.json`. Total payload is < 15MB. `fs.cpSync` should be faster than `execSync` due to eliminating process spawn overhead.
 
 ## Dependencies
 
 ### Runtime dependencies added: None
 
-The implementation uses only Node.js built-in modules:
-- `node:zlib` — `gunzipSync()` for gzip decompression
-- `node:fs` — `readFileSync()`, `writeFileSync()`, `mkdirSync()` for file operations
-- `node:path` — `join()`, `resolve()`, `dirname()` for path construction and safety checks
+`fs.cpSync` is a Node.js built-in API from `node:fs`, available since Node 16.7.0. The project requires Node >=18.
 
 ### Dev dependencies added: None
 
-Tests use the same built-in modules to create test tarball fixtures programmatically (`gzipSync()` + manual tar block construction).
+Tests use the same `node:test` + `node:assert` + `node:fs` built-in modules used by existing tests.
 
-### Why no npm dependency (key finding)
+### Why no npm dependency
 
-The release tarball published by CI contains `dist/`, `skill-content/`, `package.json`, and `build-metadata.json` — **no `node_modules/`** (confirmed in `.github/workflows/build-release.yml:37-43`). Every import in the codebase resolves to either `node:*` built-in modules or relative paths (confirmed via grep of all `src/` files — zero third-party imports). An npm dependency like `tar` would produce a bare specifier import (`import ... from 'tar'`) that would fail to resolve at runtime in GitHub-release-installed copies because `node_modules/tar` would not exist.
-
-Fixing this would require either:
-1. **Bundling with esbuild**: Changes the build system. Adds risk of breaking `import.meta.url` resolution at `perform.ts:24` which is critical for install-root discovery. Exceeds the extraction-fix scope.
-2. **Including node_modules in the tarball**: Requires modifying the CI workflow file (`.github/workflows/build-release.yml`), which is explicitly out of scope.
-
-Neither option is justified when the built-in approach solves the problem with zero new dependencies and zero build changes. This revises the diagnosis recommendation of using node-tar.
-
-## Test Strategy
-
-### New file: `src/update/extract.test.ts`
-
-**Test 1: Successful extraction of representative tarball**
-- Programmatically create a `.tgz` with the expected structure: `dist/index.js` (with content), `dist/update/perform.js`, `skill-content/SKILL.md`, `package.json`, `build-metadata.json`
-- Extract to a temp directory using `extractTarGz()`
-- Assert all expected files and directories exist with correct content
-
-**Test 2: Extraction to path with special characters (colon / drive letter)**
-- On non-Windows: create a temp dir with a colon in the name (e.g., `staging:test`) to mimic the Windows drive-letter issue
-- Verify extraction succeeds regardless of path characters in the destination
-- This directly validates the original failure mode is eliminated (the prior `execSync('tar ...')` would fail on such paths)
-
-**Test 3: Corrupt tarball handling**
-- Pass a truncated or garbage buffer as the tarball content
-- Assert that `extractTarGz()` throws an error (which `performStagedUpdate` will catch and convert to `{ success: false, error }`)
-
-**Test 4: Empty archive handling**
-- Create a valid `.tgz` containing only the end-of-archive marker (two consecutive 512-byte zero blocks)
-- Verify extraction completes without error and the destination directory is empty
-
-**Test 5: PAX extended header handling**
-- Create a tarball with a PAX extended header entry (typeflag `'x'`) before a regular file entry
-- Verify the regular file is extracted correctly and the PAX header data is skipped
-
-**Test infrastructure patterns** (from existing tests in `src/skill/skill.test.ts`):
-- `mkdtempSync(join(tmpdir(), 'extract-'))` for isolated temp directories
-- `rmSync(tmpDir, { recursive: true, force: true })` in `afterEach` for cleanup
-- `node:test` (describe/it) + `node:assert` (strict) for assertions
-
-## Risks
-
-| # | Risk | Likelihood | Impact | Mitigation |
-|---|------|-----------|--------|------------|
-| 1 | Tar format edge case not handled by manual parser | Low | Medium — extraction silently produces wrong output or fails | The CI tarball has simple, known content (short paths, no symlinks, no special attributes). PAX headers are handled. Comprehensive tests cover the exact tarball shape. |
-| 2 | GNU tar on Ubuntu CI produces format features our parser doesn't handle | Very Low | Medium — extraction fails with an error (fail-closed) | USTAR format is well-documented. Our payload has no features that would trigger exotic extensions (no long paths, no extended attributes). If this occurs, it surfaces as an extraction error, preserving fail-closed behavior. |
-| 3 | Large tarball exceeds memory for synchronous approach | Very Low | Low — extraction OOMs on very large payloads | The CLI payload is < 5MB compressed. Even a 10x growth would be < 50MB, trivially within Node.js memory. Can switch to streaming in the future if needed. |
-| 4 | Path separator handling on Windows during file writing | Low | Medium — files written to wrong locations | Tar archives use forward slashes. `path.join()` normalizes to platform separators. Tests verify cross-platform path handling explicitly. |
+The release tarball published by CI contains `dist/`, `skill-content/`, `package.json`, and `build-metadata.json` — **no `node_modules/`** (confirmed in `.github/workflows/build-release.yml` lines 37–43). Every import in the codebase resolves to either `node:*` built-in modules or relative paths (confirmed via grep — zero third-party imports in `src/`). Adding any npm dependency would produce a bare specifier import that fails at runtime for GitHub-release-installed copies.
 
 ## Deferred to Round 2
 
-- **Replace `copyDirRecursive` shell-out (perform.ts:33):** The EXDEV fallback uses `execSync('xcopy'/'cp -R')`. Not a tar invocation and out of scope. Could be replaced with `fs.cpSync()` (stable since Node 16.7) in a future pass.
-- **Streaming extraction:** If the tarball payload grows significantly, a streaming pipeline approach could reduce peak memory. Not needed at current payload sizes.
-- **Replace `gh auth token` shell-out (check.ts:30):** Not a tar invocation and out of scope. Could be replaced with direct credential file reading in a future pass.
-- **Bundler adoption:** If the project adds more npm dependencies in the future, adopting esbuild as a build step would be worth revisiting to enable standard npm packages in the release tarball.
+- **Streaming extraction**: If tarball sizes grow significantly, a streaming pipeline could reduce peak memory. Not needed at current payload sizes (< 5MB compressed).
+- **Replace `gh auth token` shell-out (check.ts:30)**: Not a tar invocation and out of scope. Could be replaced with direct credential file reading.
+- **Windows CI runner**: Adding a Windows runner to the CI matrix would catch platform-specific regressions earlier. Currently relying on local Windows testing.
 
 ## Summary Table
 
 | Aspect | Decision |
 |--------|----------|
-| **Extraction approach** | Node.js built-in modules (`node:zlib` gunzipSync + manual tar header parsing) |
+| **Remaining change** | Replace `copyDirRecursive` body with `fs.cpSync`; remove `execSync` import |
 | **New runtime dependencies** | None (preserves zero-dependency design) |
 | **New dev dependencies** | None |
 | **Build system changes** | None (`tsc` remains sole build step) |
 | **CI workflow changes** | None |
-| **Files created** | `src/update/extract.ts` (extraction function), `src/update/extract.test.ts` (tests) |
-| **Files modified** | `src/update/perform.ts` (replace execSync tar call with `extractTarGz()` import + call) |
-| **Files NOT changed** | `validate.ts`, `index.ts`, `check.ts`, `version.ts`, `package.json`, `tsconfig.json`, `.github/workflows/build-release.yml` |
-| **Error handling** | Preserved exactly — `extractTarGz` throws on error; existing catch block returns `{ success: false, error }` |
-| **Platform support** | Windows (including GNU tar in PATH), macOS, Linux — all via platform-independent Node.js APIs |
-| **Performance** | Expected faster than execSync (no process spawn overhead) |
+| **Files created** | `src/update/perform.test.ts` (tests for perform module) |
+| **Files modified** | `src/update/perform.ts` (replace copyDirRecursive body; update imports) |
+| **Files NOT changed** | `extract.ts`, `extract.test.ts`, `validate.ts`, `index.ts`, `check.ts`, `version.ts`, `package.json`, `tsconfig.json`, `.github/workflows/*` |
+| **Error handling** | Preserved — `cpSync` throws on failure; caught by existing try/catch at line 163 |
+| **Platform support** | Windows, macOS, Linux — all via single `fs.cpSync` call |
+| **getTarExecutable** | Not incorporated — contradicts ticket constraints; in-process extraction already solves the problem |
 
 ## APL Statement Reference
 
-See `tech-research/apl.json`. Key revision from diagnosis: the diagnosis recommended using `tar` (node-tar) as an npm dependency. Tech research identified that the release tarball does not include `node_modules/`, making any npm dependency unresolvable at runtime for the primary install path. The built-in module approach (`node:zlib` + manual tar parsing) resolves the same root cause without introducing this dependency resolution gap, while staying consistent with the project's zero-dependency, `node:*`-only import pattern.
+See `tech-research/apl.json`. The remaining work is a targeted robustness improvement: replace `copyDirRecursive`'s `execSync`-based xcopy/cp-R call with `fs.cpSync(src, dest, { recursive: true })`, remove the unused `node:child_process` import, and add `perform.test.ts`. The primary tar extraction fix (`extract.ts`) is already complete and requires no changes.
 
 ## Artifact Inputs Used
 
 | Artifact | Why Used | Key Takeaway |
 |----------|----------|--------------|
-| `ticket.md` (continuation context) | Scope, requirements, acceptance criteria, explicit constraints | Extraction-only fix; must remove tar binary dependency; CI workflow changes out of scope; adding runtime dep in scope |
-| `diagnosis/diagnosis-statement.md` | Root cause analysis, alternative rejection, success criteria | Single root cause at perform.ts:124; recommends node-tar (revised by this step); 3 files changed |
-| `diagnosis/apl.json` | Structured Q&A with evidence | Confirmed colon interpretation is in GNU tar's parser; node-tar recommended but dependency resolution not analyzed |
-| `product/product.md` | Product spec, open questions | Open question #2 asked whether node-tar bundles correctly into release tarball — answered here: it does not without bundler or CI change |
-| `scout/reference-map.json` | File inventory, facts, code boundaries | Confirmed bug at perform.ts:124; zero runtime deps; ESM project; tarball shape; validation contract |
-| `scout/scout-summary.md` | Analysis summary, dependency landscape | Confirmed zero runtime deps, ESM, node:test runner, no existing update tests |
-| `repo-guidance.json` | Repo intent classification | helix-cli is the sole target; no cross-repo impact |
-| `src/update/perform.ts` (lines 1-247) | Direct inspection of bug and full orchestration | execSync tar at line 124; error catch at 128-131; execSync import also used by copyDirRecursive (line 33); import.meta.url at line 24 |
-| `src/update/validate.ts` (lines 1-66) | Post-extraction contract | Checks dist/index.js exists, package.json exists, runs node --version |
-| `package.json` (full) | Dependencies, build scripts, module config | Zero runtime deps; ESM; `"build": "tsc"`; `"files"` field excludes node_modules |
-| `tsconfig.json` (full) | Build constraints | ES2022 target, Node16 modules, strict mode, output to dist/ |
-| `.github/workflows/build-release.yml` (full) | Tarball creation — confirms no node_modules | Lines 37-43: only dist/, skill-content/, package.json, build-metadata.json |
-| `src/skill/skill.test.ts` (full) | Test patterns and infrastructure | node:test describe/it; node:assert strict; mkdtempSync; beforeEach/afterEach cleanup |
-| Entire `src/` import scan (grep) | Verify dependency resolution model | All imports are `node:*` or relative paths — zero third-party modules in entire codebase |
-| Context7: tar-stream docs | Evaluate alternative library | Lower-level API requiring manual file/dir creation; same resolution blocker as node-tar |
-| Web search: node-tar npm | Library fitness and dependency tree | v7.5.13; 5 transitive JS deps; TypeScript-native; ESM hybrid via tshy; used by npm itself |
-| Web search: tar-fs npm | Evaluate tar-fs alternative | Doesn't gunzip by default; same resolution blocker as node-tar |
+| `ticket.md` (continuation context) | Scope, requirements, user's local fix description, decision constraints | User requests fs.cpSync + perform.test.ts; getTarExecutable contradicts ticket constraints; local verification passed |
+| `diagnosis/diagnosis-statement.md` | Root cause analysis, success criteria, change scope | copyDirRecursive lines 33-39 identified as remaining fix; execSync import removal after; getTarExecutable explicitly superseded |
+| `diagnosis/apl.json` | Structured Q&A with evidence | Confirmed fs.cpSync as direct replacement; getTarExecutable conflicts with ticket "Do Not Re-Decide" |
+| `product/product.md` | Product spec, user scenarios, success criteria | SCN-05 covers EXDEV cross-filesystem swap; essential feature #4 is copyDirRecursive replacement |
+| `scout/reference-map.json` | File inventory, current code state, unknowns | Confirmed extract.ts is implemented; copyDirRecursive still has execSync; no perform.test.ts; fs.cpSync available |
+| `scout/scout-summary.md` | Analysis of current vs user's proposed state | Mapping of which user changes are on branch vs not; zero runtime deps confirmed |
+| `repo-guidance.json` | Repository role | helix-cli is sole target; no cross-repo impact |
+| `src/update/perform.ts` (lines 1-246) | Direct inspection of remaining shell dependency | execSync at line 34 in copyDirRecursive; import at line 1; extractTarGz already wired at line 125 |
+| `src/update/extract.ts` (lines 1-149) | Verify primary fix is complete | In-process extraction using gunzipSync + USTAR parsing; no external binary invoked |
+| `src/update/extract.test.ts` (lines 1-322) | Verify extraction test coverage | 6 tests covering CI layout, colon paths, corruption, empty, PAX, truncation |
+| `src/update/validate.ts` (lines 1-66) | Post-extraction contract | Checks dist/index.js, package.json, runs node --version; spawnSync('node') is expected, not tar |
+| `src/update/check.ts` (lines 1-35) | Other execSync usage | execSync('gh auth token') — not tar, expected, no change needed |
+| `package.json` (lines 1-44) | Dependencies, build scripts, engine requirement | Zero runtime deps; Node >=18; ESM; tsc-only build |
+| `tsconfig.json` (lines 1-15) | Build constraints | ES2022 target, Node16 modules, strict mode, output to dist/ |
+| Context7 Node.js docs | fs.cpSync API verification | Confirmed fs.cpSync(src, dest, { recursive: true }) as direct cross-platform replacement; available since Node 16.7 |
+| Prior tech-research artifacts | Previous run's analysis | Confirmed no-npm-dependency constraint (no node_modules in release tarball); extraction approach already implemented |
