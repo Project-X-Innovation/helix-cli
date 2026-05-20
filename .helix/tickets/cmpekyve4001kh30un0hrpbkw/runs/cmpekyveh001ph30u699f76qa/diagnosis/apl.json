@@ -1,0 +1,18 @@
+{
+  "questions": [
+    "What changes does helix-cli need to support GOAL mode ticket creation?"
+  ],
+  "answers": [
+    {
+      "answer": "Minimal scope: (1) Add 'GOAL' to VALID_MODES const array at src/tickets/create.ts line 13, (2) Update usage string at line 17, (3) Update help text in src/tickets/index.ts, (4) Update documentation in src/docs/cli-content.ts. Mode validation (lines 79-88) normalizes to uppercase and uses includes check — no logic changes needed. Mode is conditionally included in request body (line 147) — no structural changes. Goal-specific fields (e.g., maxChildren) are not needed at CLI creation time for MVP.",
+      "evidence": [
+        "src/tickets/create.ts line 13: VALID_MODES = ['AUTO','BUILD','FIX','RESEARCH','EXECUTE']",
+        "src/tickets/create.ts lines 79-88: uppercase normalization, includes validation",
+        "src/tickets/create.ts line 147: mode conditionally included in request body",
+        "Scout reference-map.json (helix-cli): 1 code change + 3 doc string updates"
+      ]
+    }
+  ],
+  "statement": "The CLI needs a trivial extension: add GOAL to the VALID_MODES array and update 3 usage/documentation strings. No structural or validation logic changes required. Goal-specific creation fields (maxChildren) are deferred — the server API will handle defaults.",
+  "followups": []
+}
