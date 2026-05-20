@@ -1,44 +1,50 @@
 {
   "questions": [
-    "Does the in-process tar extraction correctly handle all format features present in the CI-produced tarball?",
-    "Is the extraction robust against corrupt or truncated tar data, preserving the fail-closed error contract?",
-    "Are there any remaining external tar binary invocations in the update module?",
-    "Does the implementation introduce any regression risk to the existing update flow?"
+    "Is the copyDirRecursive replacement with fs.cpSync correct and does it preserve the error contract?",
+    "Are the import changes in perform.ts complete — no dead imports remaining, no missing imports?",
+    "Does the new perform.test.ts provide adequate coverage for the changed code?",
+    "Are there any remaining unnecessary shell dependencies in perform.ts?",
+    "Are the prior code review fixes (extract.ts bounds check, JSDoc, truncated-entry test) still intact?"
   ],
   "answers": [
     {
-      "answer": "Yes. The parser correctly handles USTAR format headers (name, size, typeflag, prefix), directory entries (typeflag '5'), regular files (typeflag '0'/NUL), and PAX extended headers (typeflag 'x'/'g' — skipped). Checksum validation catches format corruption. The CI tarball shape (dist/, skill-content/, package.json, build-metadata.json with short paths, no symlinks) is well within the parser's capabilities. All 6 extraction test cases pass, including the representative CI-shaped tarball test.",
+      "answer": "Yes. cpSync(src, dest, { recursive: true }) is a direct functional equivalent of the prior execSync('xcopy/cp-R') call. It throws on failure, which propagates through safeRename to the existing try/catch at perform.ts:158, preserving the swap/rollback error contract. The function signature, callers, and error handling path are unchanged.",
       "evidence": [
-        "src/update/extract.ts lines 65-148: extractTarGz handles USTAR headers, typeflags, PAX skip, checksum validation",
-        "src/update/extract.test.ts test 1: CI-shaped tarball with dist/, skill-content/, package.json, build-metadata.json",
-        ".github/workflows/build-release.yml lines 37-43: tarball contains only dist/, skill-content/, package.json, build-metadata.json"
+        "src/update/perform.ts line 34: cpSync(src, dest, { recursive: true }) — single cross-platform call replacing 5-line platform-branching body",
+        "src/update/perform.ts lines 158-216: try/catch in swap block catches cpSync throws and triggers rollback",
+        "src/update/perform.ts line 48: safeRename calls copyDirRecursive on EXDEV — unchanged call path"
       ]
     },
     {
-      "answer": "Yes, after code-review fix. The original implementation had a gap: if a tar header claimed a data size larger than the remaining buffer, tar.subarray() would silently return a truncated slice, writing a partial file without error. Code review added a bounds check (extract.ts lines 127-131) that throws on truncated entries. This preserves the fail-closed contract — the throw is caught by performStagedUpdate's try/catch and returns { success: false, error }. A new test case validates this behavior.",
+      "answer": "Yes. The import { execSync } from 'node:child_process' has been fully removed (zero callers remain). cpSync has been added to the node:fs import alongside copyFileSync, existsSync, mkdirSync, renameSync, rmSync, writeFileSync. No dead or missing imports.",
       "evidence": [
-        "src/update/extract.ts lines 127-131: bounds check added by code review",
-        "src/update/extract.test.ts test 6: 'throws on truncated tar entry' validates the bounds check",
-        "src/update/perform.ts lines 124-129: try/catch catches the throw and returns { success: false, error }"
+        "src/update/perform.ts lines 1-9: node:fs import includes cpSync; no node:child_process import exists",
+        "grep -n 'execSync|child_process' src/update/perform.ts: zero matches"
       ]
     },
     {
-      "answer": "No remaining tar shell invocations. The only grep match for execSync+tar in src/update/ is a JSDoc comment in extract.ts line 55 explaining the prior implementation. The execSync import in perform.ts is retained solely for copyDirRecursive (EXDEV fallback), which is not a tar invocation.",
+      "answer": "Yes. The 4 test cases cover: (1) getInstallRoot resolves to an existing directory, (2) getInstallRoot path contains package.json, (3) static verification that perform.ts has no execSync/child_process and uses cpSync, (4) behavioral test of cpSync-based directory copy with nested files matching the update payload layout. The static verification test acts as a regression guard against re-introducing shell dependencies.",
       "evidence": [
-        "grep -rn 'execSync.*tar|spawnSync.*tar' src/update/: only extract.ts:55 JSDoc comment",
-        "grep -n 'execSync' src/update/perform.ts: line 1 (import) and line 34 (copyDirRecursive only)"
+        "src/update/perform.test.ts: 117 lines, 4 test cases in 3 describe blocks",
+        "npm test output: 61 tests, 0 failures, all 4 perform.test.ts tests pass"
       ]
     },
     {
-      "answer": "No regression risk. The change is confined to the extraction step within performStagedUpdate. The function signature, error contract ({ success: false, error }), and all other stages (download, validate, swap, cleanup) are unchanged. The extractTarGz function is a new isolated module with no side effects beyond the destination directory. All 57 tests pass (51 existing + 6 new). The execSync import is retained for copyDirRecursive.",
+      "answer": "No. After the cpSync replacement, perform.ts has zero imports from node:child_process and zero execSync/spawnSync calls. The only remaining execSync/spawnSync usages in the update module are in check.ts (gh auth token) and validate.ts (node --version), which are expected and not tar invocations.",
       "evidence": [
-        "npm test: 57 tests, 57 pass, 0 fail",
-        "npm run build: exits 0",
-        "node dist/index.js --version: outputs 1.3.4",
-        "src/update/perform.ts: only lines 14, 73, 124-125 changed (import + call + JSDoc fix)"
+        "grep -n 'execSync|spawnSync' src/update/perform.ts: zero matches",
+        "grep -rn 'execSync|spawnSync' src/update/: matches only in check.ts:1,30 and validate.ts:1,38 (plus test assertions in perform.test.ts)"
+      ]
+    },
+    {
+      "answer": "Yes. All three prior review fixes are confirmed intact: (1) extract.ts lines 127-131 bounds check prevents silent data truncation on corrupt tar entries, (2) perform.ts line 68 JSDoc correctly says 'Extract in-process via extractTarGz (no external binary)', (3) extract.test.ts lines 278-321 test case 6 validates truncated tar entry throws correctly.",
+      "evidence": [
+        "src/update/extract.ts lines 127-131: if (size > 0 && dataStart + size > tar.length) throw — present",
+        "src/update/perform.ts line 68: JSDoc comment 'Extract in-process via extractTarGz (no external binary)' — present",
+        "src/update/extract.test.ts lines 278-321: 'throws on truncated tar entry' test case — present and passing"
       ]
     }
   ],
-  "statement": "Code review complete with two fixes applied. (1) Added a bounds check in extract.ts (lines 127-131) that throws on truncated tar entries where the header claims more data than exists in the buffer — this converts a silent data truncation into a visible error, preserving the fail-closed contract. Added a corresponding test case (test 6). (2) Fixed a stale JSDoc comment in perform.ts line 73 that still referenced 'system tar' after the implementation replaced it with in-process extraction. All 57 tests pass, build succeeds, CLI version output works. No other issues found — the tar parser, path traversal protection, error handling, and test coverage are correct.",
+  "statement": "Code review of the continuation implementation is complete. No issues found and no code changes made. The copyDirRecursive replacement with fs.cpSync(src, dest, { recursive: true }) is correct, the execSync import is properly removed, and perform.test.ts provides adequate coverage with 4 test cases. All 61 tests pass, build succeeds, CLI version outputs 1.3.4. Prior review fixes (extract.ts bounds check, JSDoc, truncated-entry test) remain intact. Zero runtime dependencies maintained.",
   "followups": []
 }
