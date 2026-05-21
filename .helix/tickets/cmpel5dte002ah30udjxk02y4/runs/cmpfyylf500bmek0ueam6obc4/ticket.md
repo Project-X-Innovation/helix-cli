@@ -77,3 +77,4 @@ I'll note this as feedback: when demoing or verifying this feature, the test rep
 
 Want me to rerun this with that in mind, or should we open a separate ticket for the demo/sample report?
 - **Usher** (2026-05-21T20:54:33.701Z) [Helix]: Rerun
+- **Helix** (2026-05-21T20:54:45.436Z) [Agent]: Rerun started! This time the demo/verification should use a report with genuinely rich HTML features — styled tables, callout boxes, visual hierarchies — so the improvement is clear and obvious. I'll keep you posted! 🚀
