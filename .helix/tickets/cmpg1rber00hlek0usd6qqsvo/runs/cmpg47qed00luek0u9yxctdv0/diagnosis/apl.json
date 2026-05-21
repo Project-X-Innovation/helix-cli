@@ -1,0 +1,45 @@
+{
+  "questions": [
+    "Where does the current `hlx library show` handler discard the body content, and is the full content already available in memory?",
+    "What is the established pattern for adding boolean CLI flags in this codebase?",
+    "Does `cmdShow` already receive the CLI args array needed to check for `--full`?",
+    "Which files need documentation updates to satisfy the acceptance criteria?"
+  ],
+  "answers": [
+    {
+      "answer": "cmdShow() in src/library/show.ts fetches the full item via hxFetch at line 24, producing a LibraryItemDetail with content: string | null. The rendering loop (lines 43-64) iterates all lines but only prints heading matches; line 62 has an explicit comment '// Skip non-heading content for brevity'. The full markdown body is already in memory — it is simply not printed.",
+      "evidence": [
+        "src/library/show.ts:24 — hxFetch call returns LibraryItemDetail with item.content",
+        "src/library/show.ts:44-63 — loop splits content into lines, regex-matches headings, skips everything else",
+        "src/library/show.ts:62 — comment: '// Skip non-heading content for brevity'"
+      ]
+    },
+    {
+      "answer": "The codebase uses hasFlag(args, '--flagname') from src/lib/flags.ts (line 11-13) as the standard pattern for boolean CLI flags. It is used consistently across 7+ call sites for --json, --dry-run, --archived, --force, --current.",
+      "evidence": [
+        "src/lib/flags.ts:11-13 — hasFlag() implementation: return args.includes(flag)",
+        "src/tickets/list.ts:45 — hasFlag(args, '--json')",
+        "src/tickets/continue.ts:30 — hasFlag(args, '--dry-run')",
+        "src/skill/install.ts:28 — hasFlag(args, '--force')"
+      ]
+    },
+    {
+      "answer": "Yes. cmdShow's third parameter is _args: string[] (line 23), which receives the rest array from the router (src/library/index.ts:44). It is unused (underscore prefix convention). Renaming to args and calling hasFlag(args, '--full') requires no plumbing changes.",
+      "evidence": [
+        "src/library/show.ts:23 — function signature: cmdShow(config, resolvedId, _args: string[])",
+        "src/library/index.ts:44 — await cmdShow(config, resolved.id, rest)"
+      ]
+    },
+    {
+      "answer": "Four documentation locations are relevant: (1) src/library/index.ts:39 — help text for 'hlx library show' needs [--full] added, (2) src/index.ts:55 — top-level usage text should mention --full, (3) skill-content/references/commands.md:300-308 — CLI reference section explicitly required by acceptance criteria, (4) skill-content/SKILL.md — high-level skill overview mentions library but probably does not need detail changes.",
+      "evidence": [
+        "src/library/index.ts:39 — console.log('Usage: hlx library show <ref>')",
+        "src/index.ts:55 — 'hlx library show <ref>          Show report with section annotations'",
+        "skill-content/references/commands.md:300-308 — show command section documents current behavior only",
+        "skill-content/SKILL.md:44 — '| `library` | Browse and rate published research reports |'"
+      ]
+    }
+  ],
+  "statement": "The root cause is a deliberate design omission: cmdShow() in src/library/show.ts already fetches the full markdown body via /api/library/items/:id but its rendering loop (lines 43-64) only prints heading lines, explicitly discarding all other content. The function receives the CLI args array but ignores it (underscore-prefixed _args). The fix is to rename _args to args, import hasFlag, and conditionally print the full body when --full is set. Four files need changes: show.ts (logic), index.ts (help text), src/index.ts (usage text), and skill-content/references/commands.md (skill documentation). No API changes, no new dependencies, no new HTTP calls needed.",
+  "followups": []
+}

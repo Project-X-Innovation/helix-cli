@@ -1,0 +1,37 @@
+{
+  "questions": [
+    "What is the correct step ordering and file-level change set for adding the --full flag?",
+    "What are the concrete verification checks needed to confirm the implementation is correct?",
+    "Are there any dependencies or pre-conditions that could block verification?"
+  ],
+  "answers": [
+    {
+      "answer": "Five atomic steps in sequence: (1) Add --full flag logic to src/library/show.ts — import hasFlag, rename _args to args, add conditional body print after the TOC loop. (2) Update show help text in src/library/index.ts to include [--full] and a description. (3) Update top-level usage text in src/index.ts to mention [--full]. (4) Update skill docs in skill-content/references/commands.md with code block and flag table. (5) Build and run tests to verify.",
+      "evidence": [
+        "src/library/show.ts:23 — _args parameter is unused, ready to rename to args",
+        "src/library/show.ts:62 — explicit comment marks where body is discarded",
+        "src/lib/flags.ts:11-13 — hasFlag() is the established boolean flag pattern",
+        "src/library/index.ts:39 — help text currently lacks flag documentation",
+        "src/index.ts:55 — usage text currently lacks --full mention",
+        "skill-content/references/commands.md:300-308 — show section documents no flags"
+      ]
+    },
+    {
+      "answer": "Six required checks: (CHK-01) TypeScript compilation, (CHK-02) existing tests pass, (CHK-03) help text documents --full, (CHK-04) skill docs updated, (CHK-05) default output unchanged without --full, (CHK-06) --full flag prints full markdown body. CHK-05 and CHK-06 require live API access.",
+      "evidence": [
+        "package.json scripts: build is tsc, test is tsc && node --test",
+        "ticket.md acceptance criteria: --full prints body, default unchanged, help updated, skill updated",
+        "product/product.md SCN-01 through SCN-05: five user scenarios defined"
+      ]
+    },
+    {
+      "answer": "Two pre-conditions may affect verification: (1) network access to the Helix staging API at helix-global-server-staging-3tl6o.ondigitalocean.app is unknown, and (2) existence of at least one library item on the staging API is unknown. Both are needed for CHK-05 and CHK-06 (live CLI execution). Static checks CHK-01 through CHK-04 have no external dependencies.",
+      "evidence": [
+        "Dev setup configuration provides HELIX_API_KEY and HELIX_URL for staging",
+        "No runtime inspection manifest available to verify API availability"
+      ]
+    }
+  ],
+  "statement": "The implementation plan defines 5 atomic steps to add a --full flag to hlx library show: (1) modify show.ts to import hasFlag, rename _args to args, and conditionally print the full body after the TOC, (2) update library/index.ts help text, (3) update src/index.ts usage text, (4) update skill-content/references/commands.md documentation, (5) build and verify. The verification plan includes 6 required checks covering compilation, tests, help text, documentation, default behavior preservation, and full-body output. The change touches 4 files with ~35 lines total, requires no new dependencies or API changes, and follows established codebase patterns.",
+  "followups": []
+}
