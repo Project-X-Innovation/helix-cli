@@ -1,0 +1,47 @@
+{
+  "problem": "The helix-cli provides the tool surface (comments, tickets, library, inspect) that agents use inside sandboxes. The current comment helix has none of these tools. The Host Agent running in a sprite would need the same CLI access that the 10-step workflow agents have. The CLI itself may not need code changes, but its availability and installation in the sprite environment is a critical boundary.",
+  "files": [
+    {
+      "path": "src/comments/post.ts",
+      "why": "CLI command for posting comments to tickets (hlx comments post). Host Agent in sprite would use this to post confirmation and reply comments. Endpoint: POST /api/tickets/{ticketId}/comments."
+    },
+    {
+      "path": "src/comments/index.ts",
+      "why": "Comment subcommand router: list and post. Accepts --ticket flag or HELIX_TICKET_ID env var for ticket resolution."
+    },
+    {
+      "path": "src/tickets/index.ts",
+      "why": "Ticket commands: list, get, create, rerun, continue, artifact, bundle. Host Agent would use these to access other tickets for context."
+    },
+    {
+      "path": "src/library/index.ts",
+      "why": "Library access: list, show, comments. Host Agent needs this to browse research library for context-aware confirmations."
+    },
+    {
+      "path": "src/inspect/index.ts",
+      "why": "Runtime inspection: db queries, log retrieval, API calls. Gives Host Agent production context."
+    },
+    {
+      "path": "src/index.ts",
+      "why": "CLI main entry point. Registers all commands. Binary: hlx → dist/index.js."
+    },
+    {
+      "path": "package.json",
+      "why": "Package: @projectxinnovation/helix-cli v1.3.4. Binary: hlx. Quality gates: typecheck (tsc --noEmit), test (node test runner), build (tsc)."
+    }
+  ],
+  "facts": [
+    "CLI binary is 'hlx' published as @projectxinnovation/helix-cli v1.3.4",
+    "Comment posting: hlx comments post --ticket <ref> '<message>' → POST /api/tickets/{id}/comments",
+    "Ticket access: hlx tickets list/get/create with search, status filter, archive fallback",
+    "Library access: hlx library list/show/comments for browsing research reports",
+    "Inspect: hlx inspect db/logs/api for runtime data queries",
+    "CLI already installed in Vercel sandbox during native-phase.ts provisioning for workflow agents",
+    "Quality gates: typecheck (tsc --noEmit), test (tsc && node --test), build (tsc)"
+  ],
+  "unknowns": [
+    "Whether the CLI can be installed in a sprite environment the same way it's installed in Vercel sandbox (npm install from registry vs local clone)",
+    "Whether CLI authentication inside a sprite would use the same token mechanism as Vercel sandbox agents",
+    "Whether the CLI needs any sprite-specific adaptations or if it works identically in both environments"
+  ]
+}

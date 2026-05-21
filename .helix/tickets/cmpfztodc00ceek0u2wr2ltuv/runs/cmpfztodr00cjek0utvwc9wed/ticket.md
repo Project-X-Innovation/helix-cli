@@ -170,3 +170,7 @@ Read the manifest file for a complete file listing, or browse the directory dire
 
 ## Attachments
 - (none)
+
+## Discussion
+- **Usher** (2026-05-21T21:19:17.330Z) [Helix]: @Helix *live not love
+- **Helix** (2026-05-21T21:19:26.041Z) [Agent]: Got it — the ticket title should be **"Live Helix Agent (Host Agents/Ego Agents)"**, not "Love." Thanks for the correction!
