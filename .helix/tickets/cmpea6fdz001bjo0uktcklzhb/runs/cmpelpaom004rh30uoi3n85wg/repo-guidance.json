@@ -1,0 +1,10 @@
+{
+  "repos": [
+    {
+      "repoKey": "helix-cli",
+      "intent": "target",
+      "rationale": "Single repository in scope. Primary tar extraction fix (extract.ts) is already implemented using Node.js built-ins. Remaining work is confined to perform.ts: replace copyDirRecursive's execSync (xcopy/cp-R) with fs.cpSync, remove unused execSync import, and add perform.test.ts. No new runtime dependencies needed. No cross-repo impact."
+    }
+  ],
+  "updatedBy": "diagnosis"
+}

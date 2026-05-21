@@ -1,0 +1,45 @@
+{
+  "questions": [
+    "What is the correct Node.js built-in API to replace the execSync-based copyDirRecursive in perform.ts?",
+    "Are there any platform-specific behavioral differences with fs.cpSync that could affect the EXDEV fallback?",
+    "What should perform.test.ts cover given the remaining scope is limited to the EXDEV copy fallback?",
+    "Should the execSync import be fully removed from perform.ts after replacing copyDirRecursive?"
+  ],
+  "answers": [
+    {
+      "answer": "fs.cpSync(src, dest, { recursive: true }) from node:fs. This is a synchronous, in-process, cross-platform directory copy with no external binary dependency. It was introduced in Node 16.7.0 and the project requires Node >=18, so it is unconditionally available. The API accepts a source path and destination path with options including recursive (required for directory trees, defaults to false so must be set), force (defaults to true — overwrites existing files), and dereference (defaults to false — preserves symlinks). It replaces both the xcopy (Windows) and cp -R (Unix) branches in a single cross-platform call.",
+      "evidence": [
+        "Context7 Node.js docs confirm fs.cpSync(src, dest, { recursive: true }) copies entire directory structure synchronously",
+        "package.json line 17 engines field: \"node\": \">=18\" — Node 18 is well past 16.7 introduction",
+        "perform.ts:33-39 current copyDirRecursive body has platform-branching for xcopy vs cp -R that fs.cpSync eliminates"
+      ]
+    },
+    {
+      "answer": "No material behavioral differences. fs.cpSync uses OS-native copy mechanisms internally and handles all platforms uniformly. The key options force (default true) and recursive (must be set to true) provide equivalent behavior to both xcopy /E /I /Q /Y and cp -R. One minor difference: fs.cpSync creates the destination directory's parent if it doesn't exist when recursive is true. Both xcopy and cp -R behave similarly. Symlink handling is not a concern since the CI tarball contains no symlinks (extract.ts:140-143 skips symlink type flags, only files and directories are extracted). Error behavior: fs.cpSync throws on failure, which is caught by safeRename's caller (the try/catch at perform.ts:163).",
+      "evidence": [
+        "Context7 docs: fs.cpSync options include force (default true), recursive (default false — must set to true), dereference (default false)",
+        "build-release.yml creates tarball from dist/, skill-content/, package.json, build-metadata.json — no symlinks in payload",
+        "extract.ts:133-143 only creates directories (typeflag '5') and regular files (typeflag '0' or '\\0'); symlinks and other types skipped"
+      ]
+    },
+    {
+      "answer": "perform.test.ts should cover the copyDirRecursive function behavior (now using fs.cpSync) as exercised through the safeRename fallback path. Both copyDirRecursive and safeRename are module-private (no export keyword), so the test has two options: (1) test indirectly via performStagedUpdate (requires mocking fetch, the full download/extract/validate chain — high setup cost), or (2) export copyDirRecursive and/or safeRename for testability. Recommended: export copyDirRecursive as a named export for testing, since it is a pure utility function with a simple contract (copy directory tree from src to dest). Test cases: (a) copies a multi-level directory tree correctly, (b) preserves file content, (c) handles empty directories. Additionally test getInstallRoot() which is already exported.",
+      "evidence": [
+        "perform.ts:33 copyDirRecursive is module-private (no export keyword)",
+        "perform.ts:46 safeRename is module-private (no export keyword)",
+        "perform.ts:24 getInstallRoot is exported — can be tested directly",
+        "extract.test.ts pattern: uses mkdtempSync for temp dirs, afterEach cleanup, node:test describe/it + node:assert strict"
+      ]
+    },
+    {
+      "answer": "Yes. After replacing copyDirRecursive's body with fs.cpSync, the execSync import on perform.ts line 1 has zero remaining callers within perform.ts. It must be removed. The cpSync function is available from the existing node:fs import on lines 2-9 (which currently imports copyFileSync, existsSync, mkdirSync, renameSync, rmSync, writeFileSync). Add cpSync to that import list. The child_process import line can be deleted entirely.",
+      "evidence": [
+        "perform.ts:1 import { execSync } from 'node:child_process' — only used by copyDirRecursive at line 34",
+        "perform.ts:2-9 existing node:fs imports: copyFileSync, existsSync, mkdirSync, renameSync, rmSync, writeFileSync — cpSync joins this list",
+        "Grep results confirm no other execSync usage in perform.ts besides line 34"
+      ]
+    }
+  ],
+  "statement": "Replace copyDirRecursive's execSync-based xcopy/cp-R call (perform.ts:33-39) with fs.cpSync(src, dest, { recursive: true }), remove the unused execSync/child_process import, add cpSync to the existing node:fs import, and create perform.test.ts covering the directory copy behavior. No new runtime dependencies needed. The primary tar extraction fix (extract.ts) is already complete and requires no changes.",
+  "followups": []
+}

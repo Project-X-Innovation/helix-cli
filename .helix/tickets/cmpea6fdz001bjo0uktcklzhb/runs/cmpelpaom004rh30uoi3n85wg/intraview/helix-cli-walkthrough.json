@@ -1,0 +1,37 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "BLD-527: Replace hlx self-update with GitHub Release assets",
+  "description": "This tour walks through the replacement of the fragile `npm install -g git+https://...#main` self-update mechanism with a staged download-validate-swap flow using prebuilt GitHub Release assets. The old approach required TypeScript to be available on the user's machine (it isn't — it's a devDependency), and `npm install -g` destructively removed the existing CLI before the new one was proven good, making failed updates brick the tool. The new approach: CI builds a tarball on every push to main, publishes it as a rolling `latest` GitHub Release, and `hlx update` downloads that prebuilt artifact, validates it in a staging directory, then atomically swaps it in with a backup for rollback.",
+  "steps": [
+    {
+      "file": ".github/workflows/auto-tag.yml",
+      "line": 1,
+      "description": "This entire workflow has been deleted. It previously triggered on every push to main, read the version from package.json, and pushed a `v{version}` tag — which in turn chained to publish.yml and triggered an npm publish. This created unwanted coupling: every merge to main that didn't bump the version would fail tag creation, and every bump would trigger a full npm publish. Removing it decouples the continuous build artifact (GitHub Release) from the versioned npm publish, which still happens correctly via publish.yml on explicit `v*` tags.",
+      "title": "Deleted: auto-tag.yml (the release-friction source)"
+    },
+    {
+      "file": ".github/workflows/build-release.yml",
+      "line": 1,
+      "description": "This new workflow triggers on every push to main (replacing auto-tag.yml's trigger) and produces a prebuilt artifact users can install without a TypeScript toolchain. It runs `npm ci` (which triggers the `prepare` script and runs `tsc` in CI where devDependencies ARE available), then `npm test`, then assembles a tarball containing only `dist/`, `skill-content/`, `package.json`, and a `build-metadata.json` with the commit SHA and build timestamp. Critically, `src/` is excluded — users installing from this tarball must use `--ignore-scripts` to prevent npm from trying to run `tsc` without sources.",
+      "title": "New: build-release.yml — CI builds prebuilt tarball"
+    },
+    {
+      "file": ".github/workflows/build-release.yml",
+      "line": 29,
+      "description": "The `Generate build metadata` step writes `{\"commit\":\"$GITHUB_SHA\",\"builtAt\":\"...\"}` into `build-metadata.json` before tarball creation. This file ends up inside the tarball and is extracted into the user's install directory. The `hlx --version` command reads this commit SHA from the config (populated during update) to display the installed build identity, satisfying AC-9.",
+      "title": "build-metadata.json embeds commit SHA for version tracking"
+    },
+    {
+      "file": ".github/workflows/build-release.yml",
+      "line": 49,
+      "description": "The workflow deletes any existing `latest` release (including its tag) then immediately recreates it pointing to the new commit's tarball. Using `latest` as the tag name is intentional — it does NOT match the `v*` glob pattern in `publish.yml`, so this rolling release never accidentally triggers an npm publish. The `contents: write` permission at line 8 and the `concurrency: build-release` group (line 13) ensure only one release job runs at a time and that rapid pushes don't leave orphaned releases.",
+      "title": "Rolling 'latest' GitHub Release (not a v* tag)"
+    },
+    {
+      "file": ".github/workflows/build-release.yml",
+      "line": 13,
+      "description": "The `concurrency` block with `cancel-in-progress: true` ensures that if two pushes to main happen in quick succession, the older release job is cancelled before the newer one proceeds. Without this, two jobs could race to delete-then-create the `latest` release, potentially leaving the release in a broken intermediate state or the wrong commit's tarball published.",
+      "title": "Concurrency guard prevents race conditions"
+    }
+  ]
+}
