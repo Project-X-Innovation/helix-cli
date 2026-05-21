@@ -1,23 +1,16 @@
 {
   "questions": [
-    "Were all CLI changes implemented per the plan?",
-    "Does the dual heading regex support both HTML and Markdown?",
-    "Does TypeScript compilation pass?"
+    "Q1: Does the CLI need code changes for this rerun?"
   ],
   "answers": [
     {
-      "answer": "Yes. All 3 plan steps (L1-L3) were implemented: filePath added to local type, HTML heading regex added before Markdown fallback, TypeScript compilation passes.",
-      "evidence": ["show.ts line 9: filePath?: string | null", "show.ts line 48: HTML heading regex", "show.ts line 70: Markdown heading regex (preserved)", "npx tsc --noEmit: 0 errors"]
-    },
-    {
-      "answer": "Yes. The HTML regex /<h([1-6])(?:\\s+[^>]*?id=\"([^\"]*)\"[^>]*)?>(.+?)<\\/h\\1>/i is tried first. It extracts level, id attribute, and text (stripping nested HTML tags). If it doesn't match, the original Markdown regex /^(#{1,6})\\s+(.+)$/ is used as fallback. Both produce the same output format.",
-      "evidence": ["show.ts lines 48-66: HTML pattern with continue", "show.ts lines 70-85: Markdown fallback (unchanged from original)"]
-    },
-    {
-      "answer": "Yes. npx tsc --noEmit passes with zero errors.",
-      "evidence": ["TypeScript compilation output: no errors"]
+      "answer": "No. The CLI dual heading extraction is complete from prior runs. show.ts handles HTML headings (regex priority) and Markdown headings (fallback). Comment system is anchor-based and format-agnostic. Typecheck passes with zero errors.",
+      "evidence": [
+        "tsc --noEmit: exit code 0",
+        "diagnosis/diagnosis-statement.md (CLI): 'No code changes needed'"
+      ]
     }
   ],
-  "statement": "All CLI changes for dual-format heading extraction have been implemented per the plan. The HTML heading regex is tried first with Markdown as fallback. Zero new runtime dependencies. TypeScript compilation passes.",
+  "statement": "No CLI code changes needed. Typecheck passes. Dual heading extraction confirmed complete from prior runs.",
   "followups": []
 }
