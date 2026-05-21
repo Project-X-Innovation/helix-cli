@@ -1,0 +1,44 @@
+{
+  "questions": [
+    "Q1: Do all 8 changed files match the ticket requirements (section order, content, constraints)?",
+    "Q2: Does the CI parser script correctly discover all CLI surface tokens and exit non-zero on gaps?",
+    "Q3: Are there any regressions to existing CLI behavior, build, tests, or skill install?",
+    "Q4: Are prohibited patterns (npm install/uninstall/link, soft language for invariants) absent from all docs?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes. All 8 files verified against ticket requirements: SKILL.md has name: hlx-cli, 481-char description (<=1024) with dual CLI-ops/ticket-writing triggers, and 9 ## sections in prescribed order (10 total with frontmatter). commands.md covers all subcommands, long-form flags, and enum values. ticket-prompting.md has all 7 sections with hard-constraint language. recovery.md documents GitHub-release-asset flow. current-state.md has dated PR #86 note. skill-sync.yml triggers on pull_request and push: main. check-coverage.mjs uses recursive --help with correct exit codes. PR template has skill-update checkbox.",
+      "evidence": [
+        "SKILL.md ## headings verified at lines 13,27,34,50,59,65,69,73,81 — exact match to ticket spec order",
+        "Description measured at 481 chars via Node script",
+        "ticket-prompting.md sections confirmed: Core Rule (line 3), Required Ticket Structure (line 19), How To Draft (line 42), Common Failure Modes (line 56), Deployment / SDF Checklist (line 98), Good / Bad Prompt Patterns (line 109), Draft Review Checklist (line 129)"
+      ]
+    },
+    {
+      "answer": "Yes. Parser discovers 75 tokens (29 subcommands, 39 flags, 7 enums) and exits 0 with current docs. Negative test (removing --search) causes exit 1 with missing token listed. Parser handles edge cases: pipe-separated alternatives, prose-format rating values, angle-bracket enum groups, subcommand blocklist for non-command words.",
+      "evidence": [
+        "Parser output: 'Found 75 tokens (29 subcommands, 39 flags, 7 enums)' with exit 0",
+        "Negative test: 'Missing CLI surface tokens (1): [flag] --search' with exit 1",
+        "Source inspection: extractEnumValues() handles <VAL1|VAL2> pattern, extractRatingValues() handles prose format, discoverSubcommands() handles pipe-separated alternatives and blocklist"
+      ]
+    },
+    {
+      "answer": "No regressions found. Build (tsc) exits 0, typecheck (tsc --noEmit) exits 0, all 63 tests pass. hlx skill show outputs new SKILL.md content. hlx skill install copies SKILL.md + all 4 reference files (commands.md, current-state.md, recovery.md, ticket-prompting.md) via existing readdirSync auto-discovery. No src/ files were modified.",
+      "evidence": [
+        "npm run build exits 0; npm run typecheck exits 0; npm test: 63 pass, 0 fail",
+        "skill install copies 5 files (SKILL.md + 4 references) to target directory",
+        "No modifications to src/, .github/workflows/build-release.yml, or publish.yml"
+      ]
+    },
+    {
+      "answer": "Yes. SKILL.md and recovery.md contain zero occurrences of 'npm install -g', 'npm uninstall -g', or 'npm link'. current-state.md mentions 'npm install -g' in a 'no longer recommended' historical context (not a recommendation). ticket-prompting.md uses hard constraints (must, must not, do not, fail closed) and avoids soft language for invariants.",
+      "evidence": [
+        "grep for 'npm install -g', 'npm uninstall -g', 'npm link' in SKILL.md and recovery.md returns zero matches",
+        "current-state.md line 11: 'npm install -g is no longer the recommended install or update path' — historical note, not a recommendation",
+        "ticket-prompting.md verified: must/must not/do not/fail closed patterns present; soft language (should/ideally/as needed) absent from invariant statements"
+      ]
+    }
+  ],
+  "statement": "Code review complete. All 8 implementation files verified against ticket requirements, product spec, and source code. No issues found. Build, typecheck, 63/63 tests, and CI parser (75 tokens) all pass. No code fixes applied. The implementation correctly restructures SKILL.md to 10-section progressive disclosure, expands commands.md to full CLI surface coverage, creates 3 new reference documents with required content and language patterns, adds a recursive CI parser script with correct exit semantics, and adds the CI workflow and PR template. No regressions to existing behavior.",
+  "followups": []
+}
