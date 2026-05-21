@@ -1,0 +1,48 @@
+{
+  "title": "BLD-556: Add --full flag to hlx library show",
+  "description": "Walkthrough of the --full flag implementation that prints the full markdown body of library items after the TOC",
+  "steps": [
+    {
+      "file": "src/library/show.ts",
+      "line": 2,
+      "title": "Import hasFlag utility",
+      "description": "Added import for hasFlag from the shared flags module. This is the same pattern used by 7+ other commands (--json, --dry-run, --archived, --force, --current)."
+    },
+    {
+      "file": "src/library/show.ts",
+      "line": 24,
+      "title": "Rename _args to args",
+      "description": "The third parameter was already passed from the router but was unused (underscore prefix convention). Renamed to 'args' to signal intent to use it for flag detection."
+    },
+    {
+      "file": "src/library/show.ts",
+      "line": 28,
+      "title": "Existing null guard (unchanged)",
+      "description": "The existing null-content guard returns early with 'No content available.' This fires before both the TOC loop and the new --full block, so null content is handled safely without any additional code."
+    },
+    {
+      "file": "src/library/show.ts",
+      "line": 67,
+      "title": "Core feature: --full flag conditional",
+      "description": "After the heading-parsing for-loop completes (TOC output), check if --full was passed. If so, print a markdown horizontal rule separator followed by the full item.content. This is the entire feature — one conditional with two console.log calls."
+    },
+    {
+      "file": "src/library/index.ts",
+      "line": 39,
+      "title": "Updated help text for show subcommand",
+      "description": "Expanded the single-line help to a multi-line template literal that includes the [--full] flag in the usage line and a Flags section describing what --full does."
+    },
+    {
+      "file": "src/index.ts",
+      "line": 55,
+      "title": "Updated top-level usage text",
+      "description": "Added [--full] to the library show line in the top-level hlx --help output, maintaining alignment with surrounding lines."
+    },
+    {
+      "file": "skill-content/references/commands.md",
+      "line": 303,
+      "title": "Updated skill documentation",
+      "description": "Updated the code block to show [--full] and added a flag table following the same pattern used by the library comments list and post sections nearby."
+    }
+  ]
+}

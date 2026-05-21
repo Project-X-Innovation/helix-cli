@@ -36,7 +36,12 @@ export async function runLibrary(config: HxConfig, args: string[]): Promise<void
 
     case "show": {
       if (isHelpRequested(rest)) {
-        console.log("Usage: hlx library show <ref>");
+        console.log(`Usage: hlx library show <ref> [--full]
+
+Show a library report with section headings, slugs, and comment summaries.
+
+Flags:
+  --full    Include the full markdown body after the TOC`);
         process.exit(0);
       }
       const rawRef = extractLibraryItemRef(rest);

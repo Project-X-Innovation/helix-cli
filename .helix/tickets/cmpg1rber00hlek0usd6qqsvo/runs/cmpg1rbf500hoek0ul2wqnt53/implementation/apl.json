@@ -1,0 +1,40 @@
+{
+  "questions": [
+    "Were all four files modified according to the implementation plan?",
+    "Does the --full flag correctly gate the body printing after the TOC?",
+    "Are all verification checks passing?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes, all four files were modified exactly as specified: (1) src/library/show.ts — imported hasFlag, renamed _args to args, added conditional body print after the TOC loop. (2) src/library/index.ts — updated help text with [--full] and description. (3) src/index.ts — updated top-level usage line with [--full]. (4) skill-content/references/commands.md — updated code block and added flag table.",
+      "evidence": [
+        "src/library/show.ts:2 — import { hasFlag } from '../lib/flags.js'",
+        "src/library/show.ts:24 — function signature now uses 'args' instead of '_args'",
+        "src/library/show.ts:67-70 — conditional block: if (hasFlag(args, '--full')) { console.log('\\n---\\n'); console.log(item.content); }",
+        "src/library/index.ts:39-44 — multi-line help with [--full] and description",
+        "src/index.ts:55 — usage line includes [--full]",
+        "skill-content/references/commands.md:303 — code block shows [--full]; lines 308-310 — flag table"
+      ]
+    },
+    {
+      "answer": "Yes. The hasFlag(args, '--full') check at line 67 is placed after the heading-parsing for-loop (lines 45-65), ensuring the TOC always prints first. The body prints only when --full is passed. The existing null guard at lines 28-30 returns early before both the TOC loop and the --full block, so null content is handled safely.",
+      "evidence": [
+        "src/library/show.ts:28-30 — early return for null content before TOC loop",
+        "src/library/show.ts:67 — hasFlag check after the for-loop",
+        "src/library/show.ts:68-69 — separator and body print"
+      ]
+    },
+    {
+      "answer": "CHK-01 through CHK-04 pass. CHK-05 and CHK-06 are blocked due to HTTP 401 Unauthorized from the staging API — the provided HELIX_API_KEY is rejected. This is an environment issue, not a code issue.",
+      "evidence": [
+        "npm run build — tsc exits with code 0",
+        "npm test — 63 tests pass, 0 failures",
+        "node dist/index.js library show --help — output includes [--full] and flag description",
+        "skill-content/references/commands.md — code block and flag table present",
+        "node dist/index.js library list — HTTP 401 Unauthorized"
+      ]
+    }
+  ],
+  "statement": "Implementation complete. All four files modified per plan: show.ts gains --full flag logic, library/index.ts and src/index.ts gain updated help/usage text, commands.md gains flag documentation. TypeScript compiles cleanly, all 63 existing tests pass. Live CLI verification (CHK-05, CHK-06) blocked by staging API 401 Unauthorized — environment issue, not code issue.",
+  "followups": []
+}

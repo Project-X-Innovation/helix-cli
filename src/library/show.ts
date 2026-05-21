@@ -1,4 +1,5 @@
 import type { HxConfig } from "../lib/config.js";
+import { hasFlag } from "../lib/flags.js";
 import { hxFetch } from "../lib/http.js";
 
 type LibraryItemDetail = {
@@ -20,7 +21,7 @@ function slugify(text: string): string {
     .replace(/^-|-$/g, "");
 }
 
-export async function cmdShow(config: HxConfig, resolvedId: string, _args: string[]): Promise<void> {
+export async function cmdShow(config: HxConfig, resolvedId: string, args: string[]): Promise<void> {
   const detail = (await hxFetch(config, `/library/items/${resolvedId}`, { basePath: "/api" })) as LibraryItemDetail;
   const item = detail.item;
 
@@ -61,5 +62,10 @@ export async function cmdShow(config: HxConfig, resolvedId: string, _args: strin
     } else {
       // Skip non-heading content for brevity
     }
+  }
+
+  if (hasFlag(args, '--full')) {
+    console.log('\n---\n');
+    console.log(item.content);
   }
 }

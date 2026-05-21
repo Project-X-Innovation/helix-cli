@@ -52,7 +52,7 @@ Usage:
   hlx comments list [--ticket <id>] [--helix-only] [--since <iso-date>]
   hlx comments post [--ticket <id>] <message>
   hlx library list                List library items
-  hlx library show <ref>          Show report with section annotations
+  hlx library show <ref> [--full]  Show report with section annotations
   hlx library comments list <ref> List section-grouped comments
   hlx library comments post <ref> Post a section rating
   hlx skill show                Print the bundled hlx-cli skill to stdout

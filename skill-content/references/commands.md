@@ -300,10 +300,14 @@ List all library items with ID, title, status, and date.
 ### hlx library show
 
 ```
-hlx library show <ref>
+hlx library show <ref> [--full]
 ```
 
 Show a report with section headings annotated with `[slug]` and comment summaries.
+
+| Flag | Description |
+|------|-------------|
+| `--full` | Include the full markdown body after the TOC |
 
 Item references accept: internal ID, ticket short ID (e.g. RSH-439), or title substring.
 
