@@ -1,0 +1,58 @@
+{
+  "questions": [
+    "Q1: What language/runtime should the CI sync parser script use, given the repo is TypeScript/Node.js ESM?",
+    "Q2: How should the parser reliably discover all CLI subcommands from --help output without requiring auth credentials?",
+    "Q3: What token types must the parser extract and check against the skill docs?",
+    "Q4: How should the parser handle help text variations — pipe-separated alternatives, angle-bracket enums, multi-line usage blocks?",
+    "Q5: What workflow triggers and Node version should skill-sync.yml use to stay consistent with the existing CI?"
+  ],
+  "answers": [
+    {
+      "answer": "Use a plain Node.js ESM script (.mjs) under scripts/skill-sync/. This avoids adding a separate build step — the script runs directly with `node` and doesn't need tsc compilation. The repo already uses ESM (\"type\": \"module\" in package.json) and Node >=18. TypeScript would couple the parser script to the main build, and a bash script would be less portable and harder to maintain for regex-heavy parsing.",
+      "evidence": [
+        "package.json: \"type\": \"module\", \"engines\": { \"node\": \">=18\" }",
+        "tsconfig.json: rootDir=src, outDir=dist — scripts/ is outside the TypeScript compilation scope",
+        "No existing scripts/ directory — clean slate for the new directory"
+      ]
+    },
+    {
+      "answer": "The CLI's configOrHelp() pattern (src/index.ts lines 24-33) returns a stub config ({apiKey:\"\",url:\"\"}) when --help is in the args, allowing help text to display without auth. Every subcommand handler checks isHelpRequested() before making API calls. The parser can safely run `node dist/index.js --help`, then `node dist/index.js <cmd> --help`, and descend recursively — all without credentials. Subcommand names are discovered by parsing 'hlx <parent> <child>' patterns from usage lines.",
+      "evidence": [
+        "src/index.ts lines 24-33: configOrHelp returns stub when isHelpRequested(subArgs) is true",
+        "src/tickets/index.ts line 39: checks --help before dispatching to any subcommand handler",
+        "src/inspect/index.ts line 37: same --help check pattern",
+        "src/library/index.ts line 23: same --help check pattern",
+        "src/library/comments.ts line 13: same --help check pattern at depth 3"
+      ]
+    },
+    {
+      "answer": "Three token types: (1) Subcommand names — words appearing as the next positional after 'hlx' or 'hlx <parent>' in usage lines (e.g., 'login', 'tickets', 'list', 'create'). (2) Long-form flags — patterns matching --flag-name (e.g., --repo, --search, --description-file). (3) Enum values — pipe-separated values inside angle brackets (e.g., AUTO, BUILD, FIX, RESEARCH, EXECUTE from '<AUTO|BUILD|FIX|RESEARCH|EXECUTE>'; claude, codex from '<claude|codex>'). Short flags (-v, -h) can be excluded since they're aliases for long forms. Positional arg descriptors like <title> and <ticket-ref> should be excluded.",
+      "evidence": [
+        "src/tickets/index.ts line 21: usage shows '--mode <AUTO|BUILD|FIX|RESEARCH|EXECUTE>' with pipe-separated enums in angle brackets",
+        "src/skill/install.ts line 89: '--for claude|codex' enum values",
+        "src/library/comments.ts lines 13-14: 'Rating values: thumbs-up (up), thumbs-down (down), love' — these appear in prose, not angle brackets",
+        "Ticket requirement: 'parse subcommand names, long-form flags, and enum values'"
+      ]
+    },
+    {
+      "answer": "The help text has three patterns to handle: (1) Pipe-separated alternatives on a single line — e.g., 'hlx org current|list|switch'. The parser splits on '|' to extract individual subcommand names. (2) Angle-bracket enum values — e.g., '<AUTO|BUILD|FIX|RESEARCH|EXECUTE>'. The parser extracts the angle-bracket group and splits on '|'. These are distinct from positional arg placeholders like '<title>' because enum values contain '|'. (3) Multi-line usage blocks — the parser captures all lines starting with 'hlx' or indented usage lines. Each usage line is independently parsed for tokens. The help format is highly consistent across all commands (manually written usage() functions all follow the same 'hlx <cmd>' prefix pattern).",
+      "evidence": [
+        "src/index.ts lines 37-63: top-level usage() with consistent 'hlx <cmd>' prefix on every line",
+        "src/tickets/index.ts lines 17-31: ticketsUsage() with 'hlx tickets <subcmd>' format",
+        "src/inspect/index.ts lines 11-29: inspectUsage() with 'hlx inspect <subcmd>' format",
+        "src/library/comments.ts lines 8-16: commentsUsage() with 'hlx library comments <subcmd>' format"
+      ]
+    },
+    {
+      "answer": "skill-sync.yml should trigger on pull_request (all branches) and push to main, matching the ticket requirement. Node version should be 22, matching build-release.yml for consistency. The workflow needs: checkout, setup-node@v4 with node-version 22, npm ci (which triggers tsc via prepare script), then run the parser script. No additional dependencies are needed — the script uses only Node.js built-ins (child_process, fs, path).",
+      "evidence": [
+        "Ticket requirement: 'runs on pull_request and push: main'",
+        ".github/workflows/build-release.yml line 22: uses actions/setup-node@v4 with node-version '22'",
+        "package.json line 19: prepare script runs build (tsc), so npm ci triggers compilation",
+        "Ticket requirement: 'Build via npm ci; recursively run --help'"
+      ]
+    }
+  ],
+  "statement": "The technical direction is to create a single Node.js ESM parser script (scripts/skill-sync/check-coverage.mjs) that recursively discovers CLI surface tokens from --help output and asserts their presence in skill docs. The script requires no additional dependencies, leverages the existing build pipeline (npm ci triggers tsc), and runs without auth credentials due to the CLI's configOrHelp() stub pattern. The CI workflow (skill-sync.yml) mirrors the existing build-release.yml setup (Node 22, ubuntu-latest). All documentation changes (SKILL.md rewrite, commands.md expansion, three new reference files, PR template) are additive and leverage the skill install mechanism's auto-discovery of new files in references/.",
+  "followups": []
+}
