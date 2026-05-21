@@ -1,0 +1,46 @@
+{
+  "questions": [
+    "Q1: What is the correct implementation ordering for the 8 files, given the CI parser depends on SKILL.md and commands.md content?",
+    "Q2: What specific tokens must the parser script extract from CLI --help output, and what edge cases exist in the help text format?",
+    "Q3: How should the parser handle rating enum values that appear in prose text rather than angle-bracket syntax?",
+    "Q4: What are the exact verification steps to confirm the implementation meets all 8 acceptance criteria?"
+  ],
+  "answers": [
+    {
+      "answer": "The correct order is: (1) reference docs first (current-state.md, recovery.md, ticket-prompting.md) since they are independent; (2) commands.md rewrite next since it provides the token coverage the parser checks; (3) SKILL.md rewrite which links to all reference files; (4) parser script which checks tokens against SKILL.md + commands.md; (5) CI workflow which runs the parser; (6) PR template which is independent. Steps 1-3 produce the content, steps 4-5 enforce it, step 6 is a contributor aid.",
+      "evidence": [
+        "The parser script (step 6) reads SKILL.md and commands.md as input — both must exist with correct content before the parser can validate",
+        "The CI workflow (step 7) runs the parser script — the script must exist first",
+        "Reference docs (steps 1-3) are linked from SKILL.md but don't depend on other new files",
+        "PR template (step 8) is entirely independent of all other files"
+      ]
+    },
+    {
+      "answer": "Three token types: (1) Subcommand names — words after 'hlx' or 'hlx <parent>' in usage lines (e.g., login, tickets, list, create). (2) Long-form flags — patterns matching --[a-z][a-z0-9-]* (e.g., --search, --description-file). (3) Enum values — pipe-separated values inside angle brackets like <AUTO|BUILD|FIX|RESEARCH|EXECUTE>. Edge cases: pipe-separated subcommand alternatives on bare usage lines (hlx org current|list|switch); rating values in prose text rather than angle brackets; the --for flag's enum (claude|codex) which may lack angle brackets; help output going to stderr for non-zero exits. The parser must capture both stdout and stderr from --help invocations.",
+      "evidence": [
+        "src/tickets/index.ts line 21: usage shows '--mode <AUTO|BUILD|FIX|RESEARCH|EXECUTE>' with angle brackets",
+        "src/index.ts line 43: 'hlx org current|list|switch' uses bare pipe separation",
+        "src/library/comments.ts line 13: 'Rating values: thumbs-up (up), thumbs-down (down), love' is prose format",
+        "src/index.ts lines 36-37: usage() writes to console.error when exitCode !== 0"
+      ]
+    },
+    {
+      "answer": "The rating enum values (thumbs-up, up, thumbs-down, down, love) appear in help text as prose: 'Rating values: thumbs-up (up), thumbs-down (down), love.' The parser should extract these by detecting the 'Rating values:' or similar prose pattern in help output alongside the --rating flag. Since these are documented in commands.md as literal substrings, the coverage check will verify their presence. The parser may also need a special-case pattern for values in parentheses as aliases. The deferred-to-round-2 note in tech-research acknowledges this edge case but confirms manual verification ensures they're documented.",
+      "evidence": [
+        "src/library/comments.ts lines 13-14: 'Rating values: thumbs-up (up), thumbs-down (down), love.'",
+        "src/library/comments-post.ts lines 5-11: RATING_MAP defines thumbs-up, up, thumbs-down, down, love",
+        "tech-research/tech-research.md Deferred to Round 2 section: 'Rating enum values from prose text (not angle brackets)' noted as edge case"
+      ]
+    },
+    {
+      "answer": "The verification plan has 13 required checks covering: (CHK-01) build, (CHK-02) typecheck, (CHK-03) tests, (CHK-04) SKILL.md frontmatter validation, (CHK-05) parser passes with full coverage, (CHK-06) negative test fails on missing token, (CHK-07) skill show works, (CHK-08) skill install copies all files, (CHK-09) no npm recommendations, (CHK-10) CI workflow triggers, (CHK-11) PR template checkbox, (CHK-12) ticket-prompting.md 7 sections, (CHK-13) SKILL.md 10 sections in order. All checks use runtime commands or file inspection that an agent can execute without human intervention.",
+      "evidence": [
+        "Acceptance criteria 1-8 from ticket.md map directly to CHK-04/13, CHK-05, CHK-12, CHK-09, CHK-10, CHK-11, CHK-06, CHK-07/08",
+        "Quality gate checks (CHK-01, CHK-02, CHK-03) use existing npm scripts: build, typecheck, test",
+        "CHK-05 and CHK-06 exercise the parser script against the built CLI to verify behavioral correctness"
+      ]
+    }
+  ],
+  "statement": "The implementation plan defines 9 atomic, ordered steps to restructure the bundled hlx-cli skill. Steps 1-3 create independent reference documents (current-state.md, recovery.md, ticket-prompting.md). Step 4 rewrites commands.md with full CLI surface coverage. Step 5 rewrites SKILL.md to 10-section progressive disclosure with a trigger-heavy description. Steps 6-7 create the CI enforcement layer (parser script + workflow). Step 8 adds the PR template. Step 9 is end-to-end verification. The plan produces 8 new/modified files with zero CLI binary changes and zero new dependencies. The verification plan has 13 required checks covering quality gates, content structure, CI enforcement (positive and negative tests), and skill install/show behavior.",
+  "followups": []
+}

@@ -1,0 +1,50 @@
+{
+  "questions": [
+    "Q1: Were all 8 files created/modified as specified in the implementation plan?",
+    "Q2: Does the CI parser script correctly discover all CLI surface tokens and enforce coverage?",
+    "Q3: Does the negative test correctly catch missing tokens?",
+    "Q4: Do hlx skill show and hlx skill install work correctly with the new content?",
+    "Q5: Were the 5 files identified as missing/old in the prior verification now present and correct?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes. All 8 files are present with correct content: SKILL.md (83 lines, 10-section progressive-disclosure), commands.md (387 lines, full CLI surface), current-state.md (13 lines, dated PR #86 note), recovery.md (114 lines, GitHub-release-asset flow), ticket-prompting.md (144 lines, 7 sections), check-coverage.mjs (262 lines, CI parser), skill-sync.yml (22 lines, CI workflow), pull_request_template.md (7 lines, PR template).",
+      "evidence": [
+        "wc -l confirms all 8 files exist with expected line counts (total 1032 lines)",
+        "All files verified on disk with correct content via grep and read operations"
+      ]
+    },
+    {
+      "answer": "Yes. The parser script recursively discovers 75 tokens (29 subcommands, 39 flags, 7 enums) from --help output and exits 0 when all are covered in SKILL.md + commands.md. It correctly handles pipe-separated subcommand alternatives (org current|list|switch), angle-bracket enum groups (<AUTO|BUILD|...>), and prose-format rating values (thumbs-up, thumbs-down, love).",
+      "evidence": [
+        "Parser output: 'Found 75 tokens (29 subcommands, 39 flags, 7 enums)' and 'All 75 CLI surface tokens are covered in skill docs.' with exit code 0",
+        "Parser uses HLX_SKIP_UPDATE_CHECK=1 to suppress network calls; captures both stdout and stderr from help invocations"
+      ]
+    },
+    {
+      "answer": "Yes. Removing all occurrences of '--search' from commands.md causes the parser to exit 1 with stderr listing '[flag] --search' as a missing token. The file was restored after the test.",
+      "evidence": [
+        "Negative test output: 'Missing CLI surface tokens (1): [flag] --search' with exit code 1",
+        "commands.md restored from backup after test"
+      ]
+    },
+    {
+      "answer": "Yes. hlx skill show outputs the new SKILL.md content with the updated frontmatter and 9-section body. hlx skill install --target <tmpdir> --force copies SKILL.md plus all 4 reference files (commands.md, current-state.md, recovery.md, ticket-prompting.md) via the existing readdirSync auto-discovery mechanism. No code changes to install.ts were needed.",
+      "evidence": [
+        "skill show output starts with 'name: hlx-cli' and the new trigger-heavy description",
+        "skill install directory listing shows SKILL.md + references/ with all 4 files"
+      ]
+    },
+    {
+      "answer": "Yes. The prior verification identified 5 files as missing or having old content: SKILL.md, commands.md, current-state.md, recovery.md, ticket-prompting.md. All 5 are now present with correct content. SKILL.md has the new 10-section format (83 lines). commands.md has full CLI surface coverage (387 lines). The three new reference files exist with expected content. The CI parser confirms all 75 tokens are covered.",
+      "evidence": [
+        "ls -la skill-content/references/ shows all 4 reference files present",
+        "SKILL.md has 9 ## headings in prescribed order verified by grep",
+        "node scripts/skill-sync/check-coverage.mjs exits 0 confirming full coverage",
+        "All 13 CHK checks pass in verification"
+      ]
+    }
+  ],
+  "statement": "Implementation complete (retry pass). All 8 files verified present with correct content. Prior verification found 5 files missing/old; all are now present and pass all 13 CHK checks. The CI parser discovers 75 CLI surface tokens and confirms full coverage. Build, typecheck, 63 tests, positive/negative parser tests, skill show, and skill install all pass. No CLI binary behavior modified. No npm install/uninstall/link recommendations in any file.",
+  "followups": []
+}
