@@ -1,25 +1,17 @@
 {
   "questions": [
-    "Does the CLI correctly extract headings from both HTML and Markdown report content?",
-    "Is backward compatibility preserved for existing Markdown reports?"
+    "Q1: Does the CLI dual heading extraction remain correct with no code changes this run?"
   ],
   "answers": [
     {
-      "answer": "Yes. HTML heading regex at line 48 extracts level, id attribute, and raw text (with nested tags stripped). Markdown heading regex at line 70 is unchanged and serves as fallback. Both produce identical output format with slug annotations and comment counts.",
+      "answer": "Yes. The dual heading extraction in show.ts is confirmed functional: HTML regex with id attribute extraction and tag stripping takes priority, Markdown heading pattern as fallback. Comment/rating annotation works on both paths via the shared anchor-based system. Typecheck passes.",
       "evidence": [
-        "show.ts line 48: HTML regex /<h([1-6])(?:\\s+[^>]*?id=\"([^\"]*)\"[^>]*)?>(.+?)<\\/h\\1>/i",
-        "show.ts line 70: Markdown regex /^(#{1,6})\\s+(.+)$/ (unchanged)",
-        "show.ts line 66: continue after HTML match prevents double-processing"
-      ]
-    },
-    {
-      "answer": "Yes. The Markdown heading regex at line 70 is completely unchanged from pre-implementation. It only runs for lines that don't match the HTML pattern. The filePath field addition to the local type (line 9) is optional and backward-compatible.",
-      "evidence": [
-        "show.ts line 70: original Markdown regex preserved",
-        "show.ts line 9: filePath?: string | null (optional field)"
+        "show.ts:48 - HTML heading regex: /<h([1-6])(?:\\s+[^>]*?id=\"([^\"]*)\"[^>]*)?>(.+?)<\\/h\\1>/i",
+        "show.ts:70 - MD heading pattern: /^(#{1,6})\\s+(.+)$/",
+        "tsc --noEmit: exit code 0"
       ]
     }
   ],
-  "statement": "CLI changes reviewed and found correct. Dual-format heading extraction works as expected with HTML first, Markdown fallback. No code changes needed. TypeScript compilation passes.",
+  "statement": "No CLI code changes needed or made. Dual heading extraction confirmed correct via direct code review. Typecheck passes. No issues found.",
   "followups": []
 }
