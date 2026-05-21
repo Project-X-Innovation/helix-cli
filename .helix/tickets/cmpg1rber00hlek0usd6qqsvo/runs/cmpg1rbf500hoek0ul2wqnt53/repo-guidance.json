@@ -1,0 +1,10 @@
+{
+  "repos": [
+    {
+      "repoKey": "helix-cli",
+      "intent": "target",
+      "rationale": "Single repository in scope. All changes (show handler, help text, usage text, skill documentation) are within helix-cli. No cross-repo dependencies — the API endpoint already returns the needed content."
+    }
+  ],
+  "updatedBy": "diagnosis"
+}
