@@ -1,0 +1,83 @@
+{
+  "problem": "The staged-update flow originally shelled out to system tar via execSync to extract the GitHub release tarball. On Windows where Git for Windows puts GNU tar first in PATH, GNU tar misinterprets drive-letter paths (C:\\...) as remote host syntax, making hlx update fail. The current branch already replaces the shell-based tar call with an in-process JavaScript tar extraction (src/update/extract.ts) using only Node.js built-ins. However, src/update/perform.ts still shells out to xcopy/cp-R via execSync for its EXDEV (cross-filesystem rename) fallback in copyDirRecursive. The user's continuation context requests incorporating a robustness fix that replaces copyDirRecursive's execSync with fs.cpSync and adding perform.test.ts. Neither change is present in the current code.",
+  "files": [
+    {
+      "path": "src/update/extract.ts",
+      "why": "New file (149 lines). In-process tar.gz extraction using gunzipSync + manual USTAR header parsing. Handles: checksum validation, USTAR prefix, PAX headers (skipped), path traversal prevention, truncation detection, zero-block end-of-archive. Called from perform.ts:125. Eliminates external tar binary dependency entirely."
+    },
+    {
+      "path": "src/update/extract.test.ts",
+      "why": "New file (322 lines). Comprehensive tests for extractTarGz: CI-shaped tarball layout (dist/, skill-content/, package.json, build-metadata.json), colon-in-path test (reproduces GNU tar failure mode), corrupt tarball, empty archive, PAX headers, truncated entry. Uses createTestTarGz helper for programmatic tarball creation."
+    },
+    {
+      "path": "src/update/perform.ts",
+      "why": "Primary orchestration file (246 lines). performStagedUpdate (line 78) runs download->extract->validate->swap->cleanup. Line 125: now calls extractTarGz() in-process. Line 33-39: copyDirRecursive still shells out to xcopy (Windows) / cp -R (others) via execSync for EXDEV fallback. Line 1: still imports execSync from child_process. User's continuation context says this should be replaced with fs.cpSync."
+    },
+    {
+      "path": "src/update/validate.ts",
+      "why": "Validation module (66 lines). Called at perform.ts:132 after extraction. Checks dist/index.js exists (line 22), package.json exists (line 30), runs node --version check via spawnSync (line 38). Defines the contract the extraction output must satisfy. No changes needed."
+    },
+    {
+      "path": "src/update/index.ts",
+      "why": "Update command handler (207 lines). runUpdate (line 37) handles manual hlx update; checkAutoUpdate (line 134) runs pre-command auto-update. Both call performStagedUpdate. Manual: exits non-zero on failure (line 113); Auto: logs warning and continues (line 203). No changes needed."
+    },
+    {
+      "path": "src/update/check.ts",
+      "why": "Release discovery (136 lines). fetchLatestRelease (line 50) queries GitHub API for 'latest' release tag. getGitHubToken (line 25) discovers auth from env vars or gh CLI. Uses execSync('gh auth token') at line 30 — this is auth token discovery, not tar, and is expected. No changes needed."
+    },
+    {
+      "path": "src/update/version.ts",
+      "why": "Version display (38 lines). getPackageVersion reads package.json version + installSource.commit SHA. Produces format like '1.3.4 (c8620a5)'. No changes needed."
+    },
+    {
+      "path": "package.json",
+      "why": "Package manifest (44 lines). Version 1.3.4. Zero runtime dependencies — extraction uses only Node.js built-ins (node:zlib, node:fs). ESM (type: module). Scripts: build=tsc, test='tsc && node --test dist/**/*.test.js'. Node >=18. No new dependency needed for extraction."
+    },
+    {
+      "path": "tsconfig.json",
+      "why": "TypeScript config (15 lines). ES2022 target, Node16 modules, strict mode, output to dist/. All new and existing code must compile under these settings."
+    },
+    {
+      "path": ".github/workflows/build-release.yml",
+      "why": "CI workflow (60 lines). Builds on push to main. Creates helix-cli.tgz with top-level entries: dist/, skill-content/, package.json, build-metadata.json (excluding test files). Publishes as 'latest' GitHub release. Defines the tarball shape that extract.ts must handle. Out of scope for changes."
+    },
+    {
+      "path": ".github/workflows/publish.yml",
+      "why": "NPM publish workflow (62 lines). Triggered by v* tags. Validates version match, packs tarball, publishes to npm with provenance. Retained for intentional manual releases. Out of scope for changes."
+    },
+    {
+      "path": "src/lib/config.ts",
+      "why": "Config module (222 lines). Defines InstallSource type (line 5: mode github|npm|unknown, repo, branch, commit, version), HxConfig (line 13). saveConfig (line 201) persists install metadata. Config at ~/.hlx/config.json. No changes needed."
+    },
+    {
+      "path": "src/index.ts",
+      "why": "CLI entry point (145 lines). Line 73: checkAutoUpdate() before dispatch. Line 69: SKIP_AUTO_UPDATE set. Line 119: routes 'update' to runUpdate. No changes needed."
+    }
+  ],
+  "facts": [
+    "The original tar extraction bug (execSync('tar -xzf ...')) has been replaced by in-process extraction in extract.ts using gunzipSync + manual USTAR header parsing — no external tar binary is invoked for extraction.",
+    "extract.ts (149 lines) uses only Node.js built-ins: node:zlib (gunzipSync), node:fs (readFileSync, writeFileSync, mkdirSync), node:path (join, resolve, dirname). No new runtime dependency was added.",
+    "extract.test.ts (322 lines) covers: CI-shaped layout, colon-in-path (GNU tar failure mode reproduction), corrupt tarball, empty archive, PAX header skipping, truncated entry detection.",
+    "perform.ts line 125 now calls extractTarGz(tarballPath, stagingDir) instead of the prior execSync('tar -xzf ...').",
+    "perform.ts line 33-39: copyDirRecursive still shells out to execSync with 'xcopy' (Windows) or 'cp -R' (other platforms) for the EXDEV cross-filesystem rename fallback. This is NOT a tar invocation.",
+    "perform.ts line 1 still imports execSync from node:child_process — used only by copyDirRecursive (line 34).",
+    "fs.cpSync is available in Node.js 16.7+ and the project requires Node >=18, so fs.cpSync is available as a replacement for the execSync-based copyDirRecursive.",
+    "No src/update/perform.test.ts exists in the current branch. User's continuation context mentions adding tests covering getTarExecutable() but that function does not exist in current code.",
+    "User's continuation context mentions getTarExecutable() and resolving Windows tar via C:\\Windows\\System32\\tar.exe, but the ticket's 'Do Not Re-Decide' section explicitly says: 'Do not paper over the bug by detecting and rejecting GNU tar at runtime, or by hardcoding C:\\Windows\\System32\\tar.exe. The fix must remove the shell dependency entirely.' The in-process extraction approach already satisfies this requirement.",
+    "The three remaining execSync/spawnSync usages in the update module are: (1) perform.ts:34 copyDirRecursive xcopy/cp-R for EXDEV, (2) check.ts:30 'gh auth token' for GitHub auth, (3) validate.ts:38 spawnSync('node') for version check. None are tar invocations.",
+    "Acceptance criteria #3: 'Grep for execSync / spawnSync / child_process in the update module finds no remaining external tar invocation' — all remaining usages are non-tar and satisfy this criterion.",
+    "auto-tag.yml workflow does not exist — only build-release.yml and publish.yml are present in .github/workflows/.",
+    "build-release.yml tarball shape: top-level entries (no prefix directory) — dist/, skill-content/, package.json, build-metadata.json. Excludes *.test.js and *.test.d.ts.",
+    "The project has zero runtime dependencies. Only devDependencies: @types/node ^25.5.0, typescript ^6.0.2.",
+    "Test runner: node:test (describe/it) + node:assert (strict). npm test = 'tsc && node --test dist/**/*.test.js'. No linter or formatter configured.",
+    "User reports local verification passed: npm run build, npm test (52/52), end-to-end updater simulation (success path and rollback path).",
+    "node_modules are not installed in this sandbox environment; build/test cannot be verified at scout time. User's local verification is the evidence source."
+  ],
+  "unknowns": [
+    "Whether copyDirRecursive's execSync (xcopy/cp-R) should be replaced with fs.cpSync as part of this ticket's scope — the user's continuation context requests it, but the ticket acceptance criteria only require 'no remaining external tar invocation'. This is a downstream decision for diagnosis/implementation.",
+    "Whether perform.test.ts is needed for this ticket — user mentions it but it covers getTarExecutable() which doesn't exist in the current implementation. The extraction tests in extract.test.ts already provide comprehensive coverage of the primary fix.",
+    "Runtime inspection manifest not available (/tmp/helix-inspect/manifest.json not found) — no production runtime evidence collected. Expected for a CLI tool repo.",
+    "Whether the user's local 52/52 test count includes the 6 tests in extract.test.ts or whether additional test files exist locally that were not committed.",
+    "Whether safeRename's Windows file-locking retry (perform.ts:57-61 using Atomics.wait) has been validated on actual Windows environments beyond the user's local testing."
+  ]
+}

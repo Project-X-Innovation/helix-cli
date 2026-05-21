@@ -14,9 +14,11 @@ import { loadFullConfig } from "../lib/config.js";
  */
 export function getPackageVersion(): string {
   let semver = "unknown";
+  let packageRoot = "";
   try {
     const thisDir = dirname(fileURLToPath(import.meta.url));
-    const pkgPath = join(thisDir, "..", "..", "package.json");
+    packageRoot = join(thisDir, "..", "..");
+    const pkgPath = join(packageRoot, "package.json");
     const raw = readFileSync(pkgPath, "utf8");
     const pkg = JSON.parse(raw) as { version?: string };
     semver = pkg.version ?? "unknown";
@@ -32,6 +34,18 @@ export function getPackageVersion(): string {
     }
   } catch {
     // Config read failure — fall back to semver-only
+  }
+
+  try {
+    const metadataPath = join(packageRoot, "build-metadata.json");
+    const raw = readFileSync(metadataPath, "utf8");
+    const metadata = JSON.parse(raw) as { commit?: string };
+    const commit = metadata.commit;
+    if (commit && typeof commit === "string" && commit.length >= 7) {
+      return `${semver} (${commit.slice(0, 7)})`;
+    }
+  } catch {
+    // No embedded build metadata — fall back to semver-only
   }
 
   return semver;

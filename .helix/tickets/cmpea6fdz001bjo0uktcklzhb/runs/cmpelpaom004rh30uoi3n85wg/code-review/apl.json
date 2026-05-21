@@ -1,0 +1,50 @@
+{
+  "questions": [
+    "Is the copyDirRecursive replacement with fs.cpSync correct and does it preserve the error contract?",
+    "Are the import changes in perform.ts complete — no dead imports remaining, no missing imports?",
+    "Does the new perform.test.ts provide adequate coverage for the changed code?",
+    "Are there any remaining unnecessary shell dependencies in perform.ts?",
+    "Are the prior code review fixes (extract.ts bounds check, JSDoc, truncated-entry test) still intact?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes. cpSync(src, dest, { recursive: true }) is a direct functional equivalent of the prior execSync('xcopy/cp-R') call. It throws on failure, which propagates through safeRename to the existing try/catch at perform.ts:158, preserving the swap/rollback error contract. The function signature, callers, and error handling path are unchanged.",
+      "evidence": [
+        "src/update/perform.ts line 34: cpSync(src, dest, { recursive: true }) — single cross-platform call replacing 5-line platform-branching body",
+        "src/update/perform.ts lines 158-216: try/catch in swap block catches cpSync throws and triggers rollback",
+        "src/update/perform.ts line 48: safeRename calls copyDirRecursive on EXDEV — unchanged call path"
+      ]
+    },
+    {
+      "answer": "Yes. The import { execSync } from 'node:child_process' has been fully removed (zero callers remain). cpSync has been added to the node:fs import alongside copyFileSync, existsSync, mkdirSync, renameSync, rmSync, writeFileSync. No dead or missing imports.",
+      "evidence": [
+        "src/update/perform.ts lines 1-9: node:fs import includes cpSync; no node:child_process import exists",
+        "grep -n 'execSync|child_process' src/update/perform.ts: zero matches"
+      ]
+    },
+    {
+      "answer": "Yes. The 4 test cases cover: (1) getInstallRoot resolves to an existing directory, (2) getInstallRoot path contains package.json, (3) static verification that perform.ts has no execSync/child_process and uses cpSync, (4) behavioral test of cpSync-based directory copy with nested files matching the update payload layout. The static verification test acts as a regression guard against re-introducing shell dependencies.",
+      "evidence": [
+        "src/update/perform.test.ts: 117 lines, 4 test cases in 3 describe blocks",
+        "npm test output: 61 tests, 0 failures, all 4 perform.test.ts tests pass"
+      ]
+    },
+    {
+      "answer": "No. After the cpSync replacement, perform.ts has zero imports from node:child_process and zero execSync/spawnSync calls. The only remaining execSync/spawnSync usages in the update module are in check.ts (gh auth token) and validate.ts (node --version), which are expected and not tar invocations.",
+      "evidence": [
+        "grep -n 'execSync|spawnSync' src/update/perform.ts: zero matches",
+        "grep -rn 'execSync|spawnSync' src/update/: matches only in check.ts:1,30 and validate.ts:1,38 (plus test assertions in perform.test.ts)"
+      ]
+    },
+    {
+      "answer": "Yes. All three prior review fixes are confirmed intact: (1) extract.ts lines 127-131 bounds check prevents silent data truncation on corrupt tar entries, (2) perform.ts line 68 JSDoc correctly says 'Extract in-process via extractTarGz (no external binary)', (3) extract.test.ts lines 278-321 test case 6 validates truncated tar entry throws correctly.",
+      "evidence": [
+        "src/update/extract.ts lines 127-131: if (size > 0 && dataStart + size > tar.length) throw — present",
+        "src/update/perform.ts line 68: JSDoc comment 'Extract in-process via extractTarGz (no external binary)' — present",
+        "src/update/extract.test.ts lines 278-321: 'throws on truncated tar entry' test case — present and passing"
+      ]
+    }
+  ],
+  "statement": "Code review of the continuation implementation is complete. No issues found and no code changes made. The copyDirRecursive replacement with fs.cpSync(src, dest, { recursive: true }) is correct, the execSync import is properly removed, and perform.test.ts provides adequate coverage with 4 test cases. All 61 tests pass, build succeeds, CLI version outputs 1.3.4. Prior review fixes (extract.ts bounds check, JSDoc, truncated-entry test) remain intact. Zero runtime dependencies maintained.",
+  "followups": []
+}
