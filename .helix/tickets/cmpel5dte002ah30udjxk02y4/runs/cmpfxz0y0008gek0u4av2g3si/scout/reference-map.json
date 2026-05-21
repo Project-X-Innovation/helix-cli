@@ -1,0 +1,47 @@
+{
+  "problem": "The CLI's library show command parses report content using Markdown heading regex to extract sections and annotate with comment summaries. Switching reports to HTML requires updating the heading detection logic.",
+  "files": [
+    {
+      "path": "src/library/show.ts",
+      "why": "Line 46: heading detection uses regex /^(#{1,6})\\s+(.+)$/ to parse markdown headings. Line 49: slugify() generates anchor strings. Lines 52-58: annotates headings with comment summary counts. This regex will not match HTML headings."
+    },
+    {
+      "path": "src/library/comments-list.ts",
+      "why": "Line 32-36: accepts --section flag, auto-slugifies heading text. Comment listing and section filtering are anchor-based and format-agnostic."
+    },
+    {
+      "path": "src/library/comments-post.ts",
+      "why": "Lines 13-20: slugify() function for section anchors. Lines 22-27: --section flag. Comment posting is format-agnostic."
+    },
+    {
+      "path": "src/library/list.ts",
+      "why": "Lists library items. Metadata only. Unaffected by format change."
+    },
+    {
+      "path": "src/library/index.ts",
+      "why": "Library command router. Structure unaffected."
+    },
+    {
+      "path": "skill-content/SKILL.md",
+      "why": "Line 49: documents 'Show report with section headings annotated'. Lines 155-188: library report examples. Documentation may need updating for HTML reports."
+    },
+    {
+      "path": "package.json",
+      "why": "No markdown or HTML parsing libraries. Build: tsc. Test: tsc && node --test. No runtime dependencies."
+    }
+  ],
+  "facts": [
+    "show.ts line 46: heading extraction uses markdown-specific regex /^(#{1,6})\\s+(.+)$/",
+    "show.ts only outputs heading lines (line 61-63: non-heading content is skipped for brevity)",
+    "slugify() in show.ts and comments-post.ts generates anchor strings from heading text -- same logic as client",
+    "Comment listing and posting commands are format-agnostic, working only with anchor strings",
+    "CLI has zero runtime dependencies (devDependencies only: TypeScript, @types/node)",
+    "Build command: tsc; Test: tsc && node --test dist/**/*.test.js; Typecheck: tsc --noEmit",
+    "No HTML parsing library is currently available -- one may need to be added or inline regex used for HTML heading extraction"
+  ],
+  "unknowns": [
+    "Whether the CLI should attempt to render/display HTML content or just extract headings for annotation",
+    "Whether an HTML parsing library (e.g., cheerio, node-html-parser) should be added, or if simple regex suffices for heading extraction",
+    "Whether the CLI content display (currently headings-only) should show more content when reports are HTML"
+  ]
+}

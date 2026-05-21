@@ -1,0 +1,27 @@
+{
+  "questions": [
+    "How should the CLI extract headings from HTML reports while maintaining backward compatibility with Markdown reports?",
+    "Should the CLI add an HTML parsing dependency?"
+  ],
+  "answers": [
+    {
+      "answer": "Use dual regex patterns: try HTML heading pattern first, then fall back to existing Markdown heading regex. HTML pattern: /<h([1-6])(?:\\s+[^>]*?id=\"([^\"]*)\"[^>]*)?>(.+?)<\\/h\\1>/i captures level, id attribute, and text. For comment anchor lookup, use the id attribute if present, otherwise slugify the text (with HTML tags stripped). Display format is identical to Markdown: '## Title [slug] (N comments: ...)'.",
+      "evidence": [
+        "show.ts line 46: current regex /^(#{1,6})\\s+(.+)$/ is Markdown-only",
+        "show.ts lines 52-58: annotation format uses slug for comment summary lookup",
+        "product/product.md SCN-07: CLI must extract and annotate headings from HTML reports",
+        "diagnosis/diagnosis-statement.md (CLI): single regex is the only format-dependent code"
+      ]
+    },
+    {
+      "answer": "No. The CLI has zero runtime dependencies by design. A regex pattern is sufficient for the narrow task of extracting h1-h6 heading elements from well-formed HTML. Adding cheerio or node-html-parser would be over-engineered for this single use case.",
+      "evidence": [
+        "package.json: zero dependencies (only devDependencies)",
+        "show.ts: only extracts heading lines; does not render or process HTML body",
+        "scout/scout-summary.md (CLI): 'Zero runtime dependencies - no HTML parsing library available'"
+      ]
+    }
+  ],
+  "statement": "CLI changes are minimal: add an HTML heading regex pattern alongside the existing Markdown regex in show.ts for dual-format heading extraction. Add filePath to the local type for format detection. No new dependencies needed, preserving the zero-dep design.",
+  "followups": []
+}
