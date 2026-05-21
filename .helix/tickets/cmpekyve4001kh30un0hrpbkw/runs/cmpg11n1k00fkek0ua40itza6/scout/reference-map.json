@@ -1,0 +1,53 @@
+{
+  "problem": "Goals feature requires CLI support. If Goals are a separate entity (user preference), the CLI needs a new 'hlx goals' command family. If Goals use TicketMode, only VALID_MODES needs 'GOAL' added. CLI is tertiary scope — changes depend on server entity model decision.",
+  "files": [
+    {
+      "path": "src/tickets/create.ts",
+      "why": "VALID_MODES at line 13: ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE']. If TicketMode: add 'GOAL'. If separate entity: leave unchanged, add new goals/ commands. Usage help at line 17. Mode validation at lines 79-88."
+    },
+    {
+      "path": "src/tickets/index.ts",
+      "why": "Router for ticket subcommands. Pattern for adding new command families if Goals are separate entity."
+    },
+    {
+      "path": "src/index.ts",
+      "why": "Top-level CLI command router. Registers command families: tickets, inspect, comments, library, skill. New 'goals' family registered here if separate entity."
+    },
+    {
+      "path": "package.json",
+      "why": "Version 1.3.4. Build: tsc. Test: tsc + node test runner. Pure TypeScript, no runtime deps."
+    }
+  ],
+  "facts": [
+    {
+      "claim": "VALID_MODES has exactly 5 values at line 13 of create.ts",
+      "evidence": "Direct read: const VALID_MODES = ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE'] as const;"
+    },
+    {
+      "claim": "CLI mode validation normalizes to uppercase and checks against VALID_MODES array",
+      "evidence": "create.ts: mode normalized via .toUpperCase(), validated with VALID_MODES.includes()"
+    },
+    {
+      "claim": "No goal-related code exists in the CLI",
+      "evidence": "Grep for 'goal', 'Goal', 'GOAL' returned zero matches in src/."
+    },
+    {
+      "claim": "CLI command families: tickets, inspect, comments, library, skill, org, login, token, update",
+      "evidence": "src/index.ts top-level command routing confirmed via agent exploration."
+    },
+    {
+      "claim": "Quality gates: build (tsc), typecheck (tsc --noEmit), test (tsc + node --test)",
+      "evidence": "package.json scripts section."
+    }
+  ],
+  "unknowns": [
+    {
+      "question": "If Goals are a separate entity, what CLI commands are needed?",
+      "impact": "Likely: hlx goals create, hlx goals list, hlx goals get, hlx goals terminate. Determines whether to add src/goals/ command family or just update VALID_MODES."
+    },
+    {
+      "question": "Should CLI support goal-specific operations like viewing roadmap, previews, or evaluation history?",
+      "impact": "Scope ranges from minimal (1 line change) to moderate (new command family with 4-5 subcommands)."
+    }
+  ]
+}
