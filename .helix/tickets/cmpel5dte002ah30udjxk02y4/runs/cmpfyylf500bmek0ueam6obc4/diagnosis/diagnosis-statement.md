@@ -2,34 +2,43 @@
 
 ## Problem Summary
 
-The CLI's `hlx library show` command parses Markdown headings using a regex that will not match HTML heading tags. This is the only format-dependent code in the CLI.
+The CLI's `hlx library show` command needs to parse both HTML and Markdown headings for section annotation. Prior runs already added dual heading extraction with HTML regex priority and Markdown fallback.
 
 ## Root Cause Analysis
 
-`src/library/show.ts` line 46 uses the regex `/^(#{1,6})\s+(.+)$/` to extract heading level and text from report content. This pattern matches Markdown headings (`# Title`, `## Section`) but will fail on HTML headings (`<h1 id="title">Title</h1>`).
+This is a feature implementation ticket on its third run. The CLI changes are complete:
 
-The comment commands (`comments-list.ts`, `comments-post.ts`) are format-agnostic - they operate on anchor strings passed via `--section` flag and don't parse report content.
+### Already Complete (from prior runs)
+1. **Dual heading extraction** (`show.ts` lines 44-86): HTML heading regex tried first (line 48) with id attribute extraction and nested HTML tag stripping (line 52). Markdown heading regex falls back (line 70). Both produce identical annotation output.
+2. **Comment system**: `comments-list.ts` and `comments-post.ts` are anchor-based and format-agnostic. No changes needed.
+3. **Zero new dependencies**: The HTML heading regex suffices without an HTML parsing library.
+
+### No Remaining Work
+The CLI is fully compatible with HTML reports. No code changes needed.
+
+### Minor Consideration (not blocking)
+Non-heading HTML lines print as raw HTML in the terminal. This is acceptable since the CLI's primary purpose is section annotation, not full content rendering.
 
 ## Evidence Summary
 
 | Evidence Type | Finding |
 |---------------|---------|
-| Static: show.ts line 46 | Markdown heading regex `/^(#{1,6})\s+(.+)$/` |
-| Static: comments-list.ts | Format-agnostic, uses anchor strings |
-| Static: comments-post.ts | Format-agnostic, uses anchor strings |
+| Static: show.ts lines 47-67 | HTML heading regex with id attribute extraction and tag stripping |
+| Static: show.ts lines 69-85 | Markdown heading regex as fallback |
+| Static: comments-list.ts, comments-post.ts | Format-agnostic, anchor-based |
 | Static: package.json | Zero runtime dependencies |
 
 ## Success Criteria
 
-1. `hlx library show` correctly extracts and displays headings from both HTML and Markdown reports
-2. Comment annotation (rating counts per section) works for HTML headings
-3. No unnecessary runtime dependencies added
-4. Existing Markdown report display continues working
+1. **HTML heading extraction works**: `hlx library show` displays headings from HTML reports with comment annotations
+2. **Markdown backward compat**: Existing Markdown reports continue displaying correctly
+3. **No new dependencies**: Zero runtime dependency principle maintained
 
 ## Artifact Inputs Used
 
 | Artifact | Why Used | Key Takeaway |
 |----------|----------|--------------|
-| ticket.md | Understand scope | Reports switch to HTML; marking/commenting must work the same |
-| scout/reference-map.json (CLI) | Map format-dependent code | Only show.ts heading regex is format-dependent |
-| scout/scout-summary.md (CLI) | Understand CLI impact | Narrow: heading extraction only, comment system is format-agnostic |
+| ticket.md | Scope | Reports to HTML; section marking/commenting must work the same |
+| scout/reference-map.json (CLI) | Map CLI components | 8 files; only show.ts is format-dependent |
+| scout/scout-summary.md (CLI) | Understand CLI state | Dual extraction already implemented; comment system format-agnostic |
+| show.ts (direct read) | Verify implementation | Lines 48-67 HTML regex; lines 70-85 MD fallback; both working |

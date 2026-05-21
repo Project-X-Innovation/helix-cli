@@ -1,26 +1,25 @@
 {
   "questions": [
-    "What is the exact format-dependent code in the CLI and how should it change for HTML reports?",
-    "Should an HTML parsing library be added or can regex suffice for heading extraction?"
+    "Q1: Does the CLI heading extraction handle both HTML and Markdown headings after prior runs?",
+    "Q2: Is the comment system format-agnostic?"
   ],
   "answers": [
     {
-      "answer": "The only format-dependent code is in show.ts line 46: the regex /^(#{1,6})\\s+(.+)$/ matches Markdown headings. For HTML reports, this needs to match <h[1-6] id=\"...\">...</h[1-6]> tags instead. The slugify function and all comment commands are format-agnostic.",
+      "answer": "Yes. show.ts lines 47-67 try an HTML heading regex first (/<h([1-6])...>), extracting level, id attribute, and inner text with HTML tag stripping (line 52). Lines 69-85 fall back to Markdown heading regex. Both produce identical annotation output with comment counts.",
       "evidence": [
-        "src/library/show.ts line 46: /^(#{1,6})\\s+(.+)$/ Markdown heading regex",
-        "src/library/show.ts line 49: slugify() generates anchor from heading text",
-        "src/library/comments-list.ts: format-agnostic, works on anchor strings",
-        "src/library/comments-post.ts: format-agnostic, works on anchor strings"
+        "show.ts line 48: HTML regex /<h([1-6])(?:\\s+[^>]*?id=\"([^\"]*)\"[^>]*)?>(.+?)<\\/h\\1>/i",
+        "show.ts line 52: rawText = htmlMatch[3].replace(/<[^>]+>/g, '').trim()",
+        "show.ts line 70: Markdown fallback regex /^(#{1,6})\\s+(.+)$/"
       ]
     },
     {
-      "answer": "Simple regex should suffice. The CLI only needs to extract heading level (1-6), heading text, and optionally the id attribute from HTML heading tags. A regex like /<h([1-6])(?:\\s+id=\"([^\"]*)\")?>(.+?)<\\/h\\1>/gi would work without adding a runtime dependency. The CLI currently has zero runtime dependencies and adding an HTML parser for one regex replacement would be over-engineering.",
+      "answer": "Yes. comments-list.ts and comments-post.ts use anchor-based section targeting via --section flag. The anchor string is format-agnostic and matches heading slug/id regardless of source format.",
       "evidence": [
-        "package.json: zero runtime dependencies (devDependencies only: typescript, @types/node)",
-        "show.ts: only extracts heading level and text, no complex DOM operations needed"
+        "comments-post.ts lines 63-67: submits anchor, rating, content, parentCommentId",
+        "comments-list.ts: groups comments by section anchor"
       ]
     }
   ],
-  "statement": "CLI impact is minimal: only the heading regex in show.ts needs updating to match HTML heading tags instead of Markdown headings. Both formats should be supported for backward compatibility with existing Markdown reports. A simple regex suffices; no new dependencies needed.",
+  "statement": "The CLI is fully compatible with HTML reports from prior runs. Dual heading extraction in show.ts handles both HTML tags and Markdown headings with identical output. The comment system is anchor-based and format-agnostic. No functional changes needed.",
   "followups": []
 }
