@@ -1,0 +1,39 @@
+{
+  "problem": "RSH-531 requires mapping NetSuite verification tools. The helix-cli repo provides the CLI infrastructure for runtime inspection (hlx inspect), skill bundling (hlx skill), and contains the comprehensive verification architecture design document from a prior implementation ticket.",
+  "files": [
+    {
+      "path": "src/index.ts",
+      "why": "CLI entry point. Defines hlx inspect repos/db/logs/api commands for runtime inspection, and hlx skill show/install for agent skill management."
+    },
+    {
+      "path": "src/inspect/",
+      "why": "Runtime inspection command implementations: database queries, log searches, API calls -- the 3 runtime inspection types available for NS verification."
+    },
+    {
+      "path": "src/skill/index.ts",
+      "why": "Agent skill bundling. The CLI bundles a SKILL.md that provides canonical guidance to the agent during workflow steps."
+    },
+    {
+      "path": "src/docs/cli-content.ts",
+      "why": "CLI documentation including authentication setup, all commands, and troubleshooting."
+    },
+    {
+      "path": ".helix/tickets/cmpd9loth00cnfw0uu5pja25s/runs/cmpd9lotq00csfw0us0dbmpgw/ticket.md",
+      "why": "Comprehensive verification architecture design (1300+ lines). Section 4.5 defines NS-specific verification: SuiteQL queries, script deployment XML checks, log checks, API calls (RESTlet/SuiteTalk), workflow state transitions. Defines 4-outcome model and Sandwich Model verification cascade."
+    }
+  ],
+  "facts": [
+    "hlx inspect db --repo <name> '<sql>' provides read-only database queries for runtime inspection.",
+    "hlx inspect logs --repo <name> '<query>' provides log searching capabilities.",
+    "hlx inspect api --repo <name> <path> provides API endpoint inspection.",
+    "The CLI bundles agent skills via hlx skill show/install for Claude Code or Codex agent directories.",
+    "The verification architecture design (cmpd9loth00cnfw0uu5pja25s ticket) defines NS-specific verification methods at Section 4.5: SuiteQL queries, script deployment verification (check deployment XML), log checks (verify execution logs), API calls (RESTlet/SuiteTalk endpoints), workflow verification (workflow state transitions).",
+    "The design identifies 5 NS verification tools: SuiteQL, script deployment XML inspection, execution logs, RESTlet/SuiteTalk API calls, and workflow state verification.",
+    "Production data from the design ticket shows 1,200 total completed runs with 63.1% SUCCEEDED, 22.3% FAILED, 11.6% UNVERIFIED. 89.9% of UNVERIFIED are verification_broken with zero retries.",
+    "Tooling/browser failures account for 28.9% of all failures -- agent-browser CLI, curl, simplified flows are listed as resolution strategies."
+  ],
+  "unknowns": [
+    "Whether the CLI inspection commands (hlx inspect) are used during the NS verification step or only during scout/diagnosis.",
+    "Whether additional CLI commands for NS-specific verification would be needed beyond the existing inspect db/logs/api."
+  ]
+}
