@@ -1,90 +1,84 @@
 {
   "title": "Restructure bundled hlx-cli skill: progressive disclosure + CI sync",
-  "description": "Tour of the 8 files created/modified to restructure the bundled hlx-cli skill with progressive disclosure, full CLI surface coverage, and CI enforcement.",
+  "description": "Tour of the 8 files created/modified to restructure the bundled skill with progressive disclosure, full CLI surface coverage, new reference documents, and CI enforcement.",
   "steps": [
     {
       "file": "skill-content/SKILL.md",
       "line": 3,
       "title": "Trigger-heavy YAML description",
-      "description": "The frontmatter description (481 chars, <=1024 limit) front-loads triggers for both CLI-ops (HELIX_API_KEY, inspect, tickets) and ticket-writing (writing tickets, ticket prompting, install recovery). This helps agents activate the skill from diverse requests."
+      "description": "The YAML frontmatter description (481 chars, <= 1024 limit) front-loads trigger keywords for both CLI-ops (HELIX_API_KEY, HELIX_URL, inspect, tickets) and ticket-writing (ticket prompting, install recovery). This enables accurate agent activation regardless of whether the request is about CLI operations or ticket authoring."
     },
     {
       "file": "skill-content/SKILL.md",
       "line": 13,
-      "title": "Progressive disclosure: Workflow section",
-      "description": "The body starts with Workflow (smallest command first), then Guardrails, then Commands at a glance. This progressive-disclosure pattern lets agents find high-frequency commands fast without reading the full surface."
+      "title": "Progressive-disclosure body: Workflow section",
+      "description": "The body follows a 10-section progressive-disclosure layout (9 ## headings). Workflow comes first as the highest-frequency agent task. Each section is concise; detailed content lives in linked reference files to stay within the 5,000-token body budget."
     },
     {
       "file": "skill-content/SKILL.md",
       "line": 50,
-      "title": "Ticket work gotchas",
-      "description": "Documents the --description file-path gotcha (CLI errors when value resolves to a readable file), 10k-char cap, dependency flags, --dry-run, update-description, and --mode RESEARCH guidance."
+      "title": "Ticket work gotchas section",
+      "description": "Documents operational traps proven in practice: --description vs --description-file file-path detection, 10,000-char cap, dependency flags, --dry-run, update-description, and --mode RESEARCH guidance."
     },
     {
       "file": "skill-content/references/commands.md",
-      "line": 78,
-      "title": "Full tickets list coverage",
-      "description": "Previously missing flags (--search, --user, --status, --status-not-in, --archived, --sprint, --json) are now documented with descriptions. Each subcommand has its own heading, usage line, and flag table."
+      "line": 77,
+      "title": "Full CLI surface: tickets list flags",
+      "description": "Expanded from 127 to 387 lines. Every subcommand at every depth, every long-form flag, all enum values. This section shows the previously-missing tickets list flags (--search, --user, --status, --status-not-in, --archived, --sprint, --json)."
     },
     {
       "file": "skill-content/references/commands.md",
-      "line": 119,
-      "title": "tickets create with full enum coverage",
-      "description": "Documents --mode enum values (AUTO, BUILD, FIX, RESEARCH, EXECUTE) and the --description vs --description-file distinction. All previously-missing flags are now present."
+      "line": 117,
+      "title": "Mode enum values and description-file flag",
+      "description": "tickets create now documents the full --mode enum (AUTO|BUILD|FIX|RESEARCH|EXECUTE) and the --description-file flag separately from --description, addressing the CLI file-path detection gotcha."
     },
     {
       "file": "skill-content/references/commands.md",
-      "line": 330,
-      "title": "Library comments post with rating values",
-      "description": "Documents --section, --rating, --reply-to flags and all rating enum values: thumbs-up (alias up), thumbs-down (alias down), love."
-    },
-    {
-      "file": "skill-content/references/ticket-prompting.md",
-      "line": 1,
-      "title": "Ticket authoring guide",
-      "description": "7-section guide using hard-constraint language (must, must not, do not). Contains the required ticket structure, 5 common failure modes with examples, deployment checklist, and draft review checklist."
+      "line": 322,
+      "title": "Library comments with rating enums",
+      "description": "The deepest nesting level (depth 3: hlx library comments post) now documents --section, --rating, --reply-to flags and all rating enum values (thumbs-up/up, thumbs-down/down, love)."
     },
     {
       "file": "skill-content/references/recovery.md",
-      "line": 1,
-      "title": "GitHub-release-asset recovery guide",
-      "description": "Documents the post-PR-86 install/update flow sourced from src/update/**. Covers hlx update mechanism, fresh install, broken-install recovery, and auto-update. No npm install/uninstall/link recommendations."
+      "line": 5,
+      "title": "GitHub-release-asset update flow",
+      "description": "Documents the 7-step staged update pipeline derived from src/update/check.ts, perform.ts, and validate.ts. Covers GitHub API resolution, tarball download, in-process extraction, validation checks, and atomic rename-based swap with .bak rollback."
     },
     {
-      "file": "skill-content/references/current-state.md",
+      "file": "skill-content/references/recovery.md",
+      "line": 56,
+      "title": "Broken-install recovery",
+      "description": "Step-by-step recovery: try hlx update first, then manual tarball download from GitHub releases. Includes a diagnostic table mapping symptoms to likely causes and fixes. No npm install/uninstall/link recommendations."
+    },
+    {
+      "file": "skill-content/references/ticket-prompting.md",
       "line": 3,
-      "title": "Dated migration note",
-      "description": "Changelog entry for 2026-05-21 marking the PR #86 migration from npm to GitHub release assets."
+      "title": "Core Rule: hard-constraint language",
+      "description": "The ticket-authoring guide uses hard constraints (must, must not, do not, fail closed) throughout. The Core Rule section establishes that every ticket is a self-contained contract with explicit scope, failure behavior, and cardinality semantics."
+    },
+    {
+      "file": "skill-content/references/ticket-prompting.md",
+      "line": 57,
+      "title": "Common Failure Modes with examples",
+      "description": "All 5 failure modes documented with concrete examples: scope expansion, over-optimization, fail-open, batch/cardinality, and domain vocabulary drift (e.g., SDF AccountConfiguration vs Objects)."
     },
     {
       "file": "scripts/skill-sync/check-coverage.mjs",
-      "line": 146,
-      "title": "Recursive token collection",
-      "description": "The collectTokens function recursively walks --help output starting from the top level. At each level it extracts subcommand names, long-form flags, and enum values, then recurses into discovered subcommands."
+      "line": 153,
+      "title": "Recursive --help token collection",
+      "description": "The core algorithm: recursively walk --help output starting from the top-level command. At each level, extract subcommand names, long-form flags, and enum values. Handles pipe-separated alternatives (org current|list|switch), angle-bracket enums, and prose-format rating values."
     },
     {
       "file": "scripts/skill-sync/check-coverage.mjs",
-      "line": 117,
-      "title": "Subcommand blocklist and regex filter",
-      "description": "A blocklist and regex filter (/^[a-z][a-z0-9-]*$/) prevent false positives from non-command words like 'Usage:' and 'workbench' that appear in help text."
-    },
-    {
-      "file": "scripts/skill-sync/check-coverage.mjs",
-      "line": 240,
-      "title": "Coverage check with clear error output",
-      "description": "Missing tokens are collected and printed to stderr with type labels ([subcommand], [flag], [enum]). Exit 0 = all covered, exit 1 = missing tokens, exit 2 = script error."
+      "line": 244,
+      "title": "Coverage check and exit codes",
+      "description": "For each extracted token, check case-sensitive substring match against backtick-stripped SKILL.md + commands.md content. Exit 0 = all covered, exit 1 = missing tokens listed to stderr, exit 2 = script error. The CI workflow fails the PR on any non-zero exit."
     },
     {
       "file": ".github/workflows/skill-sync.yml",
       "line": 1,
-      "title": "CI workflow triggers",
-      "description": "Runs on pull_request (all branches) and push to main. Uses Node 22 and npm ci (which triggers tsc build via prepare script), then runs the parser script."
-    },
-    {
-      "file": ".github/pull_request_template.md",
-      "line": 7,
-      "title": "Skill-update checkbox",
-      "description": "Contributor reminder to update SKILL.md or commands.md when changing user-visible CLI behavior."
+      "title": "CI workflow: skill surface sync",
+      "description": "Triggers on pull_request and push to main. Uses Node 22 (matching build-release.yml), npm ci (triggers tsc build via prepare script), then runs the parser. No secrets needed since --help works without auth via configOrHelp() stub."
     }
   ]
 }
