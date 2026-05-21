@@ -2,181 +2,207 @@
 
 ## Problem Statement
 
-Helix today is a ticket-in, result-out system. Each ticket executes an independent MVP unit in isolation. There is no mechanism to coordinate multiple tickets toward a larger business objective, iterate toward polish, or drive work from a high-level intent ("automate our RMA process") to polished completion. Users who need multi-ticket outcomes must manually create follow-up tickets, decide what to do next, and track whether their objective has been met. This creates a gap between what users actually want (a finished, polished result) and what Helix delivers (a single MVP per ticket).
+Helix is a ticket-in, result-out system. Each ticket executes in isolation as an independent MVP unit. There is no mechanism to coordinate multiple tickets toward a larger business objective, iterate toward polish, or bridge the gap between a user's declarative intent ("automate our RMA process") and the series of incremental tickets needed to fully realize it. Users who need multi-ticket outcomes must manually create follow-up tickets, evaluate what was built, decide what comes next, and track whether their objective has been met. This makes users act as their own project manager between every step.
 
 ## Product Vision
 
-Introduce **Goals** as the while-loop around tickets. A Goal takes a high-level business objective and drives it to completion through a **PM agent** that autonomously evaluates progress after each child ticket completes, proposes the single most valuable next action, and spawns it -- one ticket at a time, each decision made with full knowledge of what concretely exists. Goals transform Helix from a ticket executor into a goal-reacher.
+Goals transform Helix from a ticket executor into a goal-reacher. A Goal takes a high-level business objective and drives it to polished completion through an autonomous **PM agent** that evaluates concrete results after each child ticket, proposes the single most valuable next action, and repeats — one ticket at a time — until the objective is truly done.
+
+The PM agent operates as a dual-aspect system: an **Assessor** produces an objective evaluation artifact (answering 7 structured questions against concrete evidence), then a **Decider** reads that artifact and makes the decision (complete, or propose next ticket). This separation yields objectivity — assessment is decoupled from action, mirroring the existing diagnosis→product pattern in the codebase.
+
+Goals are not tickets. They are a fundamentally different experience — centered on child management, evaluation results, preview forecasts, and a living roadmap — and they get their own dedicated entity, API, and UI.
 
 ## Users
 
-- **Helix operators**: Business users who submit high-level objectives and want polished, complete outcomes without manually managing iterative ticket creation.
-- **System administrators**: Users who monitor Goal progress, review PM agent decisions, and intervene when needed (terminate, redirect, enable approval gates).
+- **Helix operators**: Users who define business objectives requiring more than one ticket. They want to state an objective, watch it get built iteratively, and intervene only when the direction is wrong — not for every intermediate decision.
 
 ## Use Cases
 
-1. **Multi-ticket business objectives**: User has an objective that requires more than one ticket to accomplish (e.g., "build a reporting dashboard with data ingestion, visualization, and export").
-2. **Iterative polish**: User wants a result that goes beyond MVP -- hardened, verified, and polished through multiple passes.
-3. **Autonomous overnight execution**: User submits a Goal and lets the PM agent iterate overnight without manual approval for each step.
-4. **Visibility into planned work**: User wants to see what the PM agent plans to do next (previews) and how the overall plan has evolved (living roadmap).
+1. **Multi-ticket business objectives**: Operator wants to automate an RMA process (approval flow, email notifications, admin dashboard). This requires 3-5+ coordinated tickets, each building on the last.
+2. **Polish beyond MVP**: A single ticket produces a functional MVP, but the operator wants hardening — error handling, edge cases, UX refinement. Goals drive iterative improvement until the result meets a quality bar.
+3. **Autonomous iteration**: Operator sets an objective and lets the PM agent iterate without manual approval for each step. Reviews progress when convenient.
+4. **Visibility without gatekeeping**: Preview forecasts and a living roadmap let the operator see what the PM agent plans to do next without needing to approve every action.
 
 ## Core Workflow
 
-1. User creates a Goal with a title (objective statement) and description (detailed criteria for success).
-2. The system runs an initial setup (scout/diagnosis/product) to understand the objective.
-3. The PM agent proposes the first child ticket and spawns it autonomously.
-4. The child ticket executes through the standard pipeline (BUILD, FIX, RESEARCH, etc.).
-5. When the child completes, the PM agent evaluates the full picture using 7 structured questions: Is it matching? Is there more to do? Does it need polish? Are all boxes checked? Can something be added? Can something be fixed? Can something be verified?
-6. If the objective is not yet met, the PM agent proposes the next ticket, updates the living roadmap, generates 2-3 preview forecasts, and spawns the next child.
-7. If the objective is met, the Goal completes. All success criteria mapped to concrete evidence.
+1. Operator creates a Goal (title + description with explicit success criteria).
+2. Goal enters initial setup: scout → diagnosis → product (3-step pipeline produces context artifacts).
+3. PM agent **Assessor** produces a structured evaluation artifact — answers 7 questions against current state, citing evidence from completed children and setup artifacts.
+4. PM agent **Decider** reads the assessment artifact and decides:
+   - Objective met → Goal completes.
+   - More to do → Proposes next ticket with rationale, child type, and motivation facet.
+5. If proposing: updates living roadmap, generates 2-3 preview forecasts of upcoming work.
+6. Spawns a single child ticket autonomously.
+7. Child ticket executes through standard pipeline (BUILD/FIX/RESEARCH).
+8. Child completes → loop back to step 3.
+
+Safety bounds: max 20 children (configurable), manual termination always available, evaluation audit trail recorded per cycle, preview visibility at all times.
 
 ## Essential Features (MVP)
 
-1. **Goal creation**: Users can create Goals with an objective and success criteria.
-2. **PM agent evaluation loop**: After each child ticket completes, the PM agent runs a 7-question evaluation protocol and produces a verdict (complete or next_ticket).
-3. **Autonomous child spawning**: PM agent spawns the next child without human approval. One ticket at a time.
-4. **EVALUATING status**: New status representing the state where the PM agent is running its evaluation.
-5. **SIDE_QUEST_PENDING status**: Status representing a Goal waiting for its active child ticket to complete (note: does not currently exist in schema despite research report assumption).
-6. **Parent-child ticket tracking**: Relation between a Goal and its child tickets, with child type classification (BREADTH, DEPTH, POLISH, VERIFY).
-7. **Safety bounds**: Max 20 children (configurable), manual termination, idle timeout for stalled Goals.
-8. **Preview forecasts**: PM agent outputs 2-3 non-binding forecast tickets each cycle, visible to the operator.
-9. **Living roadmap**: Continuously updated plan reflecting what has been completed, current assessment, and projected remaining work.
-10. **Pipeline filtering**: Goal mode executes only scout/diagnosis/product setup, then enters the PM agent loop (not the standard 9-step pipeline).
-11. **Goal-specific UI**: Child tree view, PM agent evaluation display, preview panel, roadmap view.
-12. **CLI support**: Users can create Goals via `hlx tickets create --mode GOAL`.
-13. **Operator controls**: Terminate (mark complete or failed), optional per-ticket approval mode for high-risk Goals.
+1. **Separate Goal entity** — Goals are their own data model with a dedicated database table, own GoalStatus enum, CRUD API, and UI. Not a TicketMode on the Ticket table.
+2. **GoalStatus lifecycle** — Own status enum: DRAFT, QUEUED, RUNNING, ACTIVE, EVALUATING, PENDING_APPROVAL, PAUSED, COMPLETED, FAILED.
+3. **Goal-to-ticket relationship** — A `goalId` foreign key on Ticket links child tickets to their parent Goal, with `childType` classification (BREADTH, DEPTH, POLISH, VERIFY).
+4. **Dual-aspect PM agent** — Assessor aspect produces a structured 7-question evaluation artifact; Decider aspect reads the artifact and produces verdict + proposal + previews + roadmap update. Two distinct LLM calls, not one.
+5. **7-question evaluation protocol** — Is it matching? More to do? Needs polish? All boxes checked? Can something be added? Fixed? Verified? Each answer cites concrete evidence.
+6. **Per-ticket evaluation trigger** — After each child ticket completes, the Goal transitions to EVALUATING and the PM agent runs. Piggybacks on existing completion hooks in the orchestrator. One child at a time.
+7. **Evaluation audit trail** — Every evaluation cycle (assessment artifact + decider output + verdict) is persisted and queryable. Full transparency into PM agent reasoning.
+8. **Autonomous execution** — PM agent proposes and spawns the next ticket without human approval by default.
+9. **Living roadmap** — Continuously updated planning document reflecting what has been completed, current assessment, and projected remaining work. Updated every evaluation cycle.
+10. **Preview forecasts** — 2-3 non-binding forecast tickets visible after each evaluation, showing what the PM agent anticipates next.
+11. **Dedicated Goal UI** — Separate `/goals` routes and components: goal list, goal detail with child tree navigation, evaluation display (7 questions + evidence + verdict), preview panel, roadmap view. Not embedded in or linked to ticket views.
+12. **Safety bounds** — Max children limit (default 20, configurable), PAUSED state when limit reached, manual termination to COMPLETED or FAILED at any time, idle timeout for stalled evaluations.
+13. **Optional approval mode** — Operator can enable per-ticket approval: proposals enter PENDING_APPROVAL, with approve/reject endpoints. Opt-in exception, not default.
+14. **CLI support** — `hlx goals create`, `hlx goals list`, `hlx goals get`, `hlx goals terminate` command family.
 
 ## Features Explicitly Out of Scope (MVP)
 
-- **Nested Goals**: Goals spawning sub-Goals. MVP is flat (Goal -> child tickets only).
-- **Multi-ticket proposals**: PM agent proposing more than one ticket at a time.
-- **Parallel child execution**: Multiple children running concurrently. MVP is sequential.
-- **Playbook-enhanced evaluation**: PM agent receiving Playbook rules as evaluation context (requires RSH-411 Phase 1).
-- **Predictive estimation**: Using Goal history to estimate child count/timeline for new Goals.
-- **Retroactive Goal assignment**: Attaching existing tickets to a Goal after creation.
-- **Goal-to-Goal dependencies**: Sequencing Goals against each other.
-- **Goal progress dashboard**: Aggregate view of all active Goals.
+- **Nested Goals** — Goals spawning sub-Goals. MVP is flat: Goal → child tickets only.
+- **Multi-ticket proposals** — PM agent proposes one ticket at a time. Parallel proposals are V2.
+- **Parallel child execution** — One child at a time. Concurrent children are V2.
+- **Playbook-enhanced evaluation** — Core Goals are Playbook-independent. Playbook integration requires RSH-411 Phase 1.
+- **Predictive estimation** — Using historical Goal data to estimate child count and timeline.
+- **Retroactive Goal assignment** — Attaching existing tickets to a Goal after creation.
+- **Goal-to-Goal dependencies** — Sequencing Goals via dependency chains.
+- **Speculative execution** — Starting previewed tickets before PM agent confirms direction.
+- **Goal progress dashboard** — Aggregate view of all active Goals.
+- **Ticket UI modifications** — The ticket UI is unchanged. Goal navigation is separate.
 
 ## Success Criteria
 
-1. A user can create a Goal with a title and success criteria, and the system runs the initial setup pipeline (scout/diagnosis/product).
-2. After setup, the PM agent proposes and spawns the first child ticket autonomously.
-3. When a child ticket completes, the Goal transitions to EVALUATING and the PM agent runs the 7-question evaluation protocol, producing a structured verdict.
-4. If the verdict is "next_ticket," the PM agent spawns the next child and the Goal cycles back to waiting. If "complete," the Goal finishes.
-5. Preview forecasts (2-3 tickets) and living roadmap are updated each cycle and visible to the operator.
-6. Safety bounds are enforced: a Goal with 20 children pauses for human decision; operator can terminate at any time.
-7. A single child failure does not fail the Goal -- the PM agent evaluates the failure in context and decides the next action.
-8. Goal mode is selectable in the client UI and CLI.
+1. An operator can create a Goal with a title, description, and success criteria through both the Goal UI and CLI.
+2. After initial setup (scout/diagnosis/product), the PM agent autonomously proposes and spawns the first child ticket.
+3. After each child ticket completes, the PM agent runs the dual-aspect evaluation: Assessor produces a 7-question artifact, Decider reads it and produces a verdict — all visible in the Goal detail UI.
+4. The Goal UI is a separate experience from the ticket UI — own routes, own pages, own components.
+5. The PM agent correctly declares a Goal complete when all stated success criteria are met, mapping each to evidence.
+6. Safety bounds prevent runaway execution: max children enforced, manual termination works, PAUSED state when limit reached, every evaluation persisted as audit record.
+7. A single child failure does not fail the Goal — the PM agent evaluates the failure in context and proposes a corrective action.
 
 ## User Scenarios
 
 [SCN-01] Create a new Goal
-- Precondition: User is logged in and has access to create tickets/goals
-- Action: User creates a Goal with a title describing the business objective and a description containing success criteria
-- Expected Outcome: The Goal is created and enters the initial setup pipeline (scout/diagnosis/product). The user sees the Goal in their list with a status indicating setup is in progress.
+- Precondition: Operator is authenticated and on the Goals UI
+- Action: Operator fills in a Goal title, description with success criteria, and submits
+- Expected Outcome: A new Goal appears in the Goals list with QUEUED status, and the initial setup pipeline begins
 
-[SCN-02] PM agent proposes first child ticket after setup
-- Precondition: A Goal has completed its initial setup pipeline
-- Action: The PM agent evaluates the Goal objective and proposes the first child ticket
-- Expected Outcome: A child ticket is created and begins executing. The Goal status reflects that a child is in progress. The user can see the child ticket linked to the Goal.
+[SCN-02] Goal completes setup and spawns first child
+- Precondition: A Goal has been created and the initial setup pipeline (scout/diagnosis/product) has completed
+- Action: The PM agent evaluates the Goal objective using setup artifacts and proposes the first child ticket
+- Expected Outcome: A child ticket appears in the Goal's child tree with type classification. The Goal shows ACTIVE status.
 
-[SCN-03] PM agent evaluates after child completion
-- Precondition: A Goal's child ticket has completed successfully
-- Action: The system triggers the PM agent evaluation
-- Expected Outcome: The Goal enters the EVALUATING state. The PM agent produces a structured evaluation answering all 7 questions, with a verdict of either "complete" or "next_ticket." The evaluation results are visible to the user.
+[SCN-03] View PM agent evaluation after child completes
+- Precondition: A Goal has a child ticket that just completed
+- Action: Operator navigates to the Goal detail view
+- Expected Outcome: The Goal shows the Assessor's evaluation artifact with answers to all 7 questions and evidence citations, plus the Decider's verdict and rationale
 
-[SCN-04] PM agent continues with next ticket
-- Precondition: The PM agent has evaluated and determined the objective is not yet met
-- Action: The PM agent proposes and spawns the next child ticket
-- Expected Outcome: A new child ticket is created with a rationale explaining which evaluation question motivated it. The Goal returns to waiting status. Preview forecasts and roadmap are updated and visible.
+[SCN-04] PM agent proposes and spawns next child autonomously
+- Precondition: A child ticket completed and the PM agent determined the objective is not yet met
+- Action: The PM agent proposes a next ticket and spawns it without human intervention
+- Expected Outcome: A new child ticket appears in the Goal's child tree with its type classification and motivation facet. The living roadmap and preview forecasts are updated.
 
-[SCN-05] Goal completes when objective is met
-- Precondition: The PM agent has evaluated and all 7 questions indicate the objective is fully met
-- Action: The PM agent declares the Goal complete
-- Expected Outcome: The Goal transitions to a completed state. The rationale maps each success criterion to the child ticket that addressed it. No further children are spawned.
+[SCN-05] Goal reaches completion
+- Precondition: Multiple children have completed and all success criteria are now met
+- Action: The PM agent evaluates and the Decider determines all criteria are satisfied
+- Expected Outcome: The Goal transitions to COMPLETED. The final evaluation maps each success criterion to the child ticket(s) that addressed it. No further children are spawned.
 
-[SCN-06] View preview forecasts
-- Precondition: A Goal has at least one completed child and the PM agent has run an evaluation
-- Action: User views the Goal's preview forecasts
-- Expected Outcome: The user sees 2-3 non-binding forecast tickets showing what the PM agent anticipates doing next, each with a facet label and child type classification.
+[SCN-06] View living roadmap and preview forecasts
+- Precondition: A Goal is in progress with at least one completed evaluation cycle
+- Action: Operator navigates to the Goal detail and views the roadmap section
+- Expected Outcome: The roadmap shows completed work summary, current assessment, and projected remaining work. Preview forecasts show 2-3 anticipated next tickets with rationale and child type.
 
-[SCN-07] View living roadmap
-- Precondition: A Goal exists with at least one completed evaluation cycle
-- Action: User views the Goal's living roadmap
-- Expected Outcome: The user sees the current roadmap showing completed work summary, current assessment, and projected remaining work. The roadmap reflects updates from the most recent evaluation.
+[SCN-07] Manually terminate a Goal
+- Precondition: A Goal is in a non-terminal state (ACTIVE or EVALUATING)
+- Action: Operator clicks terminate and selects "Mark Complete" or "Mark Failed"
+- Expected Outcome: The Goal transitions to COMPLETED or FAILED. No further child tickets are spawned. Active children continue to completion but do not trigger further evaluation.
 
-[SCN-08] Safety bound triggers at max children
-- Precondition: A Goal has reached its configured maximum number of children (default 20)
-- Action: The PM agent attempts to propose another child ticket
-- Expected Outcome: The Goal pauses instead of spawning a new child. The user is notified that the max children limit has been reached and must decide whether to extend the limit or mark the Goal complete.
+[SCN-08] Max children safety bound triggers
+- Precondition: A Goal has spawned its configured maximum number of children (default 20) and the PM agent wants another
+- Action: The PM agent attempts to propose child ticket beyond the limit
+- Expected Outcome: The Goal enters PAUSED instead of spawning. The operator is notified and can extend the limit or terminate.
 
-[SCN-09] Operator terminates a Goal
-- Precondition: A Goal is active (in any non-terminal state)
-- Action: The operator chooses to terminate the Goal, selecting either "complete" or "failed"
-- Expected Outcome: The Goal transitions to the selected terminal state immediately. No further child tickets are spawned. Active children continue to completion but do not trigger further evaluation.
+[SCN-09] PM agent handles child failure gracefully
+- Precondition: A Goal has a child ticket that failed
+- Action: The PM agent evaluates the failure in the context of the overall goal
+- Expected Outcome: The evaluation artifact includes failure context. The PM agent proposes a corrective action (retry with different approach, continue with other work, or note inability). The Goal does not automatically fail.
 
-[SCN-10] PM agent handles child failure
-- Precondition: A Goal's child ticket has failed
-- Action: The system triggers the PM agent evaluation with failure context
-- Expected Outcome: The Goal enters EVALUATING. The PM agent evaluates whether to retry the same scope, try a different approach, or continue with other work. The Goal does not automatically fail.
+[SCN-10] Enable and use per-ticket approval mode
+- Precondition: Operator has a high-risk Goal where they want to review each proposal
+- Action: Operator enables approval mode on the Goal; PM agent produces a proposal
+- Expected Outcome: The Goal enters PENDING_APPROVAL. The proposal is visible. The operator can approve (spawns the ticket), modify, or reject (PM agent re-evaluates). The ticket is not spawned until approved.
 
-[SCN-11] Create Goal via CLI
-- Precondition: User has the Helix CLI installed and authenticated
-- Action: User runs `hlx tickets create --mode GOAL` with a title and description
-- Expected Outcome: The Goal is created successfully. The CLI confirms creation and the Goal begins its setup pipeline.
+[SCN-11] Create a Goal via CLI
+- Precondition: Operator has the Helix CLI installed and authenticated
+- Action: Operator runs `hlx goals create --title "Automate RMA process" --description "..."` with optional `--max-children 15`
+- Expected Outcome: A new Goal is created and the operator receives confirmation with the Goal ID
 
-[SCN-12] View child tree with type classification
-- Precondition: A Goal has multiple completed children
-- Action: User views the Goal detail page
-- Expected Outcome: The user sees a child tree showing all children with their status, title, and type classification (BREADTH, DEPTH, POLISH, or VERIFY). The tree reflects the order of completion.
+[SCN-12] Navigate between Goal and child ticket views
+- Precondition: A Goal has child tickets
+- Action: Operator clicks a child ticket in the Goal's child tree
+- Expected Outcome: The standard ticket detail view opens (separate page). The ticket shows a reference to its parent Goal. Goal UI and ticket UI remain distinct experiences.
+
+[SCN-13] View evaluation history for a Goal
+- Precondition: A Goal has had multiple evaluation cycles
+- Action: Operator views the evaluation history in the Goal detail
+- Expected Outcome: All past evaluations are listed chronologically, each showing the Assessor artifact, Decider output, verdict, and which child triggered it
 
 ## Key Design Principles
 
-1. **Evaluation-driven, not plan-driven**: The PM agent evaluates what was actually built after each child, rather than executing a predetermined plan. Decomposition serves as an advisory roadmap, not the orchestration driver.
-2. **One ticket at a time**: The PM agent proposes and evaluates single tickets sequentially. This produces maximally informed decisions and is aligned with current LLM capabilities.
-3. **Autonomous by default**: The PM agent runs without human approval gates. Safety comes from bounded scope (max children, per-ticket MVPs), transparency (previews, roadmap, audit trail), and manual termination -- not from gatekeeping.
-4. **Bias toward completion**: The PM agent requires concrete, specific evidence before proposing additional work. Vague "could be better" assessments do not generate tickets. Anchor to stated criteria, not invented ones.
-5. **Transparency over control**: Operators see what the PM agent is thinking (evaluation answers), planning (previews), and tracking (roadmap). Intervention is available but optional.
+1. **Goals are not tickets** — Goals have a fundamentally different UX: child management, evaluation results, preview forecasts, and roadmap tracking. They get their own entity, API, and UI.
+2. **Artifact-then-decision** — The PM agent first produces an objective assessment artifact, then a separate decision-making aspect reads that artifact and acts. Assessment is decoupled from action.
+3. **One ticket at a time** — The PM agent evaluates after each child completes and proposes one next action. Maximally informed, naturally adaptive, simpler reasoning.
+4. **Autonomous by default** — The PM agent runs without human approval gates. Safety comes from bounds, visibility, and the option to intervene — not from gatekeeping.
+5. **Measuring over predicting** — The evaluation of what was actually built drives next actions. Decomposition is advisory (living roadmap), not the orchestration driver.
+6. **Bias toward completion** — The PM agent requires concrete, specific evidence before proposing additional work. Vague "could be better" assessments do not generate tickets. Anchor to stated criteria, not invented ones.
 
 ## Scope & Constraints
 
-- **Entity model is an open design question**: Whether Goals are a new TicketMode or a separate database entity must be resolved before implementation. The user leans toward a separate entity ("goals can be their own thing. They don't need to be tickets"). The research report recommends prototyping both.
-- **Three repos affected**: helix-global-server (primary -- schema, services, API), helix-global-client (secondary -- types, UI components), helix-cli (tertiary -- mode addition).
-- **No Playbook dependency**: Core Goals work independently of the Playbook feature (RSH-411). Playbook-enhanced evaluation is explicitly post-MVP.
-- **Schema migration required**: Any schema changes must include committed Prisma migration files (file-based migration strategy, 57 existing migrations).
-- **SIDE_QUEST_PENDING does not exist**: The research report assumes this status exists, but it does not. Two new TicketStatus values are needed (EVALUATING and SIDE_QUEST_PENDING), not one.
+- **Three repos with code changes**: helix-global-server (primary — schema, services, API, PM agent), helix-global-client (secondary — dedicated Goal UI), helix-cli (tertiary — `hlx goals` commands).
+- **Greenfield**: Zero Goal tables, columns, statuses, or UI components exist today. Entirely additive.
+- **Separate from TicketStatus**: Goals use their own GoalStatus enum. No modifications to the existing 17-value TicketStatus enum. Child tickets remain standard tickets with standard statuses.
+- **TicketStatus has 17 values**: Verified against production. Includes NEEDS_CREDENTIALS and IMPOSSIBLE_SPEC (not listed in research report). SIDE_QUEST_PENDING does not exist and is not needed — GoalStatus.ACTIVE serves the waiting-for-child role.
+- **Orchestrator coupled to Ticket via SandboxRun**: The initial setup pipeline (scout/diagnosis/product) needs to work within the existing orchestrator. A setup ticket pattern or similar integration approach is required.
+- **Playbook-independent**: Core Goals do not depend on RSH-411 Playbook Phase 1.
+- **Schema migration required**: Prisma file-based migration (58 existing migrations, `prisma migrate deploy` at build time).
+- **Existing ticket UI and behavior unchanged**: Goals do not modify any existing ticket functionality.
 
 ## Future Considerations
 
-- Goal progress dashboard: aggregate view of all active Goals
-- Nested Goals: Goals spawning sub-Goals for large multi-phase initiatives
-- Multi-ticket proposals and parallel child execution
-- Playbook-enhanced evaluation (Tier 2, post-RSH-411)
-- PM agent calibration learning from evaluation history and operator interventions
-- Goal graph visualization (interactive DAG)
+- Nested Goals: Goals spawning sub-Goals for large multi-phase initiatives.
+- Multi-ticket proposals and parallel child execution.
+- Playbook-enhanced evaluation (PM agent receives Playbook rules as additional context, depends on RSH-411).
+- Goal progress dashboard: aggregate view of all active Goals with progress indicators.
+- PM agent calibration learning from evaluation history and operator interventions.
+- Goal graph visualization: interactive DAG of Goal → children with evaluation facets.
+- Cross-organization Goal patterns: templates for common business objectives.
 
 ## Open Questions / Risks
 
 | # | Question / Risk | Status |
 |---|-----------------|--------|
-| 1 | **Entity model**: TicketMode vs. separate Goal entity? User leans toward separate entity. Research report recommends prototyping both. Must be resolved before implementation. | Open |
-| 2 | **PM agent invocation mechanism**: How is the PM agent invoked? Claude API call, background process, or sprite? Architecturally distinct from pipeline agents. | Open -- technical unknown |
-| 3 | **Preview lifecycle**: When does a preview become the actual next ticket? Currently previews are replaced wholesale each cycle. | Open |
-| 4 | **Roadmap schema**: Exact JSON structure for the living roadmap artifact? Current spec has `completed_summary`, `current_assessment`, `projected_remaining` -- may evolve. | Open |
-| 5 | **SIDE_QUEST_PENDING discrepancy**: Research report states "EVALUATING is the only new TicketStatus addition" but SIDE_QUEST_PENDING is absent from schema/production. Two new statuses needed. | Identified by scout/diagnosis |
-| 6 | **Per-ticket evaluation + `/after` chains**: How does evaluation interact with `afterTicketId` sequential dependencies? MVP assumes Goal children are independent. | Open |
-| 7 | **PM agent calibration risk**: Over-conservative agent (endlessly proposing polish) or over-permissive agent (declaring done prematurely). Mitigations designed but untested. | Risk -- requires tuning |
-| 8 | **Context window management**: As children accumulate (up to 20), the PM agent's input context grows. Summarization strategy specified but not validated. | Risk |
+| 1 | **PM agent invocation mechanism** — How is the PM agent invoked? Claude API call within the request cycle, background job, or separate process? The PM agent is architecturally distinct from pipeline agents; its runtime mechanism needs design. | Open |
+| 2 | **Setup ticket integration** — The orchestrator requires a ticketId (via SandboxRun). How does Goal initial setup (scout/diagnosis/product) integrate? A paired "setup ticket" or adapted orchestrator call is needed. | Open |
+| 3 | **Dual-aspect prompt boundary** — Two separate Claude API calls (Assessor then Decider) or two structured prompts within one session? Separate calls are cleaner for auditability but double latency and cost. | Open |
+| 4 | **LLM output robustness** — PM agent LLM calls will face malformed JSON, content-filter trips, and dropped fields in real use. Zod-validated parsing and retry-with-correction loops are needed (existing `walkthrough-service.ts` provides a defensive parsing reference but lacks Zod and retry). | Risk — must be addressed |
+| 5 | **Retry / timeout / backoff strategy** — How many retries per LLM call, what backoff, what counts as terminal vs. transient failure, what timeout? Must be specified concretely, not as a verb. | Risk — must be addressed |
+| 6 | **Concurrent evaluation race conditions** — Multiple child completions or manual reruns could trigger concurrent evaluations on the same Goal. Atomic status transitions (e.g., `UPDATE WHERE status='ACTIVE'` returning rowcount) needed to prevent clobber. | Risk — must be addressed |
+| 7 | **Approval workflow completeness** — PENDING_APPROVAL state exists in the design, but the full workflow (where does the proposal live, approve/reject endpoints, what happens on reject) must be fully specified. | Risk — partially designed |
+| 8 | **First-child cold start** — For the first evaluation (no completed children), the PM agent has only the goal description and setup artifacts. Goals may need richer descriptions than tickets to produce a good first proposal. | Risk — document requirement |
+| 9 | **Cost per Goal** — Two LLM calls per evaluation × up to 20 evaluations = 40 LLM calls per Goal upper bound. At Sonnet-class pricing with ~5K-context evaluations, expect ~$1-3/goal floor. Worth monitoring. | Risk — informational |
+| 10 | **PM agent calibration** — Over-conservative (endlessly proposing polish) or over-permissive (declaring done prematurely). Protocol mitigations designed but untested. Calibration eval fixtures should be part of PM agent implementation DoD. | Risk — requires tuning |
+| 11 | **Context window management** — As children accumulate (up to 20), PM agent input context grows. Summarization strategy (older children summarized, latest child in full, criteria always in full) specified but not validated. | Risk |
 
 ## Artifact Inputs Used
 
 | Artifact | Why Used | Key Takeaway |
 |----------|----------|--------------|
-| ticket.md (all repos) | Primary specification via Research Report RSH-488 | Comprehensive Goals spec: lifecycle, PM agent 7-question evaluation protocol, parent-child design, cross-repo impact, phasing plan, open design questions |
-| scout/scout-summary.md (helix-global-server) | Server-side change scope and extension points | resolveDependentTickets pattern at line 1724, completion hooks at lines 1544/2636, RESEARCH mode filtering precedent, SIDE_QUEST_PENDING discrepancy |
-| diagnosis/diagnosis-statement.md (helix-global-server) | Root cause analysis and evidence | Confirmed 17 statuses (not 15), no parent-child columns, two new statuses needed, Sprint.goal no collision |
-| scout/scout-summary.md (helix-global-client) | Client-side change scope | 11 files, RESEARCH mode precedent for mode-specific rendering, type definition patterns |
-| diagnosis/diagnosis-statement.md (helix-global-client) | Client evidence summary | const-as-const type patterns, OKLCH color token pattern, platform config gating |
-| scout/scout-summary.md (helix-cli) | CLI change scope | 1 code change (VALID_MODES) + 3 doc string updates |
-| diagnosis/diagnosis-statement.md (helix-cli) | CLI evidence summary | Minimal change: array element + help text updates |
-| repo-guidance.json (library run root) | Repo intent mapping | helix-global-server primary target, helix-global-client secondary, helix-cli tertiary, library context-only |
+| ticket.md Research Report (RSH-488) | Primary specification for Goals & PM Agent | 7-question evaluation protocol, per-ticket triggers, autonomous execution, entity model analyzed, lifecycle and phasing defined |
+| ticket.md Continuation Context (user code review) | User design directives that resolve open questions and identify design gaps | Separate entity decided, separate UI decided, dual-phase PM agent decided, 6 design gaps identified (LLM parsing, retry, races, approval workflow, cold start, cost) |
+| ticket.md Description | Ticket intent | "Goals can be their own thing. They don't need to be tickets" |
+| scout/scout-summary.md (helix-global-server) | Server-side verified state and extension points | 17 TicketStatus, 5 TicketMode, no Goal code exists, resolveDependentTickets at line 1724, completion hooks at 1544/2636, RESEARCH mode filtering precedent |
+| diagnosis/diagnosis-statement.md (helix-global-server) | Corrected schema facts, service architecture, 6 design gaps confirmed | GoalStatus enum, GoalEvaluation model, goal-service.ts architecture, Zod validation needed, atomic transitions needed, PENDING_APPROVAL state needed |
+| scout/reference-map.json (helix-global-server) | File locations and verified facts | createTicketForOrganization at line 646, callClaude/parseCodeTourJson patterns in walkthrough-service.ts, 58 existing migrations |
+| scout/scout-summary.md (helix-global-client) | Client architecture and pattern files | React 19 + RR v7 + TanStack RQ v5 + Tailwind v4; 2,921-line ticket-detail.tsx NOT to modify; OKLCH token pattern |
+| diagnosis/diagnosis-statement.md (helix-global-client) | Client change scope and constraints | All greenfield Goal UI: routes, pages, components, API hooks, styling; no modifications to existing ticket UI |
+| scout/scout-summary.md (helix-cli) | CLI structure and pattern | VALID_MODES unchanged; new `hlx goals` command family needed |
+| diagnosis/diagnosis-statement.md (helix-cli) | CLI change scope | New src/goals/ directory; create, list, get, terminate subcommands |
+| diagnosis/diagnosis-statement.md (library) | Prior implementation plan assessment | Prior RSH-534 report built on two rejected premises (TicketMode + single-call PM agent); full rewrite needed |
