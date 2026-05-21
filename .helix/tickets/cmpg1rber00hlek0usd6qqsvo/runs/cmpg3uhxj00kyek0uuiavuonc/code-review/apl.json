@@ -1,0 +1,47 @@
+{
+  "questions": [
+    "Does the --full flag implementation correctly print the full body after the TOC?",
+    "Is default behavior (without --full) truly unchanged?",
+    "Are all four acceptance criteria satisfied?",
+    "Are there any regression risks from the changes?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes. The hasFlag(args, '--full') check at show.ts:67 is placed after the TOC loop (lines 44-65). When set, it prints a markdown separator and then item.content. The null guard at lines 28-30 returns early before both paths, so null content is handled safely.",
+      "evidence": [
+        "src/library/show.ts:67-70 — conditional block: if (hasFlag(args, '--full')) { console.log('\\n---\\n'); console.log(item.content); }",
+        "src/library/show.ts:28-30 — early return for null content before both TOC loop and --full block",
+        "src/library/show.ts:44-65 — existing TOC loop is unmodified"
+      ]
+    },
+    {
+      "answer": "Yes. The new code block at lines 67-70 is fully conditional on hasFlag(args, '--full'). Without the flag, execution skips the block entirely. The existing TOC rendering loop (lines 44-65) is not modified. extractLibraryItemRef in resolve-library-item.ts correctly skips --full via the !a.startsWith('-') filter, so ref extraction is unaffected.",
+      "evidence": [
+        "src/library/show.ts:67 — conditional gate: if (hasFlag(args, '--full'))",
+        "src/lib/resolve-library-item.ts:23 — positional arg extraction skips flags: args.find(a => !a.startsWith('-'))",
+        "src/library/show.ts:44-65 — TOC loop code unchanged"
+      ]
+    },
+    {
+      "answer": "Yes. (1) --full prints item.content after TOC via show.ts:67-70. (2) Default output is unchanged — new block is conditional. (3) Help text verified: 'node dist/index.js library show --help' outputs [--full] and description. (4) Skill docs updated: commands.md lines 300-311 show [--full] in code block and flag table.",
+      "evidence": [
+        "node dist/index.js library show --help — output includes 'Usage: hlx library show <ref> [--full]' and '--full    Include the full markdown body after the TOC'",
+        "skill-content/references/commands.md:303 — code block: 'hlx library show <ref> [--full]'",
+        "skill-content/references/commands.md:308-310 — flag table with --full described",
+        "npm run build — tsc exits 0",
+        "npm test — 63 pass, 0 fail"
+      ]
+    },
+    {
+      "answer": "No regression risks identified. The change is purely additive: a single conditional block gated by --full, placed after the existing TOC loop. No existing code paths are modified. No shared utilities, API contracts, or data flows are changed. The hasFlag utility and resolve-library-item module are used as-is without modification.",
+      "evidence": [
+        "src/library/show.ts — only additions: line 2 (import), line 24 (_args -> args rename), lines 67-70 (conditional block)",
+        "src/lib/flags.ts — unchanged",
+        "src/lib/resolve-library-item.ts — unchanged",
+        "npm test — all 63 existing tests pass"
+      ]
+    }
+  ],
+  "statement": "Code review complete. All four changed files reviewed against ticket requirements, product spec, and implementation plan. No issues found. The implementation correctly adds a --full flag using the established hasFlag() pattern. Default behavior is unchanged. Help text and skill documentation are properly updated. TypeScript compiles cleanly, all 63 tests pass. No code changes made by review.",
+  "followups": []
+}
