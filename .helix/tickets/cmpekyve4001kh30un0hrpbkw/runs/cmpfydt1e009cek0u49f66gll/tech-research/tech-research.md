@@ -3,72 +3,95 @@
 ## Technology Foundation
 
 - **Runtime**: Node.js, TypeScript
-- **Build**: tsc
-- **Test**: tsc && node --test
-- **Existing pattern**: VALID_MODES const array with uppercase normalization and includes validation
+- **Build**: `tsc`; Test: `tsc && node --test`
+- **Current structure**: `src/tickets/` for ticket commands, `src/docs/` for documentation content
 
-## Architecture Decision 1: Add GOAL to VALID_MODES
+---
 
-### Approach
+## Architecture Decision: New `hlx goals` Command Namespace
 
-Minimal change: add `'GOAL'` to the `VALID_MODES` const array at `src/tickets/create.ts` line 13. The existing mode validation logic (lines 79-88) normalizes input to uppercase and uses `includes()` -- no logic changes needed. The mode is conditionally included in the request body (line 147) -- no structural changes needed.
+### Options Considered
 
-### Supporting Changes
+**Option A: Add GOAL to VALID_MODES in src/tickets/create.ts**
+- Minimal change: 1 array element + 3 doc string updates
+- Users create Goals via `hlx tickets create --mode GOAL`
+- Prior RSH-534 report assumed this approach
 
-| File | Change | Purpose |
-|------|--------|---------|
-| `src/tickets/create.ts` line 13 | Add `'GOAL'` to VALID_MODES array | Accept GOAL mode for ticket creation |
-| `src/tickets/create.ts` line 17 | Update usage string | List GOAL in help text |
-| `src/tickets/index.ts` | Update help text | List GOAL in command description |
-| `src/docs/cli-content.ts` | Update documentation | List GOAL in CLI documentation |
+**Option B: New `hlx goals` command namespace**
+- New `src/goals/` directory with dedicated commands
+- `hlx goals create --title "..." --description "..."`
+- `hlx goals list`, `hlx goals get <id>`, `hlx goals terminate <id>`
+- Goals are not tickets -- command structure reflects this
 
-### Rejected Alternative: Goal-Specific CLI Flags
+### Chosen Option: B -- New `hlx goals` Namespace
 
-Goal-specific creation fields (e.g., `--max-children`) are not needed at CLI creation time for MVP. The server API handles defaults (maxChildren=20). If Goal-specific CLI options are needed later, they can be added as optional flags to the create command.
+### Rationale
+
+Since Goals are a separate database entity (not a TicketMode), the CLI should reflect this:
+- Goals are not tickets. `hlx tickets create --mode GOAL` implies Goals are a type of ticket.
+- The user said: "Goals can be their own thing. They don't need to be tickets."
+- Goal-specific operations (terminate with verdict, list evaluations) don't fit the ticket command structure.
+
+### Key Consequences
+
+1. **VALID_MODES unchanged** -- stays at 5 values (AUTO, BUILD, FIX, RESEARCH, EXECUTE)
+2. **New `src/goals/` directory** with create.ts, list.ts, get.ts, terminate.ts
+3. **New `hlx goals` top-level command** registered in the CLI entry point
+4. **Goal-specific flags**: `--max-children`, `--title`, `--description`
+
+---
+
+## Commands
+
+| Command | Purpose |
+|---------|---------|
+| `hlx goals create --title "..." --description "..."` | Create a Goal |
+| `hlx goals list` | List Goals for the organization |
+| `hlx goals get <id>` | Get Goal detail with evaluation history |
+| `hlx goals terminate <id> --verdict <complete\|failed>` | Operator termination |
+
+---
+
+## Technical Decisions
+
+| Decision | Chosen | Rejected | Why |
+|----------|--------|----------|-----|
+| Command namespace | `hlx goals` (new) | `hlx tickets create --mode GOAL` | Goals are separate entities, not ticket modes |
+| VALID_MODES | Unchanged (5 values) | Add GOAL | No GOAL TicketMode exists |
+| API calls | Goal-specific endpoints (/api/goals/*) | Ticket endpoints | Separate entity has separate API |
+
+---
 
 ## Technical Checks
 
-[TCK-01] GOAL in VALID_MODES and help text
-- Decision Reference: "Add GOAL to VALID_MODES const array"
-  (from Architecture Decision 1)
+[TCK-01] CLI uses dedicated `hlx goals` namespace, not ticket mode
+- Decision Reference: "New hlx goals namespace" (Architecture Decision)
 - Verification Method: code-inspection
-- Expected Evidence: src/tickets/create.ts VALID_MODES array includes 'GOAL'. Usage strings in create.ts, index.ts, and cli-content.ts mention GOAL.
+- Expected Evidence: `src/goals/` directory exists with create.ts, list.ts, get.ts, terminate.ts. VALID_MODES in `src/tickets/create.ts` does NOT contain GOAL.
 
-## Performance Expectations
-
-No performance impact. Adding a string to a const array.
+---
 
 ## Dependencies
 
-No new dependencies required.
+No new dependencies. Uses existing HTTP client for API calls.
 
-## Risks
-
-No risks. Trivial addition following established pattern.
-
-## Deferred to Round 2
-
-- Goal-specific CLI flags (--max-children, --terminate)
-- Goal status display in `hlx tickets get` output
-- Goal child tree display in CLI
+---
 
 ## Summary Table
 
-| Decision | Choice | Key Rationale |
-|----------|--------|---------------|
-| VALID_MODES addition | Add 'GOAL' string to array | Existing validation handles new values automatically |
-| Goal-specific flags | Deferred | Server defaults sufficient for MVP |
+| Area | Decision | Confidence |
+|------|----------|------------|
+| Command structure | `hlx goals` namespace | High -- follows separate entity |
+| VALID_MODES | Unchanged | High -- no GOAL TicketMode |
+| Implementation scope | 4 new command files + registration | Medium -- new directory pattern |
 
-## APL Statement Reference
-
-See tech-research/apl.json for investigation context.
+---
 
 ## Artifact Inputs Used
 
 | Artifact | Why Used | Key Takeaway |
 |----------|----------|--------------|
-| ticket.md (Research Report RSH-488) | Primary specification | Section 4.2: CLI change is adding GOAL to VALID_MODES |
-| diagnosis/diagnosis-statement.md (helix-cli) | Root cause analysis | 1 code change + 3 doc string updates; no structural changes |
-| diagnosis/apl.json (helix-cli) | Investigation findings | Minimal scope confirmed; validation handles new values automatically |
-| scout/scout-summary.md (helix-cli) | Analysis summary | VALID_MODES at line 13, usage strings at 3 locations |
-| product/product.md (helix-global-server) | Product requirements | CLI support: `hlx tickets create --mode GOAL` is MVP feature #12 |
+| ticket.md (Description) | User entity preference | "Goals can be their own thing" -- separate CLI namespace |
+| diagnosis/diagnosis-statement.md (cli) | Current state | VALID_MODES at create.ts line 13, 5 values, uppercase normalization |
+| scout/scout-summary.md (cli) | Change scope analysis | If separate entity: new goals/ directory with commands (not just VALID_MODES update) |
+| Server tech-research | Entity model decision | Goals are separate entity -- CLI command structure follows |

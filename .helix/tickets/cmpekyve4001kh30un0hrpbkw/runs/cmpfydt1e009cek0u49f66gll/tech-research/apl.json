@@ -1,17 +1,18 @@
 {
   "questions": [
-    "What changes does helix-cli need to support GOAL mode ticket creation?"
+    "Should the CLI add GOAL to VALID_MODES or create a new command namespace, given that Goals are a separate entity?"
   ],
   "answers": [
     {
-      "answer": "Minimal change: add 'GOAL' to VALID_MODES array (create.ts line 13) and update 3 usage/documentation strings. Existing mode validation normalizes to uppercase and uses includes check -- no logic changes needed. Goal-specific CLI flags (e.g., --max-children) deferred to post-MVP; server API handles defaults.",
+      "answer": "New `hlx goals` command namespace. Since Goals are a separate database entity (not a TicketMode), the CLI should reflect this: `hlx goals create`, `hlx goals list`, `hlx goals get`, `hlx goals terminate`. The VALID_MODES array in src/tickets/create.ts stays at 5 values. Goal-specific operations (terminate with verdict, evaluation history) don't fit the ticket command structure.",
       "evidence": [
-        "src/tickets/create.ts line 13: VALID_MODES = ['AUTO','BUILD','FIX','RESEARCH','EXECUTE']",
-        "src/tickets/create.ts lines 79-88: uppercase normalization, includes validation -- handles new values automatically",
-        "Diagnosis: 'Minimal change: array element + help text updates'"
+        "Server tech-research: Goals are separate entity, not TicketMode",
+        "ticket.md Description: 'goals can be their own thing. They don't need to be tickets'",
+        "src/tickets/create.ts line 13: VALID_MODES stays unchanged",
+        "scout/scout-summary.md (cli): 'If separate entity: new goals/ directory with commands'"
       ]
     }
   ],
-  "statement": "CLI technical direction: add 'GOAL' to VALID_MODES array and update 3 help text strings. No structural or validation logic changes needed. Goal-specific CLI flags deferred to post-MVP.",
+  "statement": "The CLI implements Goals as a new `hlx goals` command namespace (create, list, get, terminate) in a new src/goals/ directory. VALID_MODES in src/tickets/create.ts is unchanged. This follows from Goals being a separate database entity, not a TicketMode.",
   "followups": []
 }
