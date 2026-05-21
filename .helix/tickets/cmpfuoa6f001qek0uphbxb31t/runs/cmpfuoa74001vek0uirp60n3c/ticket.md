@@ -15,3 +15,9 @@ I'm still getting frustrated with the verification. Look at this example: my pro
 
 ## Attachments
 - (none)
+
+## Discussion
+- **Usher** (2026-05-21T18:55:12.348Z) [Helix]: @Helix example cmpfrce0v003tjm0uzjyz83mt
+- **Helix** (2026-05-21T18:55:24.654Z) [Agent]: That run ID (`cmpfrce0v003tjm0uzjyz83mt`) doesn't appear to be associated with this ticket, so I'm unable to pull its details directly here.
+
+Could you share a bit more about what ticket or project that run belongs to? That way I can better understand the specific verification example you're referring to and give you a more grounded answer to your broader question about where the verification breakdown is happening.
