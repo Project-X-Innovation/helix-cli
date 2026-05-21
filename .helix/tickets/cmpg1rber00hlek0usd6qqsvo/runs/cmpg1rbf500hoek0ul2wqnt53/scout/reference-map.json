@@ -1,0 +1,63 @@
+{
+  "problem": "hlx library show <ref> fetches the full item content from /api/library/items/:id but only prints extracted headings (TOC). There is no flag to print the full markdown body. Users and agents must fall back to raw API calls to read report content.",
+  "files": [
+    {
+      "path": "src/library/show.ts",
+      "why": "Primary handler for `hlx library show`. Contains cmdShow() which fetches item.content (line 24) but discards non-heading lines (line 62 comment: 'Skip non-heading content for brevity'). This is the main file to modify."
+    },
+    {
+      "path": "src/library/index.ts",
+      "why": "Routes `show` subcommand, provides --help text (line 39: 'Usage: hlx library show <ref>'). Help text needs updating to document --full flag. Passes `rest` args to cmdShow."
+    },
+    {
+      "path": "src/lib/flags.ts",
+      "why": "Provides hasFlag() utility (line 11-13) used throughout codebase for boolean flags like --json, --dry-run, --archived, --force. Same pattern needed for --full."
+    },
+    {
+      "path": "src/lib/resolve-library-item.ts",
+      "why": "Contains extractLibraryItemRef() and resolveLibraryItem() used by the show command. No changes needed but documents how ref resolution works upstream of cmdShow."
+    },
+    {
+      "path": "src/lib/http.ts",
+      "why": "hxFetch() used by cmdShow to call /api/library/items/:id. Already fetches item.content — no API-side changes needed."
+    },
+    {
+      "path": "skill-content/references/commands.md",
+      "why": "Documents `hlx library show` at lines 300-308. Acceptance criteria requires documenting --full flag here."
+    },
+    {
+      "path": "skill-content/SKILL.md",
+      "why": "Top-level skill doc references library commands at line 44 and in the workflow. May need mention of --full."
+    },
+    {
+      "path": "src/index.ts",
+      "why": "Main CLI entry point. Line 55 shows 'hlx library show <ref>' in top-level usage. May need updating to mention --full."
+    },
+    {
+      "path": "src/docs/cli-content.ts",
+      "why": "Embedded docs export. Does NOT currently document library commands at all — a pre-existing gap. Ticket acceptance criteria does not explicitly require updating this file."
+    },
+    {
+      "path": "src/lib/flags.test.ts",
+      "why": "Existing test file for flags utilities. Documents test patterns using node:test and node:assert."
+    }
+  ],
+  "facts": [
+    "cmdShow() already fetches item.content from /api/library/items/:id (show.ts line 24) and checks for null content (line 27). The full body is available in memory but only headings are printed.",
+    "The _args parameter in cmdShow signature (show.ts line 23) receives the CLI args array but is unused (underscore prefix convention). Renaming it to 'args' and checking hasFlag(args, '--full') follows the established pattern.",
+    "hasFlag() is the established pattern for boolean CLI flags across the codebase: --json (tickets/list.ts:45), --dry-run (tickets/continue.ts:30), --archived (tickets/list.ts:48), --force (skill/install.ts:28), --current (token/add.ts:36).",
+    "The LibraryItemDetail type (show.ts lines 5-9) already types content as 'string | null'.",
+    "No library-specific test files exist. Test files exist for: lib/flags, lib/resolve-ticket, skill/skill, update/extract, update/perform, update/version.",
+    "Build: tsc. Test: tsc && node --test dist/**/*.test.js. No lint or CI workflow files found.",
+    "No ORM, no migrations — this is a pure CLI tool with no database.",
+    "The skill-content/references/commands.md 'hlx library show' section (lines 300-308) does not mention any flags.",
+    "src/docs/cli-content.ts does not document any library commands — this is a pre-existing gap not addressed by this ticket.",
+    "The library/index.ts help for show (line 39) currently reads: 'Usage: hlx library show <ref>'. It needs [--full] appended.",
+    "The src/index.ts usage block (line 55) shows: 'hlx library show <ref>          Show report with section annotations'."
+  ],
+  "unknowns": [
+    "Whether the ticket's stretch goals (--body-only, --out <path>) should be included. The ticket says 'optional, only if cheap'.",
+    "Whether src/docs/cli-content.ts should be updated to add library command documentation. The ticket's acceptance criteria mentions 'hlx skill show' but not the docs export.",
+    "No runtime inspection manifest available — cannot verify the /api/library/items/:id response shape against a live endpoint."
+  ]
+}
