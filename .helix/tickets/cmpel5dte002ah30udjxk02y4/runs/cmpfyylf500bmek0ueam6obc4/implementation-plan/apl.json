@@ -1,25 +1,18 @@
 {
   "questions": [
-    "What CLI changes are needed for HTML report support?",
-    "Should a new HTML parsing dependency be added?"
+    "Q1: Does the CLI need code changes for this rerun?"
   ],
   "answers": [
     {
-      "answer": "Three steps: (1) add filePath to the local LibraryItemDetail type, (2) add dual-pattern heading extraction in show.ts - HTML heading regex first, Markdown regex as fallback, (3) run TypeScript compilation. Only show.ts needs changes. All comment commands are format-agnostic.",
+      "answer": "No. The CLI dual heading extraction is complete from prior runs. show.ts lines 47-67 handle HTML headings (regex priority), lines 69-85 fall back to Markdown. Comment system is anchor-based and format-agnostic. Only typecheck verification is needed.",
       "evidence": [
-        "show.ts line 46: current Markdown heading regex /^(#{1,6})\\s+(.+)$/",
-        "show.ts lines 4-9: local LibraryItemDetail type lacks filePath",
-        "comments-list.ts and comments-post.ts: format-agnostic, anchor-based"
-      ]
-    },
-    {
-      "answer": "No. The CLI has zero runtime dependencies by design. A simple regex /<h([1-6])(?:\\s+[^>]*?id=\"([^\"]*)\"[^>]*)?>(.+?)<\\/h\\1>/i reliably extracts heading level, id, and text from well-formed HTML headings. Adding a full HTML parser for one regex replacement would be over-engineering.",
-      "evidence": [
-        "package.json: zero runtime dependencies (devDependencies only: typescript, @types/node)",
-        "tech-research: Architecture Decision 1 - dual regex chosen over HTML parsing library"
+        "diagnosis/diagnosis-statement.md (CLI): 'No code changes needed'",
+        "tech-research/tech-research.md (CLI): '0 files changed — dual extraction confirmed complete'",
+        "show.ts line 48: HTML heading regex confirmed working",
+        "show.ts line 70: Markdown fallback regex confirmed working"
       ]
     }
   ],
-  "statement": "The CLI implementation plan covers 3 atomic steps: add filePath to the local type, add dual-pattern heading extraction (HTML regex first, Markdown fallback), and pass TypeScript compilation. Zero new dependencies. Only show.ts is modified.",
+  "statement": "No CLI code changes needed. Dual heading extraction is complete from prior runs. Only typecheck verification is required.",
   "followups": []
 }
