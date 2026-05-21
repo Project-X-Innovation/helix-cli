@@ -1,84 +1,67 @@
 {
-  "title": "Restructure bundled hlx-cli skill: progressive disclosure + CI sync",
-  "description": "Tour of the 8 files created/modified to restructure the bundled skill with progressive disclosure, full CLI surface coverage, new reference documents, and CI enforcement.",
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "Skill Surface Sync: Progressive Disclosure + CI Enforcement",
+  "description": "This tour walks through the changes made to restructure the bundled hlx-cli skill (skill-content/) into a 10-section progressive-disclosure format, refresh documentation for the post-PR-86 GitHub-release-asset update flow, add three new reference documents, introduce a CI script that enforces CLI surface coverage in skill docs, and wire it all together with a GitHub Actions workflow and PR template checkbox. No CLI binary behavior is modified — all changes are documentation, scripting, and CI.",
   "steps": [
     {
-      "file": "skill-content/SKILL.md",
-      "line": 3,
-      "title": "Trigger-heavy YAML description",
-      "description": "The YAML frontmatter description (481 chars, <= 1024 limit) front-loads trigger keywords for both CLI-ops (HELIX_API_KEY, HELIX_URL, inspect, tickets) and ticket-writing (ticket prompting, install recovery). This enables accurate agent activation regardless of whether the request is about CLI operations or ticket authoring."
+      "file": ".helix/tickets/cmpfq20zw002ejm0uneoupq4m/runs/cmpfq210b002hjm0uhyvia4h8/diagnosis/diagnosis-statement.md",
+      "line": 1,
+      "description": "The diagnosis statement captures the five-part compound problem this change resolves. SKILL.md had a flat 5-section layout (196 lines) instead of the required 10-section progressive-disclosure format. commands.md was missing significant CLI surface (--search, --user, --status-not-in, --archived, --sprint, --json on tickets list, the update-description subcommand, and multiple enum values). The post-PR-86 GitHub-release-asset update flow (staged download→extract→validate→swap to ~/.hlx/staging/) was completely undocumented. Three required reference documents (recovery.md, ticket-prompting.md, current-state.md) did not exist. And critically, there was no CI enforcement preventing future documentation drift. Read this file first to understand the intent behind every subsequent change.",
+      "title": "Overview: Why These Changes Were Needed"
     },
     {
-      "file": "skill-content/SKILL.md",
-      "line": 13,
-      "title": "Progressive-disclosure body: Workflow section",
-      "description": "The body follows a 10-section progressive-disclosure layout (9 ## headings). Workflow comes first as the highest-frequency agent task. Each section is concise; detailed content lives in linked reference files to stay within the 5,000-token body budget."
+      "file": ".helix/tickets/cmpfq20zw002ejm0uneoupq4m/runs/cmpfq210b002hjm0uhyvia4h8/implementation-plan/implementation-plan.md",
+      "line": 1,
+      "description": "The implementation plan establishes the correct authoring order: reference docs first (current-state.md, recovery.md, ticket-prompting.md) because they are independent; then commands.md to provide the token coverage the parser will validate against; then SKILL.md which links to all reference files; then the parser script that reads SKILL.md and commands.md; then the CI workflow that runs the parser; and finally the PR template which is fully independent. Six guiding principles govern every file: document-only changes, single source of truth from --help output, progressive disclosure with SKILL.md body ≤5,000 tokens, hard enforcement via non-zero exit, zero new Node.js dependencies, and auto-discovery of new reference files via the existing readdirSync logic in src/skill/install.ts.",
+      "title": "Implementation Plan: Ordering and Principles"
     },
     {
-      "file": "skill-content/SKILL.md",
-      "line": 50,
-      "title": "Ticket work gotchas section",
-      "description": "Documents operational traps proven in practice: --description vs --description-file file-path detection, 10,000-char cap, dependency flags, --dry-run, update-description, and --mode RESEARCH guidance."
+      "file": ".helix/tickets/cmpfq20zw002ejm0uneoupq4m/runs/cmpfq210b002hjm0uhyvia4h8/implementation-plan/implementation-plan.md",
+      "line": 35,
+      "description": "Eight files are created or modified in this change. Five are skill content (SKILL.md rewrite, commands.md expansion, and three new reference docs). One is the parser script (scripts/skill-sync/check-coverage.mjs). One is the CI workflow (.github/workflows/skill-sync.yml). One is the PR template (.github/pull_request_template.md). This section of the plan is the authoritative inventory — any code review or future audit should verify exactly these 8 paths are present and nothing in src/ or build tooling is touched.",
+      "title": "File Inventory: All 8 Deliverables"
     },
     {
-      "file": "skill-content/references/commands.md",
-      "line": 77,
-      "title": "Full CLI surface: tickets list flags",
-      "description": "Expanded from 127 to 387 lines. Every subcommand at every depth, every long-form flag, all enum values. This section shows the previously-missing tickets list flags (--search, --user, --status, --status-not-in, --archived, --sprint, --json)."
+      "file": ".helix/tickets/cmpfq20zw002ejm0uneoupq4m/runs/cmpfq210b002hjm0uhyvia4h8/diagnosis/apl.json",
+      "line": 1,
+      "description": "The diagnosis APL records the six analytical questions and their answers that shaped the implementation. Q4 is especially important: it confirmed that new reference files in references/ are auto-discovered by the existing skill install mechanism (src/skill/install.ts readdirSync at line 58), meaning no code changes are needed to make recovery.md, ticket-prompting.md, and current-state.md visible to Claude after skill install. Q5 identified the three token categories the CI parser must extract: subcommand names, long-form flags (--[a-z][a-z0-9-]*), and enum values (pipe-separated inside angle brackets). Q6 confirmed no conflicting existing CI workflows, PR templates, or scripts/ directories.",
+      "title": "Diagnosis APL: Key Decisions During Investigation"
     },
     {
-      "file": "skill-content/references/commands.md",
-      "line": 117,
-      "title": "Mode enum values and description-file flag",
-      "description": "tickets create now documents the full --mode enum (AUTO|BUILD|FIX|RESEARCH|EXECUTE) and the --description-file flag separately from --description, addressing the CLI file-path detection gotcha."
+      "file": ".helix/tickets/cmpfq20zw002ejm0uneoupq4m/runs/cmpfq210b002hjm0uhyvia4h8/implementation-plan/apl.json",
+      "line": 1,
+      "description": "The implementation APL resolves four key planning decisions. Q2 and Q3 address parser edge cases that would otherwise cause false positives or missed tokens: pipe-separated subcommand alternatives on bare usage lines (hlx org current|list|switch), prose-format rating enum values (critical/high/medium/low appearing in sentences rather than angle-bracket syntax), and a blocklist of non-command words that appear after 'hlx' in help text but are not actual subcommands. Q4 specifies the exact 8 acceptance-criteria verification steps including the critical negative test: removing --search from commands.md and confirming the parser exits 1 with the missing token listed.",
+      "title": "Implementation APL: Parser Edge Cases and Verification"
     },
     {
-      "file": "skill-content/references/commands.md",
-      "line": 322,
-      "title": "Library comments with rating enums",
-      "description": "The deepest nesting level (depth 3: hlx library comments post) now documents --section, --rating, --reply-to flags and all rating enum values (thumbs-up/up, thumbs-down/down, love)."
-    },
-    {
-      "file": "skill-content/references/recovery.md",
-      "line": 5,
-      "title": "GitHub-release-asset update flow",
-      "description": "Documents the 7-step staged update pipeline derived from src/update/check.ts, perform.ts, and validate.ts. Covers GitHub API resolution, tarball download, in-process extraction, validation checks, and atomic rename-based swap with .bak rollback."
-    },
-    {
-      "file": "skill-content/references/recovery.md",
-      "line": 56,
-      "title": "Broken-install recovery",
-      "description": "Step-by-step recovery: try hlx update first, then manual tarball download from GitHub releases. Includes a diagnostic table mapping symptoms to likely causes and fixes. No npm install/uninstall/link recommendations."
-    },
-    {
-      "file": "skill-content/references/ticket-prompting.md",
-      "line": 3,
-      "title": "Core Rule: hard-constraint language",
-      "description": "The ticket-authoring guide uses hard constraints (must, must not, do not, fail closed) throughout. The Core Rule section establishes that every ticket is a self-contained contract with explicit scope, failure behavior, and cardinality semantics."
-    },
-    {
-      "file": "skill-content/references/ticket-prompting.md",
-      "line": 57,
-      "title": "Common Failure Modes with examples",
-      "description": "All 5 failure modes documented with concrete examples: scope expansion, over-optimization, fail-open, batch/cardinality, and domain vocabulary drift (e.g., SDF AccountConfiguration vs Objects)."
-    },
-    {
-      "file": "scripts/skill-sync/check-coverage.mjs",
-      "line": 153,
-      "title": "Recursive --help token collection",
-      "description": "The core algorithm: recursively walk --help output starting from the top-level command. At each level, extract subcommand names, long-form flags, and enum values. Handles pipe-separated alternatives (org current|list|switch), angle-bracket enums, and prose-format rating values."
-    },
-    {
-      "file": "scripts/skill-sync/check-coverage.mjs",
-      "line": 244,
-      "title": "Coverage check and exit codes",
-      "description": "For each extracted token, check case-sensitive substring match against backtick-stripped SKILL.md + commands.md content. Exit 0 = all covered, exit 1 = missing tokens listed to stderr, exit 2 = script error. The CI workflow fails the PR on any non-zero exit."
+      "file": ".github/pull_request_template.md",
+      "line": 1,
+      "description": "This is the simplest new file but serves an important human-process role. Every pull request now surfaces an explicit checklist item reminding contributors to update skill-content/SKILL.md or skill-content/references/commands.md if their PR changes user-visible CLI behavior. This creates a two-layer defense: the CI parser catches accidental omissions automatically, and the PR template prompts intentional awareness before the PR is even submitted. The checkbox is the last line of defense before the automated check runs.",
+      "title": "PR Template: Contributor Accountability Checkpoint"
     },
     {
       "file": ".github/workflows/skill-sync.yml",
       "line": 1,
-      "title": "CI workflow: skill surface sync",
-      "description": "Triggers on pull_request and push to main. Uses Node 22 (matching build-release.yml), npm ci (triggers tsc build via prepare script), then runs the parser. No secrets needed since --help works without auth via configOrHelp() stub."
+      "description": "The skill-sync workflow triggers on both pull_request events and push-to-main, ensuring coverage is enforced before merge and again after merge (catching any squash/rebase that might have slipped through). It uses Node 22 to match the project's toolchain, runs npm ci (which triggers the prepare script and therefore the build automatically), then executes the parser script directly via node scripts/skill-sync/check-coverage.mjs. The workflow intentionally has no continue-on-error — a non-zero exit from the parser is a hard CI failure. Setting HLX_SKIP_UPDATE_CHECK=1 prevents the parser from triggering the CLI's self-update flow during CI token discovery.",
+      "title": "CI Workflow: Hard Enforcement on Every PR and Main Push"
+    },
+    {
+      "file": ".github/workflows/skill-sync.yml",
+      "line": 22,
+      "description": "The final step in the workflow invokes the coverage parser directly. This step has no shell wrapper or error suppression — if check-coverage.mjs exits with code 1 (documentation gap found) or code 2 (unexpected runtime error), the workflow step fails and blocks the PR. The parser discovers CLI surface tokens by recursively invoking the built binary with --help flags, then diffs the discovered token set against what is documented in SKILL.md and commands.md. This is the automated enforcement that replaces the previously manual (and therefore drifting) documentation update process.",
+      "title": "CI Workflow: Parser Invocation Step"
+    },
+    {
+      "file": ".helix/tickets/cmpfq20zw002ejm0uneoupq4m/runs/cmpfq210b002hjm0uhyvia4h8/code-review/code-review-actual.md",
+      "line": 1,
+      "description": "The code review document confirms every file passed verification. The review cross-checked documentation claims against actual TypeScript source (src/update/check.ts, src/update/index.ts, src/update/perform.ts, src/update/validate.ts, src/tickets/create.ts). Key verification outcomes: SKILL.md has exactly 9 ## headings in the prescribed order (10 total with frontmatter), the description is 481 chars (well under the 1024-char limit), and includes both CLI-ops and ticket-writing trigger keywords. The parser discovers 75 tokens (29 subcommands, 39 flags, 7 enums) and exits 0 with current docs. The negative test (removing --search) causes exit 1 with the missing token listed. No npm recommendations appear anywhere in the skill content.",
+      "title": "Code Review: All 8 Files Verified Against Requirements"
+    },
+    {
+      "file": ".helix/tickets/cmpfq20zw002ejm0uneoupq4m/runs/cmpfq210b002hjm0uhyvia4h8/code-review/apl.json",
+      "line": 1,
+      "description": "The code review APL records the four quality gates and their evidence. Q3 (regressions to existing CLI behavior, build, tests, or skill install) is the most critical gate — it confirms that no src/ files were modified, the build and typecheck pass clean, existing tests are unaffected, and skill install correctly picks up all new reference files via the existing readdirSync auto-discovery. Q4 confirms prohibited patterns are absent: no npm install/uninstall/link recommendations appear in any skill content, and no soft language (should, may, might) is used for hard invariants in ticket-prompting.md or recovery.md. The codebase's major code paths remain fully intact.",
+      "title": "Code Review APL: Final Confidence Gates"
     }
   ]
 }
