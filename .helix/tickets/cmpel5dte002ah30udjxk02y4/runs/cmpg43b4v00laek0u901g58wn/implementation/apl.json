@@ -1,0 +1,16 @@
+{
+  "questions": [
+    "Q1: Does the CLI need code changes for this rerun?"
+  ],
+  "answers": [
+    {
+      "answer": "No. The CLI dual heading extraction is complete from prior runs. show.ts handles HTML headings (regex priority) and Markdown headings (fallback). Comment system is anchor-based and format-agnostic. Typecheck passes with zero errors.",
+      "evidence": [
+        "tsc --noEmit: exit code 0",
+        "diagnosis/diagnosis-statement.md (CLI): 'No code changes needed'"
+      ]
+    }
+  ],
+  "statement": "No CLI code changes needed. Typecheck passes. Dual heading extraction confirmed complete from prior runs.",
+  "followups": []
+}

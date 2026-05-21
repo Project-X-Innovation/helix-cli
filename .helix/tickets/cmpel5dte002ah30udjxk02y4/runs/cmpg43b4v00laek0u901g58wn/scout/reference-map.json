@@ -1,0 +1,51 @@
+{
+  "problem": "The CLI displays reports via hlx library show. The show command must handle HTML heading patterns for section annotation alongside existing Markdown heading support. The CLI already has dual parsing implemented.",
+  "files": [
+    {
+      "path": "src/library/show.ts",
+      "why": "Primary report display command. Lines 47-67: tries HTML heading regex first (<h[1-6] with optional id attr>), extracts heading text and anchor. Lines 69-85: falls back to Markdown heading regex (# through ######). Both paths annotate with comment summary counts."
+    },
+    {
+      "path": "src/library/list.ts",
+      "why": "Lists all library items (reports). Displays id, title, status, createdAt. No format-specific logic."
+    },
+    {
+      "path": "src/library/comments-post.ts",
+      "why": "Posts comments to report sections. Lines 63-67: submits anchor, rating, content, parentCommentId. Anchor-based, format-agnostic."
+    },
+    {
+      "path": "src/library/comments-list.ts",
+      "why": "Lists comments grouped by section anchor. Format-agnostic."
+    },
+    {
+      "path": "src/library/index.ts",
+      "why": "Router for library subcommands: list, show, comments."
+    },
+    {
+      "path": "src/lib/http.ts",
+      "why": "HTTP client. Line 65: sets Content-Type: application/json for POST. No content-format negotiation."
+    },
+    {
+      "path": "skill-content/SKILL.md",
+      "why": "CLI skill documentation. Lines 155-188: library reports section with command usage."
+    },
+    {
+      "path": "package.json",
+      "why": "No runtime dependencies. Build: tsc. Typecheck: tsc --noEmit. Test: tsc && node --test dist/**/*.test.js."
+    }
+  ],
+  "facts": [
+    "show.ts already handles both HTML and Markdown headings (HTML tried first on line 48, MD fallback on line 70).",
+    "HTML heading regex: /<h([1-6])(?:\\s+[^>]*?id=\"([^\"]*)\"[^>]*)?>(.+?)<\\/h\\1>/i - captures level, id attribute, and inner text.",
+    "Markdown heading regex: /^(#{1,6})\\s+(.+)$/ - captures hash count and text.",
+    "Both patterns output the same annotation format: hashes text [slug] (comment counts).",
+    "CLI has zero runtime dependencies. No HTML parsing library needed since regex suffices for heading extraction.",
+    "Comment posting (comments-post.ts) and listing (comments-list.ts) are anchor-based and format-agnostic.",
+    "No CLI-specific tests for report display exist.",
+    "Build: tsc. Test: tsc && node --test dist/**/*.test.js. Typecheck: tsc --noEmit."
+  ],
+  "unknowns": [
+    "Whether the HTML heading regex handles multi-line headings or headings with nested HTML (e.g., <h2 id=\"foo\"><strong>Bold Title</strong></h2>).",
+    "Whether non-heading HTML content lines should be stripped or displayed differently in CLI output - currently they print as raw HTML tags."
+  ]
+}
