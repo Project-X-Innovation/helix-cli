@@ -1,0 +1,33 @@
+{
+  "questions": [
+    "Q1: Does the CLI implementation follow the established command group pattern?",
+    "Q2: Are stdout and stderr correctly separated for composability?",
+    "Q3: Does error handling work correctly for nonexistent tickets?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes. The preview command group (src/preview/index.ts) follows the exact same pattern as src/tickets/index.ts: parsesubcommand from args[0], check --help, resolve ticket ref with extractTicketRef + resolveTicket, dispatch to handler. The handler (src/preview/db-url.ts) uses hxFetch with basePath '/api'. Registration in src/index.ts uses the configOrHelp pattern.",
+      "evidence": [
+        "src/preview/index.ts mirrors src/tickets/index.ts structure",
+        "src/preview/db-url.ts uses hxFetch like src/tickets/get.ts",
+        "src/index.ts case 'preview' uses configOrHelp like case 'tickets'"
+      ]
+    },
+    {
+      "answer": "Yes. The handler uses process.stdout.write(data.connectionUri + '\\n') for the URI and process.stderr.write('# Tip: ...') for the hint. On error paths, stdout.write is never reached because hxFetch throws and the error propagates to the top-level catch at src/index.ts:149-152, which writes to stderr via console.error.",
+      "evidence": [
+        "src/preview/db-url.ts: process.stdout.write and process.stderr.write",
+        "Verified: stdout capture via > /tmp/stdout.txt shows empty file on error, error on stderr"
+      ]
+    },
+    {
+      "answer": "Yes. The resolveTicket function from src/lib/resolve-ticket.ts handles the 'ticket not found' case identically to hlx tickets get. Tested with 'nonexistent-ticket-id' — exits 1, stderr shows 'Ticket not found in org', stdout is empty.",
+      "evidence": [
+        "Tested: node dist/index.js preview db-url nonexistent-ticket-id — exit 1, correct error",
+        "stdout capture file is empty on error path"
+      ]
+    }
+  ],
+  "statement": "The helix-cli implementation is complete: 2 new files (src/preview/db-url.ts, src/preview/index.ts) and 1 modified file (src/index.ts). TypeScript compiles, build passes, help text works at 3 levels, error behavior verified. Happy path blocked by staging DB lacking NeonBranchRecord columns.",
+  "followups": []
+}

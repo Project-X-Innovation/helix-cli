@@ -12,6 +12,7 @@ import { getPackageVersion } from "./update/version.js";
 import { runUpdate, checkAutoUpdate } from "./update/index.js";
 import { runSkill } from "./skill/index.js";
 import { runLibrary } from "./library/index.js";
+import { runPreview } from "./preview/index.js";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -51,6 +52,7 @@ Usage:
   hlx inspect api --repo <name> <path>
   hlx comments list [--ticket <id>] [--helix-only] [--since <iso-date>]
   hlx comments post [--ticket <id>] <message>
+  hlx preview db-url <ticket-ref>  Print Neon preview branch connection URI
   hlx library list                List library items
   hlx library show <ref>          Show report with section annotations
   hlx library comments list <ref> List section-grouped comments
@@ -92,6 +94,12 @@ try {
     case "comments": {
       const config = configOrHelp(args.slice(1));
       await runComments(config, args.slice(1));
+      break;
+    }
+
+    case "preview": {
+      const config = configOrHelp(args.slice(1));
+      await runPreview(config, args.slice(1));
       break;
     }
 
