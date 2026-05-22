@@ -1,0 +1,58 @@
+{
+  "questions": [
+    "What is the technical approach to enable full CLI capabilities for Helix agents?",
+    "Are any code changes required in helix-cli, helix-global-server, or helix-workflow-step-agent?",
+    "What is the publish mechanism and what are its prerequisites?",
+    "Are there breaking changes between the published v1.2.0 and the source v1.3.4?",
+    "What are the risks and dependencies of the publish approach?"
+  ],
+  "answers": [
+    {
+      "answer": "Publish the existing helix-cli v1.3.4 source to npm. The full CLI with all 10 top-level commands (login, token, inspect, comments, preview, library, org, tickets, skill, update) already exists in source. The existing publish.yml GitHub Actions workflow triggers on git tag push matching 'v*', builds via tsc, runs tests, validates the tarball, and publishes to npm with OIDC provenance. The helix-workflow-step-agent depends on @projectxinnovation/helix-cli@^1.2.0, which will automatically resolve to 1.3.4.",
+      "evidence": [
+        "helix-cli/src/index.ts: 10 commands in switch statement (lines 79-148)",
+        "helix-cli/package.json: version 1.3.4, publishConfig with access 'public' and provenance true",
+        "helix-cli/.github/workflows/publish.yml: tag-triggered workflow with tarball validation and npm publish",
+        "Diagnosis: sandbox has v1.2.0 with only login + inspect; v1.3.4 in source has all commands"
+      ]
+    },
+    {
+      "answer": "No code changes are required in any repository. The CLI v1.3.4 source already implements all needed commands. The server already supports all operations via hxi_ API keys with no auth restrictions. The consumer (helix-workflow-step-agent) semver range ^1.2.0 automatically picks up v1.3.x. The fix is purely operational: publish the existing source to npm.",
+      "evidence": [
+        "helix-cli/src/tickets/create.ts: POST /api/tickets with basePath '/api' -- full implementation present",
+        "helix-cli/src/comments/post.ts: POST /api/tickets/:id/comments with basePath '/api' -- full implementation present",
+        "helix-global-server: attachAuthContext resolves hxi_ keys to full AuthContext; requireAuth is null check only",
+        "Production logs: POST /api/tickets 201 confirmed; zero auth failures in 7-day window",
+        "repo-guidance.json: helix-cli intent='target', rationale='No code changes are needed'"
+      ]
+    },
+    {
+      "answer": "The publish.yml workflow is the established mechanism. Prerequisites: (1) npm OIDC trusted publishing must be configured for @projectxinnovation/helix-cli on npmjs.com, (2) GitHub Actions permissions id-token:write and contents:read, (3) Node 24 in CI for npm 11.x OIDC support, (4) git tag 'v1.3.4' pushed to the repo. The workflow validates tag version matches package.json version, packs the tarball, validates required files (dist/index.js, package.json, skill-content/SKILL.md), checks no test files leaked, then publishes with provenance.",
+      "evidence": [
+        "helix-cli/.github/workflows/publish.yml: lines 1-63 -- full workflow definition",
+        "helix-cli/package.json: prepare script runs 'npm run build' (tsc)",
+        "helix-cli/package.json: files array includes 'dist' (excluding tests) and 'skill-content'"
+      ]
+    },
+    {
+      "answer": "No breaking changes. v1.3.4 is a purely additive release over v1.2.0. It adds 8 new top-level commands (token, comments, preview, library, org, tickets, skill, update) while preserving the existing login and inspect commands. The bin mapping (hlx -> dist/index.js) is unchanged. The config loading (src/lib/config.ts) still supports all legacy env var names (HELIX_INSPECT_TOKEN, HELIX_INSPECT_API_KEY). The HTTP client (src/lib/http.ts) still supports hxi_ token prefix with X-API-Key header.",
+      "evidence": [
+        "helix-cli/src/index.ts: login and inspect cases unchanged in switch statement",
+        "helix-cli/package.json: bin.hlx still points to dist/index.js",
+        "helix-cli/src/lib/config.ts:42: HELIX_INSPECT_TOKEN still supported as alias",
+        "helix-cli/src/lib/http.ts:43: default basePath still '/api/inspect' for backward compat"
+      ]
+    },
+    {
+      "answer": "Primary risk: npm OIDC trusted publishing configuration status is unknown -- if not configured, the publish will fail with a 404. Mitigation: verify npm package settings before tagging, or fall back to NPM_TOKEN secret. Secondary risk: npm cache in sandbox provisioning may delay agents receiving v1.3.4 -- mitigated by next full sandbox provision. Low risks: 10,000-char description limit could cause failures for long agent-generated content (server returns clear Zod validation error), and CI test failures could block the publish (tests already pass on build-release.yml).",
+      "evidence": [
+        "helix-cli/.github/workflows/publish.yml: uses npm 11.x OIDC (no NPM_TOKEN env var visible)",
+        "helix-cli/src/tickets/create.ts:155-171: error parsing extracts server JSON errors",
+        "helix-global-server: Zod validation enforces title 1-160, description 1-10000 chars",
+        "helix-cli/.github/workflows/build-release.yml: confirms build+test pass on main branch pushes"
+      ]
+    }
+  ],
+  "statement": "The technical path to enable full CLI capabilities for Helix agents is a zero-code-change npm publish of the existing helix-cli v1.3.4 source. All required commands (tickets create, comments post, tickets list/get, etc.) already exist in the source code, the server API fully supports write operations via hxi_ API keys with no auth restrictions, and the CI/CD pipeline (publish.yml) is configured to build, validate, and publish on git tag push. The consumer's ^1.2.0 semver range will automatically pick up v1.3.4. The primary risk is unknown npm OIDC trusted publishing configuration status.",
+  "followups": []
+}
