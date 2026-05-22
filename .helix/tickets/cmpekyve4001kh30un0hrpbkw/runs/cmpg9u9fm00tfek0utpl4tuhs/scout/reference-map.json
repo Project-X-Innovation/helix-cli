@@ -1,0 +1,53 @@
+{
+  "problem": "Goals feature requires CLI support. Since Goals are a separate entity (user decision), the CLI needs a new 'hlx goals' command family (create, list, get, terminate) rather than adding GOAL to VALID_MODES. CLI is tertiary scope — depends on server API being built first.",
+  "files": [
+    {
+      "path": "src/tickets/create.ts",
+      "why": "185 lines. VALID_MODES at line 13: ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE']. Mode validation at lines 79-88 (getFlag, toUpperCase, includes check). VALID_MODES stays unchanged since Goals are a separate entity."
+    },
+    {
+      "path": "src/tickets/index.ts",
+      "why": "~150 lines. Router for ticket subcommands with usage docs at lines 17-31. Pattern for structuring new goals/ command family."
+    },
+    {
+      "path": "src/index.ts",
+      "why": "Top-level CLI command router. Registers families: tickets, inspect, comments, library, skill, org, login, token, update. New 'goals' family registered here."
+    },
+    {
+      "path": "package.json",
+      "why": "Version 1.3.4. Build: tsc. Test: tsc + node --test. Typecheck: tsc --noEmit. Pure TypeScript, ES modules."
+    }
+  ],
+  "facts": [
+    {
+      "claim": "VALID_MODES has exactly 5 values: AUTO, BUILD, FIX, RESEARCH, EXECUTE",
+      "evidence": "create.ts line 13: const VALID_MODES = ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE'] as const;"
+    },
+    {
+      "claim": "CLI mode validation normalizes to uppercase and checks against VALID_MODES",
+      "evidence": "create.ts lines 79-88: getFlag, .toUpperCase(), VALID_MODES.includes(). Error: 'Invalid mode'."
+    },
+    {
+      "claim": "No goal-related code exists in the CLI",
+      "evidence": "Zero matches for goal/Goal/GOAL across src/."
+    },
+    {
+      "claim": "CLI command families: tickets, inspect, comments, library, skill, org, login, token, update",
+      "evidence": "src/index.ts top-level routing."
+    },
+    {
+      "claim": "Quality gates: build (tsc), typecheck (tsc --noEmit), test (tsc + node --test)",
+      "evidence": "package.json scripts."
+    }
+  ],
+  "unknowns": [
+    {
+      "question": "What CLI commands are needed for Goals?",
+      "impact": "Likely: hlx goals create, hlx goals list, hlx goals get, hlx goals terminate. Determines scope of new src/goals/ directory."
+    },
+    {
+      "question": "Should CLI support goal-specific operations like viewing roadmap, previews, or evaluation history?",
+      "impact": "Scope ranges from 4 basic subcommands to 7-8 with read-only inspection commands."
+    }
+  ]
+}

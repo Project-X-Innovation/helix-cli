@@ -1,0 +1,27 @@
+{
+  "questions": [
+    "Q1: What CLI changes are needed for Goals as a separate entity?",
+    "Q2: What is the current CLI command structure and what patterns apply?"
+  ],
+  "answers": [
+    {
+      "answer": "New hlx goals command family: create, list, get, terminate. Since Goals are a separate entity (not a TicketMode), VALID_MODES at create.ts line 13 stays unchanged. New src/goals/ directory mirrors src/tickets/ pattern. Register 'goals' in src/index.ts top-level router.",
+      "evidence": [
+        "create.ts line 13: VALID_MODES = ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE'] — unchanged",
+        "src/tickets/index.ts: subcommand router pattern for goals family",
+        "src/index.ts: top-level command family registration point",
+        "Zero goal-related code exists in CLI"
+      ]
+    },
+    {
+      "answer": "CLI is pure TypeScript ES modules. Command families: tickets, inspect, comments, library, skill, org, login, token, update. Each family has an index.ts router with usage docs. New goals family follows same structure: src/goals/index.ts (router), create.ts, list.ts, get.ts, terminate.ts. Approximately 4-5 new files.",
+      "evidence": [
+        "src/index.ts: registers all command families",
+        "src/tickets/index.ts: ~150 lines, router with usage docs at lines 17-31",
+        "package.json: version 1.3.4, build: tsc, test: tsc + node --test, typecheck: tsc --noEmit"
+      ]
+    }
+  ],
+  "statement": "CLI needs new hlx goals command family (create, list, get, terminate) in src/goals/ directory. VALID_MODES unchanged. Tertiary target depending on server API. Approximately 4-5 new files following src/tickets/ pattern.",
+  "followups": []
+}
