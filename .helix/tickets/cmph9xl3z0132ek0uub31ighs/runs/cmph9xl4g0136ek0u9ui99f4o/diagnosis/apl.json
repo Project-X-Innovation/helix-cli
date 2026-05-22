@@ -1,0 +1,43 @@
+{
+  "questions": [
+    "Q1: How is a new top-level command group registered in the CLI?",
+    "Q2: How does the CLI fetch data from the server, and can it handle non-JSON responses?",
+    "Q3: How should the CLI separate URI output (stdout) from the usage hint (stderr)?",
+    "Q4: What ticket resolution logic should the new command reuse?"
+  ],
+  "answers": [
+    {
+      "answer": "A new case is added to the switch in src/index.ts (lines 77-140). Import the group runner, add a case like `case \"preview\": await runPreview(configOrHelp(subArgs), subArgs); break;`. The usage() function (lines 35-63) is updated to include the new command. A new src/preview/index.ts follows the router pattern in src/tickets/index.ts: parse subcommand, check --help, dispatch to handler.",
+      "evidence": [
+        "src/index.ts switch dispatch (lines 77-140) with cases for tickets, comments, inspect, etc.",
+        "src/tickets/index.ts runTickets() pattern: subcommand switch → extractTicketRef → resolveTicket → handler",
+        "configOrHelp() at src/index.ts:24-33 returns stub config for --help requests"
+      ]
+    },
+    {
+      "answer": "hxFetch() always calls response.json() on success (src/lib/http.ts:81). All existing server endpoints return JSON. The new server endpoint must return JSON (e.g., { connectionUri: \"...\" }) and the CLI extracts the URI string. No modification to hxFetch is needed.",
+      "evidence": [
+        "src/lib/http.ts:81 — `return response.json();`",
+        "All existing server controllers use res.json() (ticket-controller.ts, verification-controller.ts)",
+        "hxFetch signature returns Promise<unknown>, callers type-assert the result"
+      ]
+    },
+    {
+      "answer": "The CLI handler writes the URI to process.stdout and the #-prefixed hint to process.stderr. The top-level try/catch in src/index.ts (lines 141-144) already sends error messages to stderr and calls process.exit(1), so failure behavior is handled. For success, use process.stdout.write(uri + '\\n') and process.stderr.write('# Tip: ...\\n').",
+      "evidence": [
+        "src/index.ts:141-144 top-level try/catch writes to console.error and exits 1",
+        "Ticket output contract: stdout = URI only, stderr = #-prefixed hint"
+      ]
+    },
+    {
+      "answer": "Reuse extractTicketRef() and resolveTicket() from src/lib/resolve-ticket.ts identically to how tickets get and comments list use them. extractTicketRef supports --ticket flag, HELIX_TICKET_ID env var, or positional arg. resolveTicket matches by ID, shortId (case-insensitive), or numeric ticket number.",
+      "evidence": [
+        "src/tickets/index.ts:60-68 — extractTicketRef(rest) + resolveTicket(config, rawRef) + cmdTicketsGet(config, resolved.id, rest)",
+        "src/comments/index.ts uses same pattern for list and post subcommands",
+        "src/lib/resolve-ticket.ts:17-167 handles all ticket identifier formats"
+      ]
+    }
+  ],
+  "statement": "The helix-cli changes are a straightforward additive feature: a new 'preview' command group following existing patterns. Three new files (src/preview/index.ts, src/preview/db-url.ts, plus potentially a help text module) and one modified file (src/index.ts) are needed. The server must return JSON to be compatible with hxFetch's JSON-only parsing. No existing code needs modification beyond the index.ts dispatch and usage text.",
+  "followups": []
+}

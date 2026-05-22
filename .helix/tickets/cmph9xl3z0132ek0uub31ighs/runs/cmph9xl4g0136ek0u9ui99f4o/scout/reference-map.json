@@ -1,0 +1,65 @@
+{
+  "problem": "Add a new `hlx preview db-url <ticket>` CLI command that prints a decrypted Neon preview branch connection URI to stdout. Requires a new `preview` command group in helix-cli and a new authenticated API endpoint in helix-global-server.",
+  "files": [
+    {
+      "path": "src/index.ts",
+      "why": "Main CLI entry point with switch-based command dispatch (line 77-140). New `preview` case must be added here alongside import. Also contains usage() help text (lines 35-63) that must include the new command group."
+    },
+    {
+      "path": "src/tickets/index.ts",
+      "why": "Reference command group router (lines 35-149). Shows the pattern for subcommand dispatch, help text, extractTicketRef + resolveTicket usage (lines 60-69). The new preview/index.ts must follow this pattern."
+    },
+    {
+      "path": "src/tickets/get.ts",
+      "why": "Reference command handler. Shows hxFetch call with basePath: '/api' (line 63), JSON output handling, and the cmdTicketsGet pattern."
+    },
+    {
+      "path": "src/lib/resolve-ticket.ts",
+      "why": "Ticket identifier resolution (ID, shortId, ticket number). Functions extractTicketRef() and resolveTicket() must be reused in the new command (lines 17-167)."
+    },
+    {
+      "path": "src/lib/http.ts",
+      "why": "hxFetch() handles all API calls with auth headers, retry logic, and error handling (lines 37-134). Returns response.json() on success (line 81). New command must use this, but note: hxFetch always parses JSON, so server endpoint should return JSON for compatibility."
+    },
+    {
+      "path": "src/lib/flags.ts",
+      "why": "Flag parsing utilities: isHelpRequested(), getFlag(), hasFlag(), getPositionalArgs(). Used across all command groups."
+    },
+    {
+      "path": "src/lib/config.ts",
+      "why": "HxConfig type definition (apiKey, url, orgId, orgName) and config loading. The configOrHelp() pattern in index.ts uses this."
+    },
+    {
+      "path": "src/comments/index.ts",
+      "why": "Another command group that uses extractTicketRef + resolveTicket, serving as a second reference pattern for ticket-scoped commands."
+    },
+    {
+      "path": "src/lib/resolve-ticket.test.ts",
+      "why": "Test patterns for ticket resolution. Shows how to mock hxFetch calls and test the matching logic (lines 1-281)."
+    },
+    {
+      "path": "package.json",
+      "why": "Zero runtime dependencies. Scripts: build='tsc', typecheck='tsc --noEmit', test='tsc && node --test dist/**/*.test.js'. Node engine >=18."
+    },
+    {
+      "path": "tsconfig.json",
+      "why": "Target ES2022, module Node16, strict mode, rootDir src/, outDir dist/."
+    }
+  ],
+  "facts": [
+    "CLI uses a flat switch-based dispatch in src/index.ts; no framework (zero runtime deps).",
+    "No existing `preview` command group in src/. This is a new top-level group.",
+    "Command groups follow pattern: runX(config, args) → switch on subcommand → extractTicketRef + resolveTicket → cmdX handler.",
+    "configOrHelp() returns a stub config for --help requests so help works without auth (src/index.ts:24-33).",
+    "hxFetch() always calls response.json() on success (src/lib/http.ts:81). To return plain-text from a server endpoint, either: (a) server wraps URI in JSON object and CLI extracts it, or (b) CLI needs a different fetch path for text responses.",
+    "SKIP_AUTO_UPDATE set excludes certain commands from update checks (src/index.ts:69). New command group not listed.",
+    "Ticket resolution: extractTicketRef() supports --ticket flag, HELIX_TICKET_ID env var, or positional arg. resolveTicket() matches by ID, shortId (case-insensitive), or numeric ticket number across active/archived tickets.",
+    "Error handling: hxFetch throws Error with HTTP status and server message text. Caller catches in index.ts top-level try/catch (lines 141-144) which logs to stderr and exits 1.",
+    "Test framework: Node built-in node:test. Tests compile with tsc first, then run from dist/.",
+    "The usage hint output spec (stderr, #-prefixed) is a CLI-only concern; server endpoint does not need to know about it."
+  ],
+  "unknowns": [
+    "Whether hxFetch should be extended to support text/plain responses, or whether the server endpoint should return JSON (e.g., { connectionUri: '...' }). All existing endpoints return JSON and hxFetch assumes JSON parsing.",
+    "Whether the new preview command group should be added to SKIP_AUTO_UPDATE set. Other authenticated command groups (tickets, inspect, comments) are not in the set."
+  ]
+}

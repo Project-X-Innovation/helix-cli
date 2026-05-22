@@ -1,0 +1,41 @@
+{
+  "questions": [
+    "Q1: Does the CLI correctly separate URI output (stdout) from hint text (stderr)?",
+    "Q2: Does the error handling ensure stdout is empty on all failure paths?",
+    "Q3: Does the command follow the same ticket resolution path as hlx tickets get?",
+    "Q4: Does the implementation violate any non-negotiable invariants (no .env, no env var mutation, no subprocesses)?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes. The handler uses process.stdout.write(data.connectionUri + '\\n') for the URI and process.stderr.write('# Tip: ...') for the hint. This ensures piping (> url.txt), variable capture ($(...)), and stderr suppression (2>/dev/null) all work correctly.",
+      "evidence": [
+        "src/preview/db-url.ts:9 — process.stdout.write(data.connectionUri + '\\n')",
+        "src/preview/db-url.ts:10-12 — process.stderr.write('# Tip: ...')"
+      ]
+    },
+    {
+      "answer": "Yes. On any error path, hxFetch throws before process.stdout.write is reached. The error propagates to the top-level catch at src/index.ts:149-152, which writes to stderr via console.error and calls process.exit(1). Since stdout.write is the last statement in the success path, stdout is guaranteed empty on failure.",
+      "evidence": [
+        "src/preview/db-url.ts:5-8 — hxFetch call is before stdout.write",
+        "src/index.ts:149-152 — top-level catch writes to stderr only"
+      ]
+    },
+    {
+      "answer": "Yes. The preview router uses extractTicketRef(rest) + resolveTicket(config, rawRef) — the exact same functions used by hlx tickets get at src/tickets/index.ts:65-66. This means ticket identifier resolution (internal ID, short ID, ticket number) and not-found error messages are identical.",
+      "evidence": [
+        "src/preview/index.ts:31-32 — extractTicketRef + resolveTicket",
+        "src/tickets/index.ts:65-66 — identical pattern for tickets get"
+      ]
+    },
+    {
+      "answer": "No violations. The command does not import fs, does not read .env files (loadConfig reads ~/.hlx/config.json and standard env vars), does not call process.env assignment, and does not import child_process or spawn any subprocesses. The decrypted URI is only held in a local variable and written directly to stdout.",
+      "evidence": [
+        "src/preview/db-url.ts — imports only HxConfig type and hxFetch",
+        "src/lib/config.ts:40-86 — loadConfig reads env vars and config.json, no .env files",
+        "No child_process or exec/spawn in any changed file"
+      ]
+    }
+  ],
+  "statement": "Code review complete for helix-cli. The implementation is correct and follows established patterns. Two new files (src/preview/db-url.ts, src/preview/index.ts) and one modified file (src/index.ts). stdout/stderr separation verified. Ticket resolution reuses the same functions as hlx tickets get. No .env interaction, no env var mutation, no subprocess spawning. All quality gates pass (TypeScript, build). No code review fixes were needed.",
+  "followups": []
+}
