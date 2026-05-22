@@ -1,0 +1,42 @@
+{
+  "title": "hlx preview db-url — CLI Implementation",
+  "description": "Walkthrough of the new preview command group and db-url subcommand in helix-cli",
+  "steps": [
+    {
+      "file": "src/index.ts",
+      "line": 15,
+      "title": "Import preview router",
+      "description": "The runPreview function is imported from the new preview command group module, following the same pattern as runTickets, runComments, etc."
+    },
+    {
+      "file": "src/index.ts",
+      "line": 55,
+      "title": "Usage text registration",
+      "description": "The preview db-url command is listed in the top-level help text, between comments and library entries."
+    },
+    {
+      "file": "src/index.ts",
+      "line": 100,
+      "title": "Switch case dispatch",
+      "description": "The 'preview' case uses configOrHelp(args.slice(1)) to allow --help without auth, then delegates to runPreview. This matches the pattern of all other command groups."
+    },
+    {
+      "file": "src/preview/index.ts",
+      "line": 15,
+      "title": "Preview command group router",
+      "description": "runPreview parses the subcommand from args[0], handles --help at the group level, and dispatches to the db-url handler. Uses extractTicketRef + resolveTicket for ticket resolution."
+    },
+    {
+      "file": "src/preview/index.ts",
+      "line": 31,
+      "title": "Ticket resolution pipeline",
+      "description": "extractTicketRef(rest) extracts the raw ticket ref, then resolveTicket(config, rawRef) resolves it to {id, shortId} — exactly the same as hlx tickets get. The resolved internal ID is passed to the handler."
+    },
+    {
+      "file": "src/preview/db-url.ts",
+      "line": 4,
+      "title": "db-url handler",
+      "description": "cmdPreviewDbUrl calls hxFetch to the server endpoint, extracts connectionUri from the JSON response, writes it to stdout with process.stdout.write, and writes the hint to stderr with process.stderr.write. No try/catch needed — errors propagate to the top-level catch."
+    }
+  ]
+}
