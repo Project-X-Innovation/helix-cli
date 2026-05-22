@@ -1,0 +1,15 @@
+{
+  "repos": [
+    {
+      "repoKey": "helix-cli",
+      "intent": "target",
+      "rationale": "New preview command group and db-url subcommand must be added. Three new files (src/preview/index.ts, src/preview/db-url.ts) and one modified file (src/index.ts for dispatch + usage text)."
+    },
+    {
+      "repoKey": "helix-global-server",
+      "intent": "target",
+      "rationale": "New GET /api/tickets/:ticketId/preview-db-url endpoint needed. One new controller file and one modified route file (src/routes/api.ts). All building blocks exist (requireAuth, decryptSecret, NeonBranchRecord model, HttpError)."
+    }
+  ],
+  "updatedBy": "diagnosis"
+}
