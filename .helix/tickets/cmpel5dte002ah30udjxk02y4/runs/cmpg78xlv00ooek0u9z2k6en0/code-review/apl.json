@@ -1,0 +1,17 @@
+{
+  "questions": [
+    "Q1: Does the CLI dual heading extraction remain correct with no code changes this run?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes. The dual heading extraction in show.ts is confirmed functional: HTML regex with id attribute extraction and tag stripping takes priority, Markdown heading pattern as fallback. Comment/rating annotation works on both paths via the shared anchor-based system. Typecheck passes.",
+      "evidence": [
+        "show.ts:48 - HTML heading regex: /<h([1-6])(?:\\s+[^>]*?id=\"([^\"]*)\"[^>]*)?>(.+?)<\\/h\\1>/i",
+        "show.ts:70 - MD heading pattern: /^(#{1,6})\\s+(.+)$/",
+        "tsc --noEmit: exit code 0"
+      ]
+    }
+  ],
+  "statement": "No CLI code changes needed or made. Dual heading extraction confirmed correct via direct code review. Typecheck passes. No issues found.",
+  "followups": []
+}
