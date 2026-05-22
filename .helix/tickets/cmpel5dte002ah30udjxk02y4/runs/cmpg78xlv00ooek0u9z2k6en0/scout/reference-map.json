@@ -1,51 +1,47 @@
 {
-  "problem": "The CLI displays reports via hlx library show. The show command must handle HTML heading patterns for section annotation alongside existing Markdown heading support. The CLI already has dual parsing implemented.",
+  "problem": "CLI must display and annotate HTML reports alongside Markdown. The library show command parses headings from both formats and annotates with comment summaries.",
   "files": [
     {
       "path": "src/library/show.ts",
-      "why": "Primary report display command. Lines 47-67: tries HTML heading regex first (<h[1-6] with optional id attr>), extracts heading text and anchor. Lines 69-85: falls back to Markdown heading regex (# through ######). Both paths annotate with comment summary counts."
-    },
-    {
-      "path": "src/library/list.ts",
-      "why": "Lists all library items (reports). Displays id, title, status, createdAt. No format-specific logic."
-    },
-    {
-      "path": "src/library/comments-post.ts",
-      "why": "Posts comments to report sections. Lines 63-67: submits anchor, rating, content, parentCommentId. Anchor-based, format-agnostic."
-    },
-    {
-      "path": "src/library/comments-list.ts",
-      "why": "Lists comments grouped by section anchor. Format-agnostic."
+      "why": "Core report display. Line 48: HTML heading regex. Line 70: Markdown heading regex. Both paths extract slug and annotate with comment summary counts."
     },
     {
       "path": "src/library/index.ts",
-      "why": "Router for library subcommands: list, show, comments."
+      "why": "Router for library commands: list, show, comments."
     },
     {
-      "path": "src/lib/http.ts",
-      "why": "HTTP client. Line 65: sets Content-Type: application/json for POST. No content-format negotiation."
+      "path": "src/library/list.ts",
+      "why": "Lists library items (reports) via API."
     },
     {
-      "path": "skill-content/SKILL.md",
-      "why": "CLI skill documentation. Lines 155-188: library reports section with command usage."
+      "path": "src/library/comments-list.ts",
+      "why": "Lists section-grouped comments for a report."
+    },
+    {
+      "path": "src/library/comments-post.ts",
+      "why": "Posts ratings/comments on report sections. Uses slugify() for section anchor matching."
+    },
+    {
+      "path": "src/library/comments.ts",
+      "why": "Comments sub-router."
     },
     {
       "path": "package.json",
-      "why": "No runtime dependencies. Build: tsc. Typecheck: tsc --noEmit. Test: tsc && node --test dist/**/*.test.js."
+      "why": "Build: tsc. No external markdown/HTML libraries — all parsing is custom regex."
     }
   ],
   "facts": [
-    "show.ts already handles both HTML and Markdown headings (HTML tried first on line 48, MD fallback on line 70).",
-    "HTML heading regex: /<h([1-6])(?:\\s+[^>]*?id=\"([^\"]*)\"[^>]*)?>(.+?)<\\/h\\1>/i - captures level, id attribute, and inner text.",
-    "Markdown heading regex: /^(#{1,6})\\s+(.+)$/ - captures hash count and text.",
-    "Both patterns output the same annotation format: hashes text [slug] (comment counts).",
-    "CLI has zero runtime dependencies. No HTML parsing library needed since regex suffices for heading extraction.",
-    "Comment posting (comments-post.ts) and listing (comments-list.ts) are anchor-based and format-agnostic.",
-    "No CLI-specific tests for report display exist.",
-    "Build: tsc. Test: tsc && node --test dist/**/*.test.js. Typecheck: tsc --noEmit."
+    "show.ts already handles both HTML and Markdown headings: HTML pattern at line 48, Markdown fallback at line 70",
+    "HTML heading regex extracts id attribute for slug, falls back to slugify(rawText) when no id present",
+    "HTML tag content is stripped of nested tags via .replace(/<[^>]+>/g, '') before display",
+    "slugify() implementation differs slightly from client: CLI uses /[^a-z0-9\\s-]/g while client uses /[^a-z0-9]+/g — could cause anchor mismatch on edge cases",
+    "CLI outputs HTML report headings as Markdown-style annotation (## Heading [slug] (N comments: ...)) regardless of source format",
+    "No external dependencies for HTML/Markdown parsing — all custom regex in TypeScript",
+    "Quality gates: npm run build (tsc), npm run typecheck, npm run test (node --test)"
   ],
   "unknowns": [
-    "Whether the HTML heading regex handles multi-line headings or headings with nested HTML (e.g., <h2 id=\"foo\"><strong>Bold Title</strong></h2>).",
-    "Whether non-heading HTML content lines should be stripped or displayed differently in CLI output - currently they print as raw HTML tags."
+    "Whether the CLI show.ts only outputs heading annotations and skips non-heading HTML lines — non-heading content appears to be silently dropped for HTML reports",
+    "Whether the slugify() difference between CLI and client causes any real-world anchor mismatches affecting comment targeting",
+    "Whether the HTML heading regex handles multi-line headings or headings with complex nested elements"
   ]
 }
