@@ -1,0 +1,41 @@
+{
+  "questions": [
+    "What is the correct rendering approach when --full is set — replace the TOC or append the body after it?",
+    "Should the full body output reuse the already-fetched item.content or require a separate API call?",
+    "Is the existing null-content guard sufficient for the --full code path?",
+    "Should stretch goals (--body-only, --out) be included in the MVP implementation?"
+  ],
+  "answers": [
+    {
+      "answer": "Append the full markdown body after the TOC. The ticket says 'TOC + full markdown body' and the product spec's SCN-01 says 'prints the TOC section followed by the full markdown body'. A visual separator (horizontal rule) between the two sections makes the boundary clear.",
+      "evidence": [
+        "ticket.md: 'hlx library show <ref> --full   # TOC + full markdown body'",
+        "product/product.md SCN-01: 'The CLI prints the TOC section followed by the full markdown body of the report'"
+      ]
+    },
+    {
+      "answer": "Reuse the already-fetched item.content. The cmdShow handler at src/library/show.ts:24 already fetches the full LibraryItemDetail including content. No additional API call is needed — the body is in memory but not printed.",
+      "evidence": [
+        "src/library/show.ts:24 — hxFetch already returns LibraryItemDetail with item.content",
+        "src/library/show.ts:44 — item.content.split('\\n') proves the full content is in memory",
+        "diagnosis/apl.json answer 1: 'The full markdown body is already in memory — it is simply not printed.'"
+      ]
+    },
+    {
+      "answer": "Yes. The null-content guard at lines 27-30 returns early with 'No content available.' before the TOC loop and before any --full printing would occur. Both the default and --full code paths are protected.",
+      "evidence": [
+        "src/library/show.ts:27-30 — if (!item.content) { console.log('No content available.'); return; }",
+        "product/product.md SCN-05: expects 'No content available' for null content items"
+      ]
+    },
+    {
+      "answer": "No. The product spec explicitly defers --body-only and --out to future work. The MVP is --full only. The existing flag utilities (hasFlag, getFlag) make adding these later trivial.",
+      "evidence": [
+        "product/product.md 'Features Explicitly Out of Scope': '--body-only flag — Ticket marks as stretch/optional; defer unless trivially cheap'",
+        "product/product.md 'Features Explicitly Out of Scope': '--out <path> flag — Ticket marks as stretch/optional; defer unless trivially cheap'"
+      ]
+    }
+  ],
+  "statement": "The technical direction is to add a --full flag to cmdShow in src/library/show.ts using the established hasFlag() pattern. When set, the handler prints the existing TOC output followed by a separator and the full item.content markdown body. No new API calls, dependencies, or architectural changes are needed. The content is already fetched and in memory. Four files require changes: show.ts (flag logic + body rendering), library/index.ts (help text), src/index.ts (usage text), and skill-content/references/commands.md (documentation). Stretch goals (--body-only, --out) are deferred per product spec.",
+  "followups": []
+}
