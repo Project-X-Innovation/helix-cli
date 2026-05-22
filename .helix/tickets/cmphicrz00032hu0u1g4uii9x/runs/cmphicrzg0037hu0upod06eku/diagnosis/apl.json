@@ -1,0 +1,52 @@
+{
+  "questions": [
+    "Can agents create tickets, look up other tickets, and post comments using the CLI in their sandbox environment?",
+    "Is the CLI restricted to read-only inspection, or does the API key lack write permissions?",
+    "Why are agents confused about production vs staging environments?",
+    "What version of the CLI do agents actually have installed, and does it include write commands?"
+  ],
+  "answers": [
+    {
+      "answer": "No. The CLI installed in agent sandboxes (via helix-workflow-step-agent) is @projectxinnovation/helix-cli@1.2.0, which is an inspection-only build containing only 'login' and 'inspect' commands. The 'tickets', 'comments', 'library', 'org', 'token', 'skill', 'update', and 'preview' commands do not exist in this build. Running 'hlx tickets list' returns 'Unknown command: tickets'.",
+      "evidence": [
+        "Sandbox hlx binary at /home/vercel-sandbox/.local/bin/hlx -> helix-workflow-step-agent/node_modules/.bin/hlx reports version 0.1.0",
+        "Sandbox dist/ contains only: index.js, index.d.ts, inspect/, lib/, login.js, login.d.ts — no tickets/, comments/, org/, etc.",
+        "Sandbox dist/index.js switch statement only handles 'login', 'inspect', '--version' cases",
+        "Running 'hlx tickets list --json' in sandbox returns 'Unknown command: tickets'",
+        "Running 'hlx comments post' in sandbox returns 'Unknown command: comments'"
+      ]
+    },
+    {
+      "answer": "The restriction is at the CLI packaging layer, not the auth layer. The server has NO read-only restriction for hxi_ API keys. The attachAuthContext middleware (api.ts:198) resolves hxi_ keys to full AuthContext identical to session auth. POST /api/tickets (line 331) and all ticket CRUD endpoints sit behind the generic requireAuth gate (line 310), which only checks auth is non-null. All 10 active production API keys have empty repos arrays (unrestricted). Production logs confirm POST /api/tickets returns 201.",
+      "evidence": [
+        "helix-global-server/src/auth/middleware.ts: resolveApiKeyAuth (line 227-299) builds full AuthContext with user.isDeveloper, user.isAdmin, etc.",
+        "helix-global-server/src/routes/api.ts: requireAuth (line 310) only checks (req.auth !== null)",
+        "helix-global-server/src/routes/api.ts: POST /api/tickets at line 331 uses same requireAuth as session endpoints",
+        "InspectionApiKey model in prisma/schema.prisma has no permissions/scopes field — only repos[] scoping for inspect endpoints",
+        "Production DB: all 10 active API keys have empty repos arrays",
+        "Production logs: POST /api/tickets 201 confirmed multiple times on 2026-05-22"
+      ]
+    },
+    {
+      "answer": "The env var naming contributes to confusion. Agent sandboxes set HELIX_INSPECT_TOKEN and HELIX_INSPECT_BASE_URL, which imply inspection-only access. The CLI config loading (config.ts:42) treats these as aliases for HELIX_API_KEY and HELIX_URL, but the naming reinforces the mental model that the token is only for inspection. Additionally, the CLI has no output that indicates which environment (production vs staging) is being targeted.",
+      "evidence": [
+        "helix-cli/src/lib/config.ts:42: apiKey = HELIX_API_KEY ?? HELIX_INSPECT_TOKEN ?? HELIX_INSPECT_API_KEY",
+        "helix-cli/src/lib/config.ts:43: url = HELIX_URL ?? HELIX_INSPECT_BASE_URL ?? HELIX_INSPECT_URL",
+        "Runtime env confirms HELIX_INSPECT_BASE_URL=https://helix-global-server-n8k8s.ondigitalocean.app (production URL)",
+        "No environment label in CLI output or config structure"
+      ]
+    },
+    {
+      "answer": "Agents have @projectxinnovation/helix-cli@1.2.0 installed via npm (helix-workflow-step-agent depends on ^1.2.0). This is a much older build from when the CLI was inspection-only. The current source code at v1.3.4 has the full command set with ticket creation, comment posting, etc. The npm package was never updated to include these newer commands.",
+      "evidence": [
+        "helix-workflow-step-agent/node_modules/@projectxinnovation/helix-cli/package.json: version 1.2.0",
+        "helix-workflow-step-agent/package.json: depends on @projectxinnovation/helix-cli@^1.2.0",
+        "helix-cli/package.json (source repo): version 1.3.4",
+        "Source src/index.ts: 10 commands including tickets, comments, library, org, etc.",
+        "Installed dist/index.js: only login, inspect, --version"
+      ]
+    }
+  ],
+  "statement": "Agents cannot create tickets, look up other tickets, or post comments because the npm-published @projectxinnovation/helix-cli package (v1.2.0) installed in agent sandboxes is an inspection-only build that predates the addition of ticket and comment commands. The full CLI (v1.3.4 in source) has all write capabilities, the server API fully supports write operations via hxi_ API keys, and there are no auth-layer restrictions — but none of this matters because agents simply don't have the commands available. The fix is to publish the current helix-cli to npm; the helix-workflow-step-agent already depends on ^1.2.0, so a v1.3.x publish would be automatically picked up.",
+  "followups": []
+}
