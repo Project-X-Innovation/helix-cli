@@ -1,0 +1,71 @@
+{
+  "problem": "Map the CLI command surface area for comparison with proposed Email and WhatsApp interfaces. CLI is the reference interface that new channels should mirror.",
+  "files": [
+    {
+      "path": "src/index.ts",
+      "why": "CLI entry point and command router. 12 top-level commands: login, token, inspect, comments, preview, library, org, tickets, skill, update, --version, --help."
+    },
+    {
+      "path": "src/tickets/index.ts",
+      "why": "Ticket subcommand router: list, latest, get, create, rerun, continue, artifacts, artifact, bundle, update-description."
+    },
+    {
+      "path": "src/comments/index.ts",
+      "why": "Comment subcommands: list (with --ticket, --helix-only, --since filters), post (with --ticket flag)."
+    },
+    {
+      "path": "src/inspect/index.ts",
+      "why": "Inspect subcommands: repos, db (--repo + SQL), logs (--repo + query), api (--repo + path). Key ns-gm/inspect interface."
+    },
+    {
+      "path": "src/library/index.ts",
+      "why": "Library subcommands: list, show, comments (list/post). Section-rated content interface."
+    },
+    {
+      "path": "src/org/index.ts",
+      "why": "Org subcommands: current, list, switch. Multi-org context management."
+    },
+    {
+      "path": "src/lib/http.ts",
+      "why": "HTTP client with retry logic, auth headers (API key or Bearer token), 30s timeout. Server communication layer."
+    },
+    {
+      "path": "src/lib/config.ts",
+      "why": "Config management: ~/.hlx/config.json, multi-org entries, env var overrides (HELIX_API_KEY, HELIX_URL)."
+    },
+    {
+      "path": "src/lib/resolve-ticket.ts",
+      "why": "Ticket reference resolution: exact ID, short ID (RSH-596), numeric suffix. Flexible input parsing pattern for natural language interfaces."
+    },
+    {
+      "path": "src/lib/flags.ts",
+      "why": "Flag/argument parsing utilities. Structured command parsing that email/WhatsApp would need to replicate via NLP or structured templates."
+    },
+    {
+      "path": "src/skill/index.ts",
+      "why": "Skill install/show for agent integration. CLI-only capability, likely not applicable to email/WhatsApp."
+    },
+    {
+      "path": "src/preview/index.ts",
+      "why": "Preview db-url command: prints Neon preview branch connection URI. Developer-only, security-sensitive."
+    }
+  ],
+  "facts": [
+    "CLI exposes 12 top-level commands with subcommands totaling ~30 distinct operations.",
+    "Core ticket operations: list, latest, get, create, rerun, continue, artifacts, artifact, bundle, update-description.",
+    "Comment operations: list (with helix-only/since/ticket filters), post (with optional --ticket context).",
+    "Inspect operations: repos (list), db (SQL query), logs (query), api (GET path). All read-only.",
+    "Library operations: list items, show item with section annotations, list/post section comments.",
+    "Auth: multi-org with API keys (hxi_*) or Bearer tokens. Stored in ~/.hlx/config.json.",
+    "Communication: pure request-response HTTP via hxFetch() with 3-attempt retry and exponential backoff.",
+    "Output: human-readable tables (default) or structured JSON (--json flag). No interactive/streaming mode.",
+    "No notification/push capability in CLI - users must poll (hlx tickets list, hlx comments list --since).",
+    "Build: tsc. Test: tsc && node --test. No lint command.",
+    "Package: @projectxinnovation/helix-cli v1.3.4, published to npm, binary name 'hlx'."
+  ],
+  "unknowns": [
+    "Whether CLI's 'continue' command (additional context for running ticket) maps to email/WhatsApp reply-to-notification.",
+    "Whether CLI's 'bundle' command (Codex export) has any email/WhatsApp relevance.",
+    "Whether CLI's flexible ticket reference resolution (ID, shortId, number) can be replicated in natural language message parsing."
+  ]
+}
