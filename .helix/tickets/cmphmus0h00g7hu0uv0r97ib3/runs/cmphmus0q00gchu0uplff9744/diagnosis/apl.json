@@ -1,0 +1,66 @@
+{
+  "questions": [
+    "Where do the new hlx goals commands need to be added, and does the src/goals/ directory already exist?",
+    "What is the exact command registration pattern in src/index.ts for adding a new namespace?",
+    "What are the server-side API request/response contracts for the 4 goal endpoints (create, list, get, terminate)?",
+    "Does VALID_MODES in src/tickets/create.ts need to change, and what are its current values?",
+    "Which shared libraries (hxFetch, flags, resolve-repo) are needed and how are they called?",
+    "What is the documentation structure in cli-content.ts that needs updating?"
+  ],
+  "answers": [
+    {
+      "answer": "src/goals/ does not exist and must be created from scratch. Five new files needed: index.ts (router), create.ts, list.ts, get.ts, terminate.ts. Two existing files modified: src/index.ts (command registration) and src/docs/cli-content.ts (documentation).",
+      "evidence": [
+        "ls /helix-cli/src/goals/ confirms 'DIRECTORY DOES NOT EXIST'",
+        "scout/reference-map.json: 'No src/goals/ directory exists yet -- must be created from scratch'",
+        "Research report Section 8.2 lists the exact 4 files"
+      ]
+    },
+    {
+      "answer": "src/index.ts uses a switch statement (lines 79-148). Each namespace gets a case that calls configOrHelp(args.slice(1)) then awaits run<Namespace>(config, args.slice(1)). Import the runner at the top. A 'goals' case follows the 'tickets' pattern exactly: const config = configOrHelp(args.slice(1)); await runGoals(config, args.slice(1));",
+      "evidence": [
+        "src/index.ts:116-119 shows the tickets case pattern",
+        "src/index.ts:88-92 shows the inspect case pattern",
+        "All namespace cases follow identical structure"
+      ]
+    },
+    {
+      "answer": "POST /api/goals: body {title (string, required), description (string, required), maxChildren (int, optional, default 20), requireApproval (boolean, optional, default false), repositoryIds (string[], optional), sprintId (string, optional)} -> 201 {goal}. GET /api/goals?status=X -> 200 {items}. GET /api/goals/:id -> 200 {goal} (includes latestEvaluation). POST /api/goals/:id/terminate: body {verdict: 'complete'|'failed'} -> 200 {goal}.",
+      "evidence": [
+        "goal-controller.ts CreateGoalSchema: z.object with title (min 1, max 500), description (min 1), maxChildren (int, 1-100, optional default 20), requireApproval (boolean, optional default false), repositoryIds (string[] optional default []), sprintId (optional)",
+        "goal-controller.ts TerminateGoalSchema: z.object({ verdict: z.enum(['complete', 'failed']) })",
+        "goal-controller.ts create handler returns res.status(201).json({ goal })",
+        "goal-controller.ts list handler returns res.json({ items: goals })",
+        "goal-controller.ts getById returns res.json({ goal }) with latestEvaluation transform",
+        "goal-controller.ts terminate returns res.json({ goal })"
+      ]
+    },
+    {
+      "answer": "VALID_MODES must NOT change. It is currently ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE'] at src/tickets/create.ts line 13. Goals are a separate entity, not a ticket mode.",
+      "evidence": [
+        "src/tickets/create.ts:13: const VALID_MODES = ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE'] as const;",
+        "Research report Section 8.4: 'VALID_MODES in src/tickets/create.ts (line 13) is NOT modified'",
+        "Architecture decision #1: 'TicketMode stays at 5 values'"
+      ]
+    },
+    {
+      "answer": "hxFetch(config, path, { basePath: '/api', method, body, queryParams }) is the HTTP client. Requires basePath: '/api' (default is '/api/inspect'). Flag utilities: getFlag (value flags), requireFlag (required value flags), hasFlag (boolean flags), isHelpRequested (--help/-h). resolveAllRepos resolves comma-separated repo names to IDs via the inspect API.",
+      "evidence": [
+        "src/lib/http.ts:37-44: hxFetch signature with basePath option defaulting to '/api/inspect'",
+        "src/lib/flags.ts: all 5 utility functions verified",
+        "src/lib/resolve-repo.ts:44-80: resolveAllRepos implementation",
+        "src/tickets/create.ts:141-153: shows hxFetch usage with basePath: '/api'"
+      ]
+    },
+    {
+      "answer": "cli-content.ts exports a single object with id, title, content (markdown string), order, and keywords array. The content has sections for Installation, Setup, Common Commands, Worked Examples, Updating, and Troubleshooting. A new Goals section should be added to Common Commands table and Worked Examples.",
+      "evidence": [
+        "src/docs/cli-content.ts:1-350: complete file read shows structure",
+        "Tickets section at lines 78-131 provides the pattern for a command group",
+        "Research report Section 8.5: 'src/docs/cli-content.ts should be updated to document the hlx goals namespace'"
+      ]
+    }
+  ],
+  "statement": "This is a greenfield CLI feature addition, not a bug fix. The src/goals/ directory does not exist in helix-cli and must be created with 5 new files (index.ts router + 4 command files). Two existing files need modification (src/index.ts for command registration, src/docs/cli-content.ts for documentation). The server-side Goal API is fully implemented with 11 endpoints at /api/goals. The CLI commands are thin wrappers calling 4 of these endpoints using the existing hxFetch client with basePath: '/api'. All patterns are well-established from the tickets namespace. VALID_MODES must not be modified. Only helix-cli requires code changes.",
+  "followups": []
+}
