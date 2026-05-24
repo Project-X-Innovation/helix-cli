@@ -24,9 +24,9 @@ The major point is: why doesn't it just go and create whatever tickets it needs 
 1 ticket(s) referenced. Full artifacts materialized at `.helix-refs/`:
 
 ### FIX-601: Demo screenshots still not showing
-- Mode: FIX | Status: RUNNING
-- Completed runs: 1 (run-1)
-- Materialized files: 17 artifacts
+- Mode: FIX | Status: DEPLOYED
+- Completed runs: 2 (run-1, run-2)
+- Materialized files: 46 artifacts
 - Path: `.helix-refs/FIX-601/`
 - Manifest: `.helix-refs/FIX-601/_manifest.json`
 
