@@ -1,0 +1,78 @@
+{
+  "problem": "Add `hlx goals` CLI command namespace (create, list, get, terminate) to helix-cli, calling existing server API endpoints at /api/goals. Goals are a separate entity from tickets and must NOT modify VALID_MODES or any ticket commands.",
+  "files": [
+    {
+      "path": "src/index.ts",
+      "why": "Main entry point where the `goals` command case must be added to the switch statement (follows pattern of `tickets`, `comments`, etc. at lines 80-145). Must import `runGoals` and register a new case."
+    },
+    {
+      "path": "src/tickets/index.ts",
+      "why": "Reference pattern for namespace router implementation. Shows subcommand dispatch via switch, help text printing, and how `configOrHelp` is passed through. 150 lines."
+    },
+    {
+      "path": "src/tickets/create.ts",
+      "why": "Reference pattern for create command (flag parsing, repo resolution, API POST, structured output). Contains VALID_MODES at line 13 which must NOT be modified (stays at 5 values). 185 lines."
+    },
+    {
+      "path": "src/tickets/list.ts",
+      "why": "Reference pattern for list command (query params, client-side filtering, table and JSON output). 115 lines."
+    },
+    {
+      "path": "src/tickets/get.ts",
+      "why": "Reference pattern for get/detail command (printTicketDetail function for formatted console output, JSON mode). 125 lines."
+    },
+    {
+      "path": "src/lib/http.ts",
+      "why": "Shared HTTP client (`hxFetch`) used for all API calls. Supports GET/POST/PATCH, retry logic, basePath override (use `/api` not default `/api/inspect`). 135 lines."
+    },
+    {
+      "path": "src/lib/flags.ts",
+      "why": "Shared flag-parsing utilities: getFlag, hasFlag, requireFlag, isHelpRequested. All new commands should use these. 36 lines."
+    },
+    {
+      "path": "src/lib/config.ts",
+      "why": "HxConfig type definition. All run* functions receive this as first argument. Defines apiKey, url, orgId fields."
+    },
+    {
+      "path": "src/lib/resolve-repo.ts",
+      "why": "Repository name/ID resolution utilities. `resolveAllRepos` resolves comma-separated repo names to IDs. Needed for `hlx goals create --repos`."
+    },
+    {
+      "path": "src/docs/cli-content.ts",
+      "why": "CLI documentation content exported as `cliDocsContent`. Must be updated to include `hlx goals` namespace documentation alongside existing commands. 350 lines."
+    },
+    {
+      "path": "package.json",
+      "why": "Build/typecheck/test scripts. Zero runtime deps (devDeps only: @types/node, typescript). Build: `tsc`, Typecheck: `tsc --noEmit`, Test: `tsc && node --test dist/**/*.test.js`. ES module (`type: module`). v1.3.4."
+    },
+    {
+      "path": "tsconfig.json",
+      "why": "TypeScript config: strict mode, ES2022 target, Node16 modules, rootDir=src, outDir=dist, declaration=true."
+    }
+  ],
+  "facts": [
+    "No src/goals/ directory exists yet -- must be created from scratch.",
+    "Server-side Goal API endpoints are fully implemented at /api/goals (11 endpoints registered in api.ts:436-447): POST, GET list, GET :id, PATCH :id, POST :id/terminate, GET :id/evaluations, GET :id/evaluations/:evalId, POST :id/evaluations/:evalId/approve, POST :id/evaluations/:evalId/reject, GET :id/roadmap, GET :id/previews.",
+    "Goal controller (goal-controller.ts) uses Zod schemas: CreateGoalSchema accepts title, description, maxChildren, requireApproval, repositoryIds, sprintId. TerminateGoalSchema requires verdict: 'complete' | 'failed'.",
+    "Server responses wrap in `{ goal }` for single objects and `{ items }` for lists -- matching tickets pattern.",
+    "GET /api/goals/:id returns { goal } with `latestEvaluation` (transformed from evaluations array, line 84-85 of goal-controller.ts).",
+    "GoalStatus enum has 9 values: DRAFT, QUEUED, RUNNING, ACTIVE, EVALUATING, PENDING_APPROVAL, PAUSED, COMPLETED, FAILED (prisma/schema.prisma:155-165).",
+    "VALID_MODES in src/tickets/create.ts (line 13) is ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE'] and must NOT be modified.",
+    "Command registration pattern: top-level switch in src/index.ts calls `run<Namespace>(config, args.slice(1))`. Each namespace has index.ts exporting `run<Namespace>` that routes subcommands.",
+    "hxFetch requires basePath: '/api' for goals endpoints (default basePath is '/api/inspect').",
+    "CLI has zero runtime dependencies -- only devDependencies (@types/node, typescript).",
+    "Module system: ES modules (package.json type=module, .js extensions required in imports).",
+    "T7 spec requires exactly 4 commands: create, list, get, terminate. Plus command registration in index.ts and documentation in cli-content.ts.",
+    "GET /api/goals supports optional ?status query parameter for filtering.",
+    "POST /api/goals/:id/terminate requires body { verdict: 'complete' | 'failed' }.",
+    "hxFetch returns parsed JSON (response.json()). Callers cast with `as SomeType`.",
+    "The cli-content.ts exports via package.json `exports` field (./docs) for external documentation systems."
+  ],
+  "unknowns": [
+    "Exact response shape of GET /api/goals list items -- whether it returns full GoalDetail objects or a lighter GoalListItem type (goal-service.ts listGoalsForOrganization includes childTickets and evaluations based on service code, but the list might return all fields).",
+    "Whether `hlx goals list` should support `--json` output like `hlx tickets list --json` -- not specified in T7 spec but follows existing pattern.",
+    "Whether `hlx goals get` should support `--json` output -- not specified in T7 spec but follows existing pattern.",
+    "Whether `hlx goals create` should resolve --repos using resolveAllRepos (likely yes, matching tickets create pattern), or accept raw repository IDs.",
+    "Whether `hlx goals create` should accept --sprint flag for sprintId -- research report Section 8.3 shows --sprint <sprintId> in the spec."
+  ]
+}
