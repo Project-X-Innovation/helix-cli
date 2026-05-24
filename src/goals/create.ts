@@ -2,6 +2,7 @@ import type { HxConfig } from "../lib/config.js";
 import { hxFetch } from "../lib/http.js";
 import { requireFlag, getFlag, hasFlag } from "../lib/flags.js";
 import { resolveAllRepos } from "../lib/resolve-repo.js";
+import { parseApiError } from "./utils.js";
 
 type CreateGoalResponse = {
   goal: {
@@ -64,21 +65,7 @@ export async function cmdGoalsCreate(config: HxConfig, args: string[]): Promise<
       basePath: "/api",
     })) as CreateGoalResponse;
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    const dashIdx = msg.indexOf(" — ");
-    if (dashIdx !== -1) {
-      const bodyPart = msg.slice(dashIdx + 3);
-      try {
-        const parsed = JSON.parse(bodyPart);
-        if (parsed.error) {
-          console.error(`Error: ${parsed.error}`);
-          process.exit(1);
-        }
-      } catch {
-        // JSON parse failed — fall through to raw message
-      }
-    }
-    console.error(`Error: ${msg}`);
+    console.error(`Error: ${parseApiError(error)}`);
     process.exit(1);
   }
 

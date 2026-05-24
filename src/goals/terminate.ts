@@ -1,6 +1,7 @@
 import type { HxConfig } from "../lib/config.js";
 import { hxFetch } from "../lib/http.js";
 import { requireFlag } from "../lib/flags.js";
+import { parseApiError } from "./utils.js";
 
 type TerminateGoalResponse = {
   goal: {
@@ -28,21 +29,7 @@ export async function cmdGoalsTerminate(config: HxConfig, goalId: string, args: 
       basePath: "/api",
     })) as TerminateGoalResponse;
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    const dashIdx = msg.indexOf(" — ");
-    if (dashIdx !== -1) {
-      const bodyPart = msg.slice(dashIdx + 3);
-      try {
-        const parsed = JSON.parse(bodyPart);
-        if (parsed.error) {
-          console.error(`Error: ${parsed.error}`);
-          process.exit(1);
-        }
-      } catch {
-        // JSON parse failed — fall through to raw message
-      }
-    }
-    console.error(`Error: ${msg}`);
+    console.error(`Error: ${parseApiError(error)}`);
     process.exit(1);
   }
 
