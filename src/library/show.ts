@@ -6,6 +6,7 @@ type LibraryItemDetail = {
     id: string;
     title: string;
     content: string | null;
+    filePath?: string | null;
   };
 };
 
@@ -40,9 +41,32 @@ export async function cmdShow(config: HxConfig, resolvedId: string, _args: strin
 
   console.log(`# ${item.title} (${item.id})\n`);
 
-  // Parse headings from markdown and annotate
+  // Parse headings from both HTML and Markdown and annotate
   const lines = item.content.split("\n");
   for (const line of lines) {
+    // Try HTML heading pattern first
+    const htmlMatch = /<h([1-6])(?:\s+[^>]*?id="([^"]*)"[^>]*)?>(.+?)<\/h\1>/i.exec(line);
+    if (htmlMatch) {
+      const level = parseInt(htmlMatch[1], 10);
+      const id = htmlMatch[2];
+      const rawText = htmlMatch[3].replace(/<[^>]+>/g, "").trim();
+      const slug = id || slugify(rawText);
+      const hashes = "#".repeat(level);
+      const sectionSummary = summary[slug];
+
+      let annotation = `${hashes} ${rawText} [${slug}]`;
+      if (sectionSummary && sectionSummary.total > 0) {
+        const parts: string[] = [];
+        if (sectionSummary.THUMBS_UP > 0) parts.push(`${sectionSummary.THUMBS_UP} thumbs-up`);
+        if (sectionSummary.LOVE > 0) parts.push(`${sectionSummary.LOVE} love`);
+        if (sectionSummary.THUMBS_DOWN > 0) parts.push(`${sectionSummary.THUMBS_DOWN} thumbs-down`);
+        annotation += ` (${sectionSummary.total} comment${sectionSummary.total !== 1 ? "s" : ""}: ${parts.join(", ")})`;
+      }
+      console.log(annotation);
+      continue;
+    }
+
+    // Fall back to Markdown heading pattern
     const headingMatch = /^(#{1,6})\s+(.+)$/.exec(line);
     if (headingMatch) {
       const [, hashes, text] = headingMatch;
@@ -58,8 +82,6 @@ export async function cmdShow(config: HxConfig, resolvedId: string, _args: strin
         annotation += ` (${sectionSummary.total} comment${sectionSummary.total !== 1 ? "s" : ""}: ${parts.join(", ")})`;
       }
       console.log(annotation);
-    } else {
-      // Skip non-heading content for brevity
     }
   }
 }
