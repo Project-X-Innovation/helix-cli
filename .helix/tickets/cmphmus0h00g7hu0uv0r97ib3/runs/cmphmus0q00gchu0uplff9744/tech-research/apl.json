@@ -1,0 +1,57 @@
+{
+  "questions": [
+    "What are the exact server API response shapes for the 4 endpoints the CLI will call (create, list, get, terminate)?",
+    "How should goal IDs be handled as CLI arguments -- positional or via a resolution system like tickets?",
+    "Which flags should be required vs. optional for each command, given the server's Zod schemas?",
+    "Does the server support pagination/limit for the goals list endpoint, or must the CLI handle it client-side?",
+    "Should --repos use comma-separated input with resolveAllRepos, or a different format?"
+  ],
+  "answers": [
+    {
+      "answer": "Confirmed by reading goal-controller.ts: POST /api/goals returns 201 { goal } (full goal object after creation). GET /api/goals returns 200 { items } where each item is a Goal with _count.childTickets (from Prisma include). GET /api/goals/:id returns 200 { goal } with childTickets array and latestEvaluation (transformed from evaluations[0] at controller line 84-85). POST /api/goals/:id/terminate returns 200 { goal } with updated status.",
+      "evidence": [
+        "goal-controller.ts:70: res.status(201).json({ goal })",
+        "goal-controller.ts:77: res.json({ items: goals })",
+        "goal-controller.ts:84-86: const { evaluations, ...rest } = goalData; const goal = { ...rest, latestEvaluation: evaluations[0] ?? null }; res.json({ goal })",
+        "goal-controller.ts:99-100: const goal = await terminateGoal(...); res.json({ goal })",
+        "goal-service.ts:24-28: prisma.goal.findMany with include _count.childTickets",
+        "goal-service.ts:35-52: getGoalDetail includes childTickets (select 7 fields) and evaluations (take 1, desc)"
+      ]
+    },
+    {
+      "answer": "Goal IDs should be raw positional arguments (cuid strings). Goals do NOT have a short ID system (no BLD-xxx references), so the ticket resolution pattern (extractTicketRef + resolveTicket) is inappropriate. The first positional arg after the subcommand is the goalId. This matches the research report Section 8.3 which shows 'hlx goals get <goalId>' with a raw cuid.",
+      "evidence": [
+        "Research report Section 8.3: 'hlx goals get clxyz123abc' uses raw cuid",
+        "Goal model in Prisma has only 'id' (cuid), no 'shortId' or ticket number field",
+        "goal-controller.ts:50-56: readGoalId reads req.params.id directly as a string"
+      ]
+    },
+    {
+      "answer": "Required flags: create needs --title and --description (server Zod min 1). terminate needs --verdict (server requires verdict field). Optional flags: create's --repos, --max-children (default 20), --require-approval (default false), --sprint. list's --status, --limit, --json. get's --json.",
+      "evidence": [
+        "goal-controller.ts:17-24: CreateGoalSchema has title (min 1) and description (min 1) required; maxChildren, requireApproval, repositoryIds, sprintId all optional with defaults",
+        "goal-controller.ts:33-35: TerminateGoalSchema requires verdict: z.enum(['complete', 'failed'])",
+        "Product.md SCN-01: create with only --title and --description (repos absent)",
+        "Product.md SCN-02: create with all optional fields"
+      ]
+    },
+    {
+      "answer": "The server does NOT support pagination for the goals list endpoint. The listGoalsForOrganization service function calls prisma.goal.findMany without take/skip, and the listGoals controller handler does not read limit/offset query params. The --limit flag must be implemented as client-side truncation (Array.slice).",
+      "evidence": [
+        "goal-controller.ts:73-78: listGoals handler reads only req.query.status, no limit/offset params",
+        "goal-service.ts:16-29: findMany has no take/skip/cursor parameters",
+        "Contrast with goal-controller.ts:106-107: listEvaluations DOES read limit/offset, showing the pattern is used elsewhere but not on list goals"
+      ]
+    },
+    {
+      "answer": "Yes, --repos should use comma-separated input processed through resolveAllRepos, exactly matching the hlx tickets create pattern. The server expects repositoryIds as a string array, and resolveAllRepos converts display names/keys to internal IDs via the inspect repos API.",
+      "evidence": [
+        "src/tickets/create.ts:62-77: reposRaw.split(',').map(s => s.trim()).filter(s => s.length > 0) then resolveAllRepos",
+        "goal-controller.ts:22: repositoryIds: z.array(z.string()).optional().default([])",
+        "src/lib/resolve-repo.ts:44-80: resolveAllRepos returns string[] of internal IDs"
+      ]
+    }
+  ],
+  "statement": "T7 is a well-defined greenfield CLI feature adding 5 new files and modifying 2 existing files in helix-cli. All patterns are established by the tickets namespace. The server API contracts are verified (4 endpoints with exact response shapes). Key technical decisions: raw cuid for goal IDs (no resolution needed), comma-separated --repos with resolveAllRepos, client-side --limit truncation, --verdict flag matching server TerminateGoalSchema, --json on list and get. No new dependencies required. Only helix-cli is changed.",
+  "followups": []
+}

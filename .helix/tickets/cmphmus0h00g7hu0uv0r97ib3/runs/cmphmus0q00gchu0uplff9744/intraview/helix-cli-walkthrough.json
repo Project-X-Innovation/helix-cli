@@ -1,0 +1,61 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "T7: CLI Goals Namespace — hlx goals Command Implementation",
+  "description": "This tour walks through the T7 implementation that adds a new `hlx goals` command namespace to helix-cli. Five new files were created in `src/goals/` (index.ts, create.ts, list.ts, get.ts, terminate.ts) and two existing files were modified (src/index.ts for command registration, src/docs/cli-content.ts for documentation). The feature is a greenfield additive change — no existing ticket code, VALID_MODES, or other namespaces were touched. Each new command is a thin wrapper around the server's existing `/api/goals` endpoints, following the established `src/tickets/` pattern exactly.",
+  "steps": [
+    {
+      "file": "src/index.ts",
+      "line": 11,
+      "description": "The main CLI router is the entry point for all namespace dispatch. The T7 change adds a `runGoals` import here (mirroring the existing `runTickets` import) and a new `case 'goals'` in the switch statement at line ~124. This is the first domino: when a user runs `hlx goals <subcommand>`, control flows from here into the new `src/goals/` router. The pattern is identical to every other namespace — `configOrHelp(args.slice(1))` followed by `await runGoals(config, args.slice(1))`.",
+      "title": "Overview: Command Registration Entry Point"
+    },
+    {
+      "file": "src/index.ts",
+      "line": 124,
+      "description": "The new `case 'goals'` block follows the exact same structure as `case 'tickets'` (lines 116–119) and `case 'inspect'` (lines 88–92). Data flow: raw process args are sliced to remove the 'goals' token, passed to `configOrHelp` to load workspace config or print help, then forwarded to `runGoals`. The usage text block above the switch also gains a `hlx goals` line so first-time users see the namespace in top-level help output.",
+      "title": "goals Case in the Switch Statement"
+    },
+    {
+      "file": "src/goals/index.ts",
+      "line": 1,
+      "description": "This is the router for the `hlx goals` namespace, mirroring `src/tickets/index.ts` structurally. It exports a single `runGoals(config, args)` function that reads `args[0]` as the subcommand and dispatches to create, list, get, or terminate via a switch. It also handles `isHelpRequested` checks at the top level and extracts the `goalId` positional argument (from `args[1]`) for the get and terminate subcommands before passing it downstream. This centralised router means each command file stays focused on its own flag parsing and HTTP call.",
+      "title": "Goals Namespace Router"
+    },
+    {
+      "file": "src/goals/create.ts",
+      "line": 1,
+      "description": "Implements `hlx goals create`. Required flags (`--title`, `--description`) are enforced with `requireFlag`, which throws a user-friendly error if missing. Optional flags (`--max-children`, `--require-approval`, `--repos`, `--sprint`) are read with `getFlag`/`hasFlag`. The `--repos` flag is resolved via `resolveAllRepos` (the same utility used by `hlx tickets create`) which maps repo slugs/names to IDs. The POST body is built with a conditional spread so undefined optional fields are omitted. The response type `CreateGoalResponse = { goal: { id, title, status, maxChildren, requireApproval } }` matches the server's goal-controller.ts `createGoalHandler` return shape exactly (201 `{ goal: ... }`).",
+      "title": "hlx goals create — POST /api/goals"
+    },
+    {
+      "file": "src/goals/list.ts",
+      "line": 1,
+      "description": "Implements `hlx goals list`. The `--status` flag is forwarded as a server-side query parameter (`?status=...`) so filtering happens in the database, not in the CLI. The `--limit` flag (default 20) is applied client-side after the full result set is returned, consistent with how other list commands behave. With `--json`, raw JSON is printed; otherwise a padEnd-aligned table is rendered. The response type `GoalsListResponse = { items: GoalListItem[] }` matches the server's `listGoals` return shape, including the Prisma `_count: { childTickets: number }` field that the server attaches to each item.",
+      "title": "hlx goals list — GET /api/goals"
+    },
+    {
+      "file": "src/goals/get.ts",
+      "line": 1,
+      "description": "Implements `hlx goals get <goalId>`. Renders a detailed formatted view of a single goal. Null-safe guards handle the optional `latestEvaluation`, `roadmap`, and `childTickets` fields that the server may or may not include depending on goal state. Description is truncated at 500 characters to keep terminal output readable. The `printGoalDetail` function is exported so other commands (or future commands) can reuse the formatted display without duplicating rendering logic. The response type `GoalResponse = { goal: GoalDetail }` matches the server's `getGoal` handler which applies a `latestEvaluation` transform before returning.",
+      "title": "hlx goals get — GET /api/goals/:id"
+    },
+    {
+      "file": "src/goals/terminate.ts",
+      "line": 1,
+      "description": "Implements `hlx goals terminate <goalId> --verdict <VERDICT>`. A `VALID_VERDICTS` constant (e.g. `['COMPLETED', 'ABANDONED', ...]`) guards the flag value before any HTTP call is made, giving the user a clear error if they pass an unsupported verdict. This pre-validation pattern prevents unnecessary API round-trips and mirrors how `VALID_MODES` guards ticket creation. The response type `TerminateGoalResponse = { goal: { id, title, status } }` matches the server's `postTerminate` handler return shape. Importantly, `VALID_MODES` in `src/tickets/create.ts` is confirmed unchanged — Goals and Tickets remain independent entities.",
+      "title": "hlx goals terminate — POST /api/goals/:id/terminate"
+    },
+    {
+      "file": "src/docs/cli-content.ts",
+      "line": 1,
+      "description": "The `cli-content.ts` documentation file is updated to include a Goals section placed after the Tickets section. It contains: a command table listing all 4 subcommands, four flag tables (one per subcommand), five worked examples showing real-world usage, and the string `'goals'` added to the keywords array so `hlx docs goals` routes correctly. This ensures the built-in help system stays in sync with the new commands without requiring any external documentation tooling.",
+      "title": "Documentation Update — Goals Section"
+    },
+    {
+      "file": "src/goals/index.ts",
+      "line": 1,
+      "description": "All major code paths remain clean. The T7 implementation is purely additive: 5 new files, 2 modified files, zero new runtime dependencies, zero changes to existing ticket logic or VALID_MODES. The code review confirmed all CLI response types match server goal-controller.ts shapes exactly. All 10 product scenarios (SCN-01 through SCN-10) and all 7 success criteria are satisfied. TypeScript strict mode and ES module `.js` import extensions are maintained throughout. The `src/tickets/` namespace and all other existing namespaces are untouched.",
+      "title": "Summary: Clean Code Paths Verified"
+    }
+  ]
+}

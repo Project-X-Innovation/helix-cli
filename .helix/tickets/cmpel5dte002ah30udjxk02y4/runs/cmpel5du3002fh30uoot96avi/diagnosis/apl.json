@@ -1,0 +1,26 @@
+{
+  "questions": [
+    "What is the exact format-dependent code in the CLI and how should it change for HTML reports?",
+    "Should an HTML parsing library be added or can regex suffice for heading extraction?"
+  ],
+  "answers": [
+    {
+      "answer": "The only format-dependent code is in show.ts line 46: the regex /^(#{1,6})\\s+(.+)$/ matches Markdown headings. For HTML reports, this needs to match <h[1-6] id=\"...\">...</h[1-6]> tags instead. The slugify function and all comment commands are format-agnostic.",
+      "evidence": [
+        "src/library/show.ts line 46: /^(#{1,6})\\s+(.+)$/ Markdown heading regex",
+        "src/library/show.ts line 49: slugify() generates anchor from heading text",
+        "src/library/comments-list.ts: format-agnostic, works on anchor strings",
+        "src/library/comments-post.ts: format-agnostic, works on anchor strings"
+      ]
+    },
+    {
+      "answer": "Simple regex should suffice. The CLI only needs to extract heading level (1-6), heading text, and optionally the id attribute from HTML heading tags. A regex like /<h([1-6])(?:\\s+id=\"([^\"]*)\")?>(.+?)<\\/h\\1>/gi would work without adding a runtime dependency. The CLI currently has zero runtime dependencies and adding an HTML parser for one regex replacement would be over-engineering.",
+      "evidence": [
+        "package.json: zero runtime dependencies (devDependencies only: typescript, @types/node)",
+        "show.ts: only extracts heading level and text, no complex DOM operations needed"
+      ]
+    }
+  ],
+  "statement": "CLI impact is minimal: only the heading regex in show.ts needs updating to match HTML heading tags instead of Markdown headings. Both formats should be supported for backward compatibility with existing Markdown reports. A simple regex suffices; no new dependencies needed.",
+  "followups": []
+}
