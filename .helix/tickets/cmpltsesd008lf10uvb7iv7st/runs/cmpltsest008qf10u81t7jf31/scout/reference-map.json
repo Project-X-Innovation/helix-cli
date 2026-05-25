@@ -1,0 +1,47 @@
+{
+  "problem": "Identify feature gaps in helix-cli that represent new feature opportunities. CLI is the command-line workbench for Helix.",
+  "files": [
+    {
+      "path": "src/commands/inspect/index.ts",
+      "why": "Inspection commands (db, logs, api) — mature feature, well-implemented."
+    },
+    {
+      "path": "src/commands/tickets/index.ts",
+      "why": "Ticket management commands — list, get, create, rerun, continue, artifacts. Covers main workflows."
+    },
+    {
+      "path": "src/commands/goals/index.ts",
+      "why": "Goal commands exist (create, list, get, terminate) but backend Goal table doesn't exist in production."
+    },
+    {
+      "path": "src/commands/comments/index.ts",
+      "why": "Comment commands — list and post. No notification management via CLI."
+    }
+  ],
+  "facts": [
+    {
+      "claim": "CLI is published as @projectxinnovation/helix-cli v1.3.4 on npm",
+      "source": "package.json"
+    },
+    {
+      "claim": "CLI has commands for: login, token, org, tickets, goals, inspect, comments, library, skill, preview, update",
+      "source": "src/commands/ directory listing"
+    },
+    {
+      "claim": "Goal CLI commands exist but point at non-existent backend (Goal table missing in production)",
+      "source": "CLI source + production DB table listing"
+    },
+    {
+      "claim": "No notification management commands exist in the CLI",
+      "source": "src/commands/ directory — no notification directory"
+    },
+    {
+      "claim": "No analytics or usage reporting commands exist in the CLI",
+      "source": "src/commands/ directory — no analytics directory"
+    }
+  ],
+  "unknowns": [
+    "Whether CLI users need notification management (dismiss, configure preferences) from the command line",
+    "Whether CLI-based search is needed or if users primarily search via the web UI"
+  ]
+}
