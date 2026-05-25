@@ -1,0 +1,79 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "T7 CLI Goals Namespace — Complete Walkthrough",
+  "description": "This tour walks through the T7 implementation that adds a new `hlx goals` command namespace to helix-cli. The change is purely additive: 5 new files in src/goals/ (index.ts router plus create, list, get, terminate subcommands) and 2 modified files (src/index.ts for command registration, src/docs/cli-content.ts for documentation). No existing ticket code, VALID_MODES, or server-side code was touched. Each command is a thin wrapper that parses flags, calls hxFetch against the existing /api/goals endpoints, and formats output — mirroring the established src/tickets/ pattern exactly.",
+  "steps": [
+    {
+      "file": ".helix/tickets/cmphmus0h00g7hu0uv0r97ib3/runs/cmphmus0q00gchu0uplff9744/diagnosis/diagnosis-statement.md",
+      "line": 1,
+      "description": "The server-side Goal entity and its 11 API endpoints were already fully implemented in helix-global-server (goal-controller.ts, registered at api.ts:436-447). However, no CLI interface existed to interact with Goals. This diagnosis confirmed: (1) src/goals/ did not exist, (2) the server API was complete with Zod-validated schemas, (3) API response shapes are { goal } for single objects and { items } for lists, (4) VALID_MODES in src/tickets/create.ts was untouched, and (5) the src/index.ts switch-statement pattern was the correct integration point. T7 is exclusively a helix-cli additive change — no regressions possible.",
+      "title": "Overview: Why This Change Exists"
+    },
+    {
+      "file": ".helix/tickets/cmphmus0h00g7hu0uv0r97ib3/runs/cmphmus0q00gchu0uplff9744/implementation-plan/implementation-plan.md",
+      "line": 1,
+      "description": "The plan established four governing principles before writing any code: (1) pattern consistency — every new file mirrors src/tickets/ exactly, (2) separate entity — Goals are not Tickets, no modifications to existing ticket code, (3) thin client — no business logic in the CLI, just flag parsing + hxFetch + output formatting, (4) ES module compliance — all imports use .js extensions. The 8 steps flow in data-flow order: router → create → list → get → terminate → index.ts registration → docs → quality gates. This order ensures each command file is complete before the router that dispatches to it.",
+      "title": "Implementation Plan: 8-Step Approach"
+    },
+    {
+      "file": ".helix/tickets/cmphmus0h00g7hu0uv0r97ib3/runs/cmphmus0q00gchu0uplff9744/code-review/code-review-actual.md",
+      "line": 1,
+      "description": "The code review cross-referenced all 7 changed files against the ticket's Research Report (Section 8 and Section 13), the product spec (10 scenarios SCN-01 through SCN-10, 7 success criteria), the implementation plan (8 steps, 10 verification checks), and the server's actual goal-controller.ts response shapes. Every file received a 'Clean' verdict. The review also explicitly verified src/tickets/create.ts VALID_MODES at line 13 remained ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE'] — unchanged — confirming zero regressions.",
+      "title": "Code Review: All 7 Files Verified Clean"
+    },
+    {
+      "file": ".helix/tickets/cmphmus0h00g7hu0uv0r97ib3/runs/cmphmus0q00gchu0uplff9744/code-review/code-review-actual.md",
+      "line": 17,
+      "description": "The goals router (src/goals/index.ts) exports runGoals and uses a switch statement on 4 subcommands (create, list, get, terminate). It handles isHelpRequested checks and extracts goalId from args for the get and terminate subcommands. This mirrors src/tickets/index.ts exactly — the same switch-on-subcommand pattern, the same isHelpRequested guard, the same positional argument extraction. Data flows in as: CLI args array → subcommand string → dispatched to the appropriate command module with (config, args) signature.",
+      "title": "src/goals/index.ts — Namespace Router"
+    },
+    {
+      "file": ".helix/tickets/cmphmus0h00g7hu0uv0r97ib3/runs/cmphmus0q00gchu0uplff9744/code-review/code-review-actual.md",
+      "line": 20,
+      "description": "create.ts uses requireFlag for --title and --description (the two server-required fields per CreateGoalSchema), getFlag for --sprint and --max-children, hasFlag for --require-approval, and resolveAllRepos for --repos (comma-separated repo names resolved to IDs). The POST body uses conditional spread so optional fields are only included when provided. The server responds with 201 { goal: { id, title, status, maxChildren, requireApproval } } — the CLI type CreateGoalResponse matches this exactly. Error handling extracts JSON error messages from the server response body.",
+      "title": "src/goals/create.ts — POST /api/goals"
+    },
+    {
+      "file": ".helix/tickets/cmphmus0h00g7hu0uv0r97ib3/runs/cmphmus0q00gchu0uplff9744/code-review/code-review-actual.md",
+      "line": 23,
+      "description": "list.ts passes --status as a server-side query parameter (the server's listGoals handler accepts ?status to filter by GoalStatus enum). --limit defaults to 20 and is applied client-side after receiving the full server response — this matches the server design which does not paginate goals. --json outputs raw JSON; the default path formats a padEnd-aligned table. The GoalsListResponse type includes _count: { childTickets: number } which matches the server's Prisma _count.childTickets inclusion exactly — confirmed by cross-referencing goal-controller.ts.",
+      "title": "src/goals/list.ts — GET /api/goals"
+    },
+    {
+      "file": ".helix/tickets/cmphmus0h00g7hu0uv0r97ib3/runs/cmphmus0q00gchu0uplff9744/code-review/code-review-actual.md",
+      "line": 26,
+      "description": "get.ts renders a detailed view of a single goal. It handles null-safe access for latestEvaluation (optional field returned only when an evaluation exists), roadmap (optional), and childTickets (array). Description is truncated at 500 characters to keep output readable. The GoalResponse type { goal: GoalDetail } matches the server's getGoal handler which returns res.json({ goal: ... }) with a latestEvaluation transform. The exported printGoalDetail function is designed for reuse by other commands that need to display goal details.",
+      "title": "src/goals/get.ts — GET /api/goals/:id"
+    },
+    {
+      "file": ".helix/tickets/cmphmus0h00g7hu0uv0r97ib3/runs/cmphmus0q00gchu0uplff9744/code-review/code-review-actual.md",
+      "line": 29,
+      "description": "terminate.ts defines a VALID_VERDICTS const (analogous to VALID_MODES in tickets/create.ts but for goal termination verdicts). It uses requireFlag for --verdict and performs pre-validation of the verdict value before making the API call — failing fast with a clear error message rather than sending an invalid request to the server. The TerminateGoalResponse type { goal: { id, title, status } } matches the server's postTerminate handler. Note: VALID_VERDICTS is a new const local to goals — VALID_MODES in src/tickets/create.ts was explicitly verified as unchanged.",
+      "title": "src/goals/terminate.ts — POST /api/goals/:id/terminate"
+    },
+    {
+      "file": ".helix/tickets/cmphmus0h00g7hu0uv0r97ib3/runs/cmphmus0q00gchu0uplff9744/code-review/code-review-actual.md",
+      "line": 32,
+      "description": "src/index.ts was modified in two places: (1) runGoals is imported from './goals/index.js' at line 11, following the same import pattern as runTickets, (2) a case 'goals' block is added at line 124 following the exact tickets pattern: const config = configOrHelp(args.slice(1)); await runGoals(config, args.slice(1)); break. The usage text was also updated to include the 'hlx goals' line. This is the entry point for all goal commands — args flow from the top-level switch into runGoals, then into the goals namespace router, then into the specific command handler.",
+      "title": "src/index.ts — Command Registration"
+    },
+    {
+      "file": ".helix/tickets/cmphmus0h00g7hu0uv0r97ib3/runs/cmphmus0q00gchu0uplff9744/code-review/code-review-actual.md",
+      "line": 35,
+      "description": "cli-content.ts received a Goals section placed after the existing Tickets section. It contains: a command table showing all 4 subcommands, 4 flag tables (one per subcommand), 5 worked examples covering common workflows (create with repos, list filtered by status, get a specific goal, terminate with verdict), and the string 'goals' added to the keywords array so help search finds the section. The documentation structure mirrors the Tickets section format exactly, maintaining visual and structural consistency in the CLI help output.",
+      "title": "src/docs/cli-content.ts — Documentation"
+    },
+    {
+      "file": ".helix/tickets/cmphmus0h00g7hu0uv0r97ib3/runs/cmphmus0q00gchu0uplff9744/code-review/apl.json",
+      "line": 1,
+      "description": "The APL (Automated Pre-flight Log) confirmed all four critical questions with evidence. (1) CLI response types match server API shapes exactly — each of the 4 CLI type definitions was cross-referenced line-by-line against goal-controller.ts. (2) All T7 deliverables, all 10 product scenarios (SCN-01 through SCN-10), and all 7 success criteria are satisfied. (3) Implementation follows established CLI patterns with zero regressions — VALID_MODES confirmed unchanged. (4) Quality gates (typecheck and build) pass. This verification provides confidence that the implementation is both correct and complete.",
+      "title": "APL Verification: Type Safety and Completeness"
+    },
+    {
+      "file": ".helix/tickets/cmphmus0h00g7hu0uv0r97ib3/runs/cmphmus0q00gchu0uplff9744/code-review/code-review-actual.md",
+      "line": 38,
+      "description": "The complete T7 implementation adds 5 new files and modifies 2 existing files with no regressions. The data flow is: user runs 'hlx goals <subcommand> [flags]' → src/index.ts case 'goals' → runGoals router → specific command module → hxFetch to /api/goals endpoint → formatted output. All existing code paths (tickets, inspect, other namespaces) are untouched. VALID_MODES is unchanged. The src/tickets/ directory is unchanged. The implementation is a pure green-field addition that follows established patterns, making it easy to extend with additional goal subcommands (e.g., hlx goals evaluate) in future tickets using the same router pattern.",
+      "title": "Summary: Clean Additive Change, Zero Regressions"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "questions": [
+    "What CLI changes are needed for the Goals Polish ticket?",
+    "Where should the shared error parsing utility live?",
+    "Does the list API response include shortId for goals?"
+  ],
+  "answers": [
+    {
+      "answer": "Two minor DRY/consistency improvements: extract duplicate error parsing from create.ts and terminate.ts into a shared utility, and align list.ts ID display to match get.ts approach.",
+      "evidence": [
+        "diagnosis/diagnosis-statement.md (CLI): 'Duplicate error parsing: create.ts:68-79 and terminate.ts:31-43'",
+        "diagnosis/diagnosis-statement.md (CLI): 'Inconsistent ID display: list.ts uses slice, get.ts uses shortId'"
+      ]
+    },
+    {
+      "answer": "New file src/goals/utils.ts, colocated with the consuming command files in the same directory.",
+      "evidence": [
+        "tech-research/tech-research.md (CLI): 'Chosen: (A) src/goals/utils.ts'",
+        "tech-research/tech-research.md (CLI): 'Colocation with consumers; clear scope; easy to find'"
+      ]
+    },
+    {
+      "answer": "Unknown. The GoalListItem type in list.ts (lines 5-12) does not currently include shortId. The list API response may not include this field. Implementation should check and use shortId if available, or document the limitation.",
+      "evidence": [
+        "list.ts:5-12 direct read: GoalListItem type has id, title, status, updatedAt, _count, description but no shortId",
+        "product/product.md (CLI) open question #2: 'Does shortId exist on all Goal API responses (list vs detail)?'"
+      ]
+    }
+  ],
+  "statement": "The CLI implementation plan covers two minor refactors: extracting duplicate error parsing from create.ts and terminate.ts into src/goals/utils.ts, and aligning list.ts ID display with get.ts. No behavior changes. Tertiary priority.",
+  "followups": []
+}

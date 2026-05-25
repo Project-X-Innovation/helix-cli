@@ -1,0 +1,61 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "T7 CLI Goals Namespace — hlx goals Commands",
+  "description": "This tour walks through the T7 feature addition: a new `hlx goals` CLI namespace with four subcommands (create, list, get, terminate) that act as thin wrappers around the server-side Goal API at /api/goals. Five new files were created in src/goals/ and two existing files were modified (src/index.ts for command registration, src/docs/cli-content.ts for documentation). No existing ticket code, VALID_MODES, or other namespaces were touched. The tour follows data-flow order: CLI entry point → router → each subcommand implementation → documentation.",
+  "steps": [
+    {
+      "file": "src/index.ts",
+      "line": 11,
+      "description": "The main CLI router in src/index.ts is the single entry point for all `hlx` commands. To register the new `goals` namespace, `runGoals` is imported from `./goals/index.js` here, following the exact same pattern used by `runTickets` and other namespace runners. ES module `.js` extensions are required throughout the codebase.",
+      "title": "Step 1: Import runGoals into the main CLI entry point"
+    },
+    {
+      "file": "src/index.ts",
+      "line": 124,
+      "description": "The switch statement (lines 79–148) routes top-level subcommands to their namespace runners. A new `case 'goals'` is added here: it calls `configOrHelp(args.slice(1))` to resolve the workspace config (or print help and exit), then `await runGoals(config, args.slice(1))` to hand off to the goals router. This is identical to the tickets case pattern at lines 116–119 — no bespoke logic, just consistent wiring.",
+      "title": "Step 2: Register the 'goals' case in the main switch statement"
+    },
+    {
+      "file": "src/goals/index.ts",
+      "line": 1,
+      "description": "This file is the goals-namespace router, mirroring src/tickets/index.ts exactly. It exports `runGoals(config, args)`, reads the first positional argument as the subcommand, checks `isHelpRequested` for `--help/-h`, and dispatches to `create`, `list`, `get`, or `terminate` via a switch. For `get` and `terminate`, the second positional argument is extracted as the goalId and passed to the subcommand handler. Unknown subcommands print usage and exit non-zero.",
+      "title": "Step 3: Goals namespace router (src/goals/index.ts)"
+    },
+    {
+      "file": "src/goals/create.ts",
+      "line": 1,
+      "description": "Implements `hlx goals create --title <t> --description <d> [--repos <r>] [--max-children <n>] [--require-approval] [--sprint <id>]`. Required flags (`--title`, `--description`) are validated with `requireFlag` before any network call. Optional flags use `getFlag`/`hasFlag`. Repository slugs from `--repos` are resolved to IDs via `resolveAllRepos`. The POST body is built with a conditional spread so undefined optional fields are never sent. The response type `CreateGoalResponse = { goal: { id, title, status, maxChildren, requireApproval } }` exactly matches the server's `res.json({ goal: ... })` with status 201. Errors are caught and JSON error messages are extracted before printing.",
+      "title": "Step 4: hlx goals create — POST /api/goals"
+    },
+    {
+      "file": "src/goals/list.ts",
+      "line": 1,
+      "description": "Implements `hlx goals list [--status <s>] [--limit <n>] [--json]`. The `--status` flag is forwarded as a server-side query parameter so filtering happens in the database, not the client. `--limit` (default 20) is applied client-side by slicing the returned array — the server does not paginate this endpoint. With `--json` the raw items array is printed; otherwise a padEnd-aligned table is rendered. The response type `GoalsListResponse = { items: GoalListItem[] }` matches the server's `res.json({ items: ... })` which includes Prisma's `_count: { childTickets: number }` field shown in the table.",
+      "title": "Step 5: hlx goals list — GET /api/goals"
+    },
+    {
+      "file": "src/goals/get.ts",
+      "line": 1,
+      "description": "Implements `hlx goals get <goalId> [--json]`. The goalId comes from the router's positional argument extraction. The detailed formatted output handles null-safe optional fields: `latestEvaluation` (may be null), `roadmap` (may be null), and `childTickets` (array, may be empty). Descriptions are truncated at 500 characters to keep terminal output readable. `printGoalDetail` is exported so future commands (e.g. after create) can reuse the same display logic. The response type `GoalResponse = { goal: GoalDetail }` matches the server's getGoal handler which applies a latestEvaluation transform.",
+      "title": "Step 6: hlx goals get — GET /api/goals/:id"
+    },
+    {
+      "file": "src/goals/terminate.ts",
+      "line": 1,
+      "description": "Implements `hlx goals terminate <goalId> --verdict <v>`. A `VALID_VERDICTS` constant holds the allowed verdict strings. `requireFlag` enforces `--verdict` before any network call, and the verdict value is pre-validated against `VALID_VERDICTS` so the user gets a clear error message without an unnecessary round-trip to the server. The POST body is `{ verdict }`. The response type `TerminateGoalResponse = { goal: { id, title, status } }` matches the server's postTerminate handler. Note: `VALID_MODES` in src/tickets/create.ts is completely untouched — goals verdicts are a separate domain concept.",
+      "title": "Step 7: hlx goals terminate — POST /api/goals/:id/terminate"
+    },
+    {
+      "file": "src/docs/cli-content.ts",
+      "line": 1,
+      "description": "The Goals section is added after the Tickets section in cli-content.ts. It includes a command summary table for the four subcommands, four individual flag tables (one per command), five worked examples covering the most common scenarios, and the string `'goals'` added to the keywords array so `hlx help` search indexing surfaces the new commands. No existing documentation sections were modified.",
+      "title": "Step 8: Documentation update in cli-content.ts"
+    },
+    {
+      "file": ".helix/tickets/cmphmus0h00g7hu0uv0r97ib3/runs/cmphmus0q00gchu0uplff9744/code-review/code-review-actual.md",
+      "line": 1,
+      "description": "The code review confirmed all seven changed/created files are clean and all existing namespaces are unaffected. Key invariants verified: (1) `VALID_MODES` in src/tickets/create.ts remains `['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE']` — unchanged. (2) All four CLI response types match the server's goal-controller.ts response shapes exactly. (3) All 10 product scenarios (SCN-01 through SCN-10) and all 7 success criteria from the ticket spec are satisfied. (4) Quality gates (typecheck, build) pass. The feature is purely additive — no regressions to any existing command namespace.",
+      "title": "Step 9: Code review verification — all paths clean"
+    }
+  ]
+}

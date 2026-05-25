@@ -130,6 +130,46 @@ hlx org switch     # Switch to a different org
 |------|-------------|
 | \`--run <run-id>\` | Filter artifacts to a specific run |
 
+### Goals
+
+| Command | Description |
+|---------|-------------|
+| \`hlx goals create\` | Create a new Goal |
+| \`hlx goals list\` | List Goals with optional status filter |
+| \`hlx goals get <goalId>\` | Get Goal detail by ID |
+| \`hlx goals terminate <goalId>\` | Terminate a Goal with a verdict |
+
+**\`hlx goals create\` flags:**
+
+| Flag | Description |
+|------|-------------|
+| \`--title <title>\` | Goal title (required) |
+| \`--description <text>\` | Goal description / success criteria (required) |
+| \`--repos <name1,name2>\` | Target repositories, comma-separated |
+| \`--max-children <n>\` | Maximum child tickets (default: 20) |
+| \`--require-approval\` | Require approval before spawning each child ticket |
+| \`--sprint <id>\` | Associate with a sprint |
+
+**\`hlx goals list\` flags:**
+
+| Flag | Description |
+|------|-------------|
+| \`--status <status>\` | Filter by Goal status (e.g. ACTIVE, COMPLETED) |
+| \`--limit <n>\` | Limit results (default: 20) |
+| \`--json\` | Output results as JSON |
+
+**\`hlx goals get\` flags:**
+
+| Flag | Description |
+|------|-------------|
+| \`--json\` | Output full Goal detail as JSON |
+
+**\`hlx goals terminate\` flags:**
+
+| Flag | Description |
+|------|-------------|
+| \`--verdict <complete\\|failed>\` | Termination verdict (required) |
+
 ### Inspect
 
 | Command | Description |
@@ -244,6 +284,40 @@ hlx tickets artifacts BLD-339 --run <run-id>
 
 Omit \`--run\` to see artifacts across all runs.
 
+### Create a Goal
+
+\`\`\`bash
+hlx goals create --title "Automate RMA process" --description "Build complete RMA approval with approval flow, email notifications, and admin dashboard" --repos my-app,my-api
+\`\`\`
+
+### List active Goals
+
+\`\`\`bash
+hlx goals list --status ACTIVE
+\`\`\`
+
+### Get Goal detail
+
+\`\`\`bash
+hlx goals get <goalId>
+\`\`\`
+
+Includes status, child count, latest evaluation verdict, roadmap summary, and description.
+
+### Get Goal as JSON
+
+\`\`\`bash
+hlx goals get <goalId> --json
+\`\`\`
+
+### Terminate a Goal
+
+\`\`\`bash
+hlx goals terminate <goalId> --verdict complete
+\`\`\`
+
+The \`--verdict\` flag accepts \`complete\` or \`failed\`.
+
 ### Inspect repositories
 
 List all repositories with their available inspection types:
@@ -337,6 +411,7 @@ This file contains your authentication tokens and organization settings. If you 
     "authentication",
     "login",
     "tickets",
+    "goals",
     "inspect",
     "comments",
     "update",

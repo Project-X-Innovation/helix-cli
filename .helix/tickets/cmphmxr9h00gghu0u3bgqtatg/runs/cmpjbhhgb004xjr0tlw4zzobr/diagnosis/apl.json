@@ -1,0 +1,25 @@
+{
+  "questions": [
+    "What CLI code quality issues need polish for production?",
+    "Is the CLI functionally correct and ready for launch?"
+  ],
+  "answers": [
+    {
+      "answer": "Two issues: (1) Error parsing logic is duplicated between create.ts:68-79 and terminate.ts:31-43. Both parse JSON error bodies from backend responses with identical try/catch/fallback patterns. Should extract to a shared utility. (2) ID display is inconsistent: list.ts uses id.slice(0,8)+'...' while get.ts prefers shortId with fallback. Should use consistent approach (shortId is the better pattern per codebase convention).",
+      "evidence": [
+        "create.ts:68-79 and terminate.ts:31-43 have identical error parsing (scout full read)",
+        "list.ts uses id.slice(0,8) while get.ts uses shortId (scout comparison)"
+      ]
+    },
+    {
+      "answer": "Yes, CLI is functionally correct. All 4 commands (create, list, get, terminate) are implemented with proper flag validation, error handling, and both human-readable and --json output modes. Documentation is comprehensive in cli-content.ts. VALID_MODES unchanged at 5 values. Command registration is correct in index.ts:124-128.",
+      "evidence": [
+        "5 files totaling ~380 lines with complete implementation (scout full read)",
+        "VALID_MODES confirmed unchanged at src/tickets/create.ts:13",
+        "Documentation at cli-content.ts:133-172 and 287-319"
+      ]
+    }
+  ],
+  "statement": "CLI needs minor DRY improvements: extract shared error parsing utility and use consistent ID display format (shortId). Both are code quality refinements, not functional issues. The CLI is otherwise production-ready.",
+  "followups": []
+}
