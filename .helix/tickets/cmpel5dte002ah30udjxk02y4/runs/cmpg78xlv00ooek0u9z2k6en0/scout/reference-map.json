@@ -1,0 +1,47 @@
+{
+  "problem": "CLI must display and annotate HTML reports alongside Markdown. The library show command parses headings from both formats and annotates with comment summaries.",
+  "files": [
+    {
+      "path": "src/library/show.ts",
+      "why": "Core report display. Line 48: HTML heading regex. Line 70: Markdown heading regex. Both paths extract slug and annotate with comment summary counts."
+    },
+    {
+      "path": "src/library/index.ts",
+      "why": "Router for library commands: list, show, comments."
+    },
+    {
+      "path": "src/library/list.ts",
+      "why": "Lists library items (reports) via API."
+    },
+    {
+      "path": "src/library/comments-list.ts",
+      "why": "Lists section-grouped comments for a report."
+    },
+    {
+      "path": "src/library/comments-post.ts",
+      "why": "Posts ratings/comments on report sections. Uses slugify() for section anchor matching."
+    },
+    {
+      "path": "src/library/comments.ts",
+      "why": "Comments sub-router."
+    },
+    {
+      "path": "package.json",
+      "why": "Build: tsc. No external markdown/HTML libraries — all parsing is custom regex."
+    }
+  ],
+  "facts": [
+    "show.ts already handles both HTML and Markdown headings: HTML pattern at line 48, Markdown fallback at line 70",
+    "HTML heading regex extracts id attribute for slug, falls back to slugify(rawText) when no id present",
+    "HTML tag content is stripped of nested tags via .replace(/<[^>]+>/g, '') before display",
+    "slugify() implementation differs slightly from client: CLI uses /[^a-z0-9\\s-]/g while client uses /[^a-z0-9]+/g — could cause anchor mismatch on edge cases",
+    "CLI outputs HTML report headings as Markdown-style annotation (## Heading [slug] (N comments: ...)) regardless of source format",
+    "No external dependencies for HTML/Markdown parsing — all custom regex in TypeScript",
+    "Quality gates: npm run build (tsc), npm run typecheck, npm run test (node --test)"
+  ],
+  "unknowns": [
+    "Whether the CLI show.ts only outputs heading annotations and skips non-heading HTML lines — non-heading content appears to be silently dropped for HTML reports",
+    "Whether the slugify() difference between CLI and client causes any real-world anchor mismatches affecting comment targeting",
+    "Whether the HTML heading regex handles multi-line headings or headings with complex nested elements"
+  ]
+}

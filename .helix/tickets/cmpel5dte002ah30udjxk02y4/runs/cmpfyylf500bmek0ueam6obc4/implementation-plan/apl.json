@@ -1,0 +1,18 @@
+{
+  "questions": [
+    "Q1: Does the CLI need code changes for this rerun?"
+  ],
+  "answers": [
+    {
+      "answer": "No. The CLI dual heading extraction is complete from prior runs. show.ts lines 47-67 handle HTML headings (regex priority), lines 69-85 fall back to Markdown. Comment system is anchor-based and format-agnostic. Only typecheck verification is needed.",
+      "evidence": [
+        "diagnosis/diagnosis-statement.md (CLI): 'No code changes needed'",
+        "tech-research/tech-research.md (CLI): '0 files changed — dual extraction confirmed complete'",
+        "show.ts line 48: HTML heading regex confirmed working",
+        "show.ts line 70: Markdown fallback regex confirmed working"
+      ]
+    }
+  ],
+  "statement": "No CLI code changes needed. Dual heading extraction is complete from prior runs. Only typecheck verification is required.",
+  "followups": []
+}

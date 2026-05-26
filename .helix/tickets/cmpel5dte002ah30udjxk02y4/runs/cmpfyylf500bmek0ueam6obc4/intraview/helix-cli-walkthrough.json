@@ -1,0 +1,43 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "Dual-Format Heading Extraction for HTML and Markdown Reports",
+  "description": "This tour walks through the CLI changes made to support HTML-formatted library reports in the `hlx library show` command. Previously, the heading extraction regex in show.ts only matched Markdown headings (e.g., `# Title`). As reports migrate to HTML format, the CLI needed to also recognize `<h1>`–`<h6>` tags. The solution adds an HTML heading regex tried first, with the original Markdown regex preserved as a fallback — zero new runtime dependencies, full backward compatibility.",
+  "steps": [
+    {
+      "file": "src/library/show.ts",
+      "line": 1,
+      "description": "The CLI's `hlx library show` command is the only entry point that parses report content line-by-line to extract headings for display and comment annotation. Files like comments-list.ts and comments-post.ts are format-agnostic — they operate on anchor strings passed via --section and never inspect report content. The diagnosis confirmed that only the heading regex in show.ts is format-dependent, making this a minimal, surgical change.",
+      "title": "Overview: Why show.ts is the Only File Changed"
+    },
+    {
+      "file": "src/library/show.ts",
+      "line": 9,
+      "description": "The local `LibraryItemDetail` type is extended with an optional `filePath?: string | null` field. The server (helix-global-server) now includes filePath in the API response, and the CLI type must accommodate it to avoid TypeScript errors. The field is optional and nullable so existing Markdown-based reports without filePath continue to deserialize without issues — full backward compatibility with no runtime impact.",
+      "title": "Step L1: Add filePath to Local LibraryItemDetail Type"
+    },
+    {
+      "file": "src/library/show.ts",
+      "line": 48,
+      "description": "The HTML heading regex `/<h([1-6])(?:\\s+[^>]*?id=\"([^\"]*)\"[^>]*)?>(.+?)<\\/h\\1>/i` is checked first for each line of report content. Capture group 1 extracts the heading level (1–6), capture group 2 extracts the `id` attribute value directly (used as the anchor slug when present), and capture group 3 captures the inner content including any nested HTML tags. This regex was chosen over an HTML parsing library because the CLI has zero runtime dependencies by design, and well-formed heading tags require no DOM traversal — a regex suffices.",
+      "title": "Step L2a: HTML Heading Regex — Primary Pattern"
+    },
+    {
+      "file": "src/library/show.ts",
+      "line": 66,
+      "description": "After a successful HTML heading match, a `continue` statement skips the rest of the loop body for that line. This ensures the Markdown regex below is never attempted on a line that already matched as an HTML heading, preventing false positives and duplicate heading entries in the output. Data flow: HTML match → extract level/id/text → slugify if no id → record heading → continue to next line.",
+      "title": "Step L2b: continue Prevents Double-Processing"
+    },
+    {
+      "file": "src/library/show.ts",
+      "line": 70,
+      "description": "The original Markdown heading regex `/^(#{1,6})\\s+(.+)$/` is completely unchanged from before this implementation. It only executes for lines that did not match the HTML pattern (guarded by the `continue` above). This preserves 100% backward compatibility: existing Markdown reports continue to work identically. Both the HTML and Markdown paths produce the same output format — heading level indicators with slug annotations and comment counts — so the rest of the display pipeline requires no changes.",
+      "title": "Step L2c: Markdown Heading Regex — Preserved Fallback"
+    },
+    {
+      "file": "src/library/show.ts",
+      "line": 1,
+      "description": "All major code paths remain clean: (1) HTML reports: HTML regex fires first, extracts id attribute directly as anchor slug, strips nested tags for display text, `continue` skips Markdown check. (2) Markdown reports: HTML regex does not match `# Heading` lines, Markdown regex fires as fallback, behavior identical to pre-change. (3) Comment commands (comments-list.ts, comments-post.ts): untouched, format-agnostic. (4) TypeScript compilation: passes with zero errors (npx tsc --noEmit). (5) Zero new runtime dependencies added.",
+      "title": "Summary: Clean Code Paths Confirmed"
+    }
+  ]
+}
