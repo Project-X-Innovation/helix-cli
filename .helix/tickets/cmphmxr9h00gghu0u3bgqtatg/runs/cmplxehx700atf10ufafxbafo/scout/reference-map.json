@@ -1,0 +1,51 @@
+{
+  "problem": "One file listed in merge-conflicts.json (src/tickets/index.ts) from conflicting ticket and staging commits. File contains NO conflict markers — already resolved. Goal CLI commands are fully implemented in src/goals/ (6 files). No blocking issues identified in this repo for the conflict resolution run.",
+  "files": [
+    {
+      "path": "src/tickets/index.ts",
+      "why": "Listed in merge-conflicts.json (4 ticket commits + 1 staging commit conflict). No conflict markers found. 150-line ticket subcommand dispatcher. No goal references in this file."
+    },
+    {
+      "path": "src/goals/index.ts",
+      "why": "Goal CLI command dispatcher with 4 subcommands: create, list, get, terminate."
+    },
+    {
+      "path": "src/goals/create.ts",
+      "why": "Goal creation CLI command."
+    },
+    {
+      "path": "src/goals/list.ts",
+      "why": "Goal listing CLI command."
+    },
+    {
+      "path": "src/goals/get.ts",
+      "why": "Goal detail CLI command."
+    },
+    {
+      "path": "src/goals/terminate.ts",
+      "why": "Goal termination CLI command."
+    },
+    {
+      "path": "src/goals/utils.ts",
+      "why": "Goal utility functions."
+    },
+    {
+      "path": "src/index.ts",
+      "why": "Main CLI entry point. Imports runGoals (line 11) and dispatches goals command (lines 124-127)."
+    },
+    {
+      "path": "package.json",
+      "why": "Build: 'tsc'. Typecheck: 'tsc --noEmit'. Test: 'tsc && node --test dist/**/*.test.js'. No lint script."
+    }
+  ],
+  "facts": [
+    "src/tickets/index.ts has NO conflict markers — file is clean, 150 lines",
+    "Goal CLI is fully implemented: create, list, get, terminate subcommands under src/goals/",
+    "Goals is a first-class CLI command alongside tickets, registered in src/index.ts",
+    "Build: 'tsc', typecheck: 'tsc --noEmit', no lint script defined",
+    "No Prisma dependency — CLI is a pure API client, unaffected by server schema changes"
+  ],
+  "unknowns": [
+    "Whether any ticket subcommand changes were intended by the staging commits that conflicted with ticket commits"
+  ]
+}

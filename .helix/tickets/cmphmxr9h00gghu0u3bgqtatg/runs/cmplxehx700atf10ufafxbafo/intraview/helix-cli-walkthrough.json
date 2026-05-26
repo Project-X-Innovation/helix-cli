@@ -1,0 +1,31 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "Goals CLI DRY Refactor: Extract parseApiError Utility",
+  "description": "This tour walks through the Goals Polish refactoring in helix-cli. The core change extracts duplicated error-response parsing logic from create.ts and terminate.ts into a shared utility at src/goals/utils.ts. Both files previously contained identical try/catch patterns to parse HTTP error bodies from the hxFetch backend client. The refactor eliminates the duplication with no behavior changes, and also aligns goal ID display formatting across list.ts for consistency with get.ts.",
+  "steps": [
+    {
+      "file": "src/goals/utils.ts",
+      "line": 1,
+      "description": "OVERVIEW: This new file is the heart of the refactor. The diagnosis identified that create.ts (lines 68-79) and terminate.ts (lines 31-43) contained byte-for-byte identical error parsing logic — both split the hxFetch error message on the em-dash separator (' — '), attempted JSON.parse on the trailing body segment, and extracted the .error field with a fallback to the raw message. Rather than maintain two copies, this utility centralizes the logic in a single exported function parseApiError(error: unknown): string. The function handles four cases in sequence: (1) non-Error thrown values via String(error), (2) plain Error instances whose message does not match the hxFetch format, (3) the hxFetch HTTP error format 'HTTP <status> — <JSON body>' by splitting on the em-dash and JSON-parsing the body to extract .error, and (4) fallback to the raw message if JSON.parse throws. Critically, the function only returns the parsed string — it does NOT call console.error or process.exit, so each caller retains full control over how and when the error is reported.",
+      "title": "New shared utility: parseApiError"
+    },
+    {
+      "file": "src/goals/create.ts",
+      "line": 5,
+      "description": "The import statement at line 5 brings parseApiError in from ./utils.js (Node ESM resolution requires the .js extension even for TypeScript source). Before this change, the catch block in create.ts around line 68 contained its own inline try/catch: it checked for the em-dash separator, called JSON.parse on the body portion, read .error from the result, and fell back to the raw message on failure. All of that logic is now deleted and replaced by a single delegation call to parseApiError(error) in the catch block. Data flow: thrown error object → parseApiError → string message → console.error + process.exit(1). No change to the observable output.",
+      "title": "create.ts: import and use shared utility"
+    },
+    {
+      "file": "src/goals/terminate.ts",
+      "line": 4,
+      "description": "Mirrors the create.ts change. terminate.ts previously had the same duplicated error parsing block at lines 31-43. The import at line 4 pulls in parseApiError from ./utils.js, and the catch block at line 32 now delegates to it instead of repeating the inline try/catch pattern. Data flow is identical: thrown error → parseApiError → error string → console.error + process.exit(1). Because the extraction preserved the exact same logic, there is zero behavioral difference — the refactor is purely structural. The typecheck (tsc --noEmit) exiting 0 confirms the types are consistent across both consumers.",
+      "title": "terminate.ts: import and use shared utility"
+    },
+    {
+      "file": "src/goals/utils.ts",
+      "line": 1,
+      "description": "SUMMARY — Code path verification: After this refactor, all error paths for Goals CLI commands route through a single, well-documented function. The hxFetch error format ('HTTP <status> — <JSON body>') is parsed in exactly one place. If the backend ever changes its error envelope shape, only utils.ts needs updating. The typecheck gate (npm run typecheck, exit 0) confirms no type regressions were introduced. No CLI tests exist in this repo (documented as out of scope in the product spec), and the code review confirmed no duplicate error parsing remains in either create.ts or terminate.ts. The codebase's major code paths — create, list, get, terminate — remain functionally unchanged with identical output and flag behavior.",
+      "title": "Summary: single source of truth for error parsing"
+    }
+  ]
+}
