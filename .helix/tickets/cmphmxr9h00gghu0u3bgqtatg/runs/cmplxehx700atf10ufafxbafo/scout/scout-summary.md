@@ -1,51 +1,49 @@
-# Scout Summary: Goals Polish & Final (helix-cli)
+# Scout Summary — helix-cli
 
 ## Problem
 
-The CLI Goals namespace (`hlx goals create/list/get/terminate`) is fully implemented across 5 command files with documentation. This ticket requires verifying code quality and identifying any polish needs in the CLI layer.
+One file listed in merge-conflicts.json (src/tickets/index.ts) from conflicting ticket and staging commits. File contains NO conflict markers and appears fully resolved. Goal CLI commands are completely implemented in src/goals/. No blocking issues identified in this repo for the conflict resolution run.
 
 ## Analysis Summary
 
-The CLI Goals code is **solid and production-ready** (quality ~7.5/10) with good error handling, proper flag validation, and clean output formatting. Polish areas are minor:
+### Conflict File Status
 
-### Polish Areas
+| File | Conflict Markers | Current State |
+|------|-----------------|---------------|
+| src/tickets/index.ts | None found | Clean, 150 lines. Ticket subcommand dispatcher. No goal references. |
 
-1. **Duplicate error parsing**: Error response parsing logic is duplicated between `create.ts` (lines 68-79) and `terminate.ts` (lines 31-43). Both parse JSON error bodies from backend responses with identical try/catch/fallback patterns. Could be extracted to a shared utility.
+### Goal CLI Implementation (fully present)
 
-2. **Inconsistent ID display**: `list.ts` uses `id.slice(0, 8) + "..."` while `get.ts` prefers `shortId` field with fallback to abbreviated ID. Should use consistent approach.
+- **Entry point**: src/index.ts imports runGoals (line 11), dispatches at lines 124-127
+- **Subcommands** (src/goals/index.ts):
+  - `hlx goals create` — Create a new goal
+  - `hlx goals list` — List goals with filters
+  - `hlx goals get` — Get goal detail
+  - `hlx goals terminate` — Terminate a goal (complete/failed)
+- **Utilities**: src/goals/utils.ts for shared helpers
+- **No Prisma dependency** — CLI is a pure API client, unaffected by server schema changes
 
-3. **No status filter validation**: `list.ts` passes `--status` value directly to the API without validating against allowed GoalStatus values. Invalid status values will produce unhelpful API errors instead of descriptive CLI errors.
+### Build Configuration
 
-4. **No CLI tests**: No test files found for goal commands (though this may be consistent with other CLI command test patterns).
-
-### Code Quality Observations
-
-- Clean command routing pattern in index.ts with per-subcommand help text
-- Proper required flag validation with helpful error messages
-- Thorough create command: flag validation, repo name resolution, max-children range check
-- Both human-readable and --json output modes supported
-- Documentation is comprehensive in cli-content.ts with flags and worked examples
-- VALID_MODES unchanged at 5 values (correctly no GOAL mode added)
+| Command | Script |
+|---------|--------|
+| Build | `tsc` |
+| Typecheck | `tsc --noEmit` |
+| Test | `tsc && node --test dist/**/*.test.js` |
+| Lint | Not configured |
 
 ## Relevant Files
 
-| File | Lines | Role |
-|------|-------|------|
-| src/goals/index.ts | 76 | Command router with help text |
-| src/goals/create.ts | 90 | Create goal with validation |
-| src/goals/list.ts | 60 | List goals with filtering |
-| src/goals/get.ts | 99 | Get goal detail |
-| src/goals/terminate.ts | 55 | Terminate with verdict validation |
-| src/docs/cli-content.ts | 133-172, 287-319 | Documentation and examples |
-| src/index.ts | 124-128 | Command registration |
-| src/tickets/create.ts | line 13 | VALID_MODES (unchanged) |
-| package.json | scripts | build/typecheck/test commands |
+- `src/tickets/index.ts` — Conflict file (clean), ticket subcommand dispatcher
+- `src/goals/index.ts` — Goal CLI command dispatcher
+- `src/goals/create.ts`, `list.ts`, `get.ts`, `terminate.ts`, `utils.ts` — Goal subcommands
+- `src/index.ts` — Main CLI entry point with goals command registration
 
 ## Artifact Inputs Used
 
 | Artifact | Why Used | Key Takeaway |
 |----------|----------|--------------|
-| ticket.md (Research Report RSH-534) | Primary specification | Section 8 (CLI Support) defines expected commands, flags, and constraints. Section 8.4 confirms VALID_MODES unchanged. |
-| src/goals/*.ts (full reads) | Code quality assessment | 5 files totaling ~380 lines. Solid implementation with minor duplicate code and inconsistency issues. |
-| src/docs/cli-content.ts | Documentation verification | Comprehensive documentation with worked examples covering all 4 commands. |
-| src/tickets/create.ts | VALID_MODES constraint | Confirmed 5 values unchanged at line 13 per research report requirement. |
+| .helix/merge-conflicts.json | Identify conflicted files | src/tickets/index.ts listed; no conflict markers found |
+| src/tickets/index.ts (direct read) | Verify conflict status | Clean 150-line file, no goal references, no markers |
+| src/goals/index.ts (agent exploration) | Map goal CLI structure | 4 subcommands fully implemented |
+| package.json | Verify build/quality gate commands | Build: tsc; typecheck: tsc --noEmit; no lint |
