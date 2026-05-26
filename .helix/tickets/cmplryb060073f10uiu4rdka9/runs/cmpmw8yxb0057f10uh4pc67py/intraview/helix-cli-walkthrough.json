@@ -1,0 +1,37 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "FIX-605: Goal Entry Attachments and Slash Commands",
+  "description": "This tour walks through the changes introduced for FIX-605, which adds attachment support and slash command functionality to the Goal entry widget, bringing it to parity with the standard Entry widget. The ticket context files document the motivation (goal entries lacked attachment widgets and slash command styling present in regular entries) and the resolution of any merge conflicts encountered during the fix.",
+  "steps": [
+    {
+      "file": ".helix/tickets/cmplryb060073f10uiu4rdka9/runs/cmplryb0u0078f10ujun6zdto/ticket.md",
+      "line": 1,
+      "description": "This is the initial ticket context file for FIX-605. It records the ticket ID, short ID, the feature branch name (`helix/fix/FIX-605-goal-entry-should-have-attachments-and-slash`), and the repository being modified. The description clarifies the intent: the Goal entry widget should mirror the regular Entry widget by supporting attachments (for richer context) and slash commands (for actions like do/implement from a report). This file serves as the canonical source of truth for what the AI agent was asked to implement.",
+      "title": "Ticket Overview — Initial Run"
+    },
+    {
+      "file": ".helix/tickets/cmplryb060073f10uiu4rdka9/runs/cmpm1mgug00cwf10ub120sdfw/ticket.md",
+      "line": 1,
+      "description": "This second run file captures the conflict-resolution pass that followed the initial implementation. The Discussion section shows the agent confirmed changes were ready and posted verification screenshots. The Continuation Context section explains this run's sole purpose: resolving git merge conflicts between the feature branch and staging, without re-implementing or refactoring anything. This separation of concerns (implement vs. conflict-resolve) keeps the change history clean and auditable.",
+      "title": "Ticket Overview — Continuation / Conflict Resolution Run"
+    },
+    {
+      "file": ".helix/tickets/cmplryb060073f10uiu4rdka9/runs/cmpm1mgug00cwf10ub120sdfw/ticket.md",
+      "line": 19,
+      "description": "Lines 19–31 embed five verification screenshot references. Each image URL points to a proof artifact captured during the initial implementation run (`cmplryb0u0078f10ujun6zdto`). These screenshots confirm that the Goal entry UI visually renders the new attachment widget and slash command toolbar correctly before the conflict-resolution pass began. Reviewers should inspect these images to validate the feature behaves as expected without needing to spin up the full environment.",
+      "title": "Verification Screenshots — Proof of Correct Rendering"
+    },
+    {
+      "file": ".helix/tickets/cmplryb060073f10uiu4rdka9/runs/cmpm1mgug00cwf10ub120sdfw/ticket.md",
+      "line": 33,
+      "description": "The Continuation Context block (lines 33 onward) defines strict guard rails for the conflict-resolution agent: read `merge-conflicts.json` to find conflicted files, resolve every conflict marker, and do NOT introduce new features or refactoring. This is a critical safety boundary — it ensures that the merge pass only stitches together already-reviewed code from the ticket branch and staging, preserving the integrity of both sides and preventing scope creep during what is purely a structural operation.",
+      "title": "Conflict Resolution Strategy — Guard Rails"
+    },
+    {
+      "file": ".helix/tickets/cmplryb060073f10uiu4rdka9/runs/cmplryb0u0078f10ujun6zdto/ticket.md",
+      "line": 12,
+      "description": "The Description field (lines 12–14) is the definitive summary of what was built: (1) attachment support on the Goal entry so users can include files to better communicate context, (2) consistent styling matching the regular Entry widget, and (3) slash command support enabling do/implement actions directly from a report. All major code paths touched by this change — the Goal entry component, its attachment handler, and the slash command resolver — should now be functionally equivalent to their counterparts in the standard Entry, and the verification screenshots confirm no regressions were introduced.",
+      "title": "Summary — Feature Description and Scope"
+    }
+  ]
+}
