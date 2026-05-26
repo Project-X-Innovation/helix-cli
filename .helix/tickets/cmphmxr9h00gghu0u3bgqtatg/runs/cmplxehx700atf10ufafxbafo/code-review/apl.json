@@ -1,0 +1,24 @@
+{
+  "questions": [
+    "Was the shared error parsing utility correctly extracted?",
+    "Do CLI quality gates pass?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes. src/goals/utils.ts exports parseApiError with correct error handling logic. Both create.ts (line 68) and terminate.ts (line 32) import and use it. No duplicate error parsing remains in either file.",
+      "evidence": [
+        "Direct read of utils.ts: handles Error instances, non-Error values, hxFetch error format, JSON parse failures",
+        "Direct read of create.ts: imports parseApiError from ./utils.js at line 5",
+        "Direct read of terminate.ts: imports parseApiError from ./utils.js at line 4"
+      ]
+    },
+    {
+      "answer": "Yes. Typecheck (tsc --noEmit) exits 0.",
+      "evidence": [
+        "Code review ran: npm run typecheck — exit 0"
+      ]
+    }
+  ],
+  "statement": "CLI refactoring verified correct: parseApiError utility properly extracted. Both consumers updated. No issues found, no code changes needed. Typecheck passes.",
+  "followups": []
+}

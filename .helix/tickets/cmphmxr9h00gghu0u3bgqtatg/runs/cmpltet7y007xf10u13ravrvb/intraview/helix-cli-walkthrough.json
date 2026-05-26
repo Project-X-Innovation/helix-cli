@@ -1,0 +1,49 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "Goals CLI DRY Refactor: Extract parseApiError Utility",
+  "description": "This tour walks through the Goals Polish refactoring in helix-cli. The core change extracts duplicated error-response parsing logic from create.ts and terminate.ts into a shared utility (src/goals/utils.ts). Both files previously contained identical try/catch patterns to parse HTTP error bodies from the backend. The refactor improves maintainability with no behavior changes, and also aligns goal ID display formatting across list.ts and get.ts for consistency.",
+  "steps": [
+    {
+      "file": "src/goals/utils.ts",
+      "line": 1,
+      "description": "This is the new shared utility file created to eliminate duplicated error parsing. It exports a single function parseApiError(error: unknown): string. The function handles four cases in order: (1) non-Error values via String(error), (2) plain Error instances, (3) the hxFetch HTTP error format 'HTTP <status> — <JSON body>' by splitting on the em-dash and JSON-parsing the body to extract the .error field, and (4) fallback to the raw message if JSON.parse fails. Critically, the function only returns the string — it does NOT call console.error or process.exit, so callers retain full control over error reporting behavior.",
+      "title": "New shared utility: parseApiError"
+    },
+    {
+      "file": "src/goals/create.ts",
+      "line": 5,
+      "description": "The import at line 5 replaces the previously inline error parsing block (lines 68-79 of the original file). Before this change, create.ts contained its own try/catch that split the error message on the em-dash separator and attempted JSON.parse on the body. Now it delegates entirely to the shared utility, keeping the catch block to a single call: parseApiError(error). This is the first consumer of the new utility.",
+      "title": "create.ts imports parseApiError from utils"
+    },
+    {
+      "file": "src/goals/create.ts",
+      "line": 68,
+      "description": "At line 68 the catch block calls parseApiError(error) to obtain the human-readable error string, then passes it to console.error and process.exit(1) as before. The external command behavior — output format, exit code, error message text — is completely unchanged. The only difference is the error parsing logic now lives in one place instead of two.",
+      "title": "create.ts catch block now uses shared utility"
+    },
+    {
+      "file": "src/goals/terminate.ts",
+      "line": 4,
+      "description": "Like create.ts, terminate.ts previously duplicated the identical em-dash error parsing pattern in its catch block (lines 31-43 of the original). The import at line 4 removes that duplication. Both consumers now share a single source of truth for how backend HTTP errors are parsed and displayed.",
+      "title": "terminate.ts imports parseApiError from utils"
+    },
+    {
+      "file": "src/goals/terminate.ts",
+      "line": 32,
+      "description": "Line 32 shows parseApiError(error) replacing the formerly inline JSON.parse try/catch. The terminate command's catch block still calls console.error with the result and exits with code 1, preserving identical user-facing behavior. With both create.ts and terminate.ts updated, there is no remaining duplicated error parsing logic in the Goals namespace.",
+      "title": "terminate.ts catch block delegates to shared utility"
+    },
+    {
+      "file": "src/goals/list.ts",
+      "line": 1,
+      "description": "A secondary polish change: list.ts previously displayed goal IDs using id.slice(0, 8) + '...' — a raw string truncation approach. This was inconsistent with get.ts, which prefers the shortId field from the API response when available. This file was updated to align with the get.ts convention, improving output consistency for operators who use both list and get commands. Note that GoalListItem's type definition was checked — if shortId is not present in the list API response, the implementation falls back gracefully.",
+      "title": "list.ts: ID display alignment (consistency fix)"
+    },
+    {
+      "file": ".helix/tickets/cmphmxr9h00gghu0u3bgqtatg/runs/cmpltet7y007xf10u13ravrvb/code-review/code-review-actual.md",
+      "line": 1,
+      "description": "The AI agent's code review verified three things: (1) utils.ts correctly handles all error edge cases with proper JSDoc documentation, (2) both create.ts and terminate.ts import and use parseApiError with no residual duplicate parsing logic, and (3) tsc --noEmit exits 0 — the TypeScript typecheck passes cleanly. The review found no requirement gaps, correctness issues, or regression risks. The extraction was a verbatim refactor of identical logic, so behavioral parity is guaranteed.",
+      "title": "Code review confirmed: no issues, typecheck passes"
+    }
+  ]
+}
