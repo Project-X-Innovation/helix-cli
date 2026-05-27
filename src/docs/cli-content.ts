@@ -12,13 +12,15 @@ The Helix CLI (\`hlx\`) is the command-line interface for the Helix platform. It
 
 ## Installation
 
-Install the CLI globally from GitHub:
+Install the CLI from the latest GitHub release:
 
-\`\`\`bash
-npm install -g git+https://github.com/Project-X-Innovation/helix-cli.git#main
-\`\`\`
+1. Download the latest release from https://github.com/Project-X-Innovation/helix-cli/releases/latest
+2. Extract the tarball: \`tar -xzf helix-cli.tgz\`
+3. Run: \`npm install -g ./ --ignore-scripts\` from the extracted directory
 
-After installation the \`hlx\` command is available system-wide.
+The \`--ignore-scripts\` flag is required because the tarball ships prebuilt — no build step is needed.
+
+After installation the \`hlx\` command is available system-wide. Use \`hlx update\` to update to the latest version.
 
 ---
 
@@ -127,6 +129,46 @@ hlx org switch     # Switch to a different org
 | Flag | Description |
 |------|-------------|
 | \`--run <run-id>\` | Filter artifacts to a specific run |
+
+### Goals
+
+| Command | Description |
+|---------|-------------|
+| \`hlx goals create\` | Create a new Goal |
+| \`hlx goals list\` | List Goals with optional status filter |
+| \`hlx goals get <goalId>\` | Get Goal detail by ID |
+| \`hlx goals terminate <goalId>\` | Terminate a Goal with a verdict |
+
+**\`hlx goals create\` flags:**
+
+| Flag | Description |
+|------|-------------|
+| \`--title <title>\` | Goal title (required) |
+| \`--description <text>\` | Goal description / success criteria (required) |
+| \`--repos <name1,name2>\` | Target repositories, comma-separated |
+| \`--max-children <n>\` | Maximum child tickets (default: 20) |
+| \`--require-approval\` | Require approval before spawning each child ticket |
+| \`--sprint <id>\` | Associate with a sprint |
+
+**\`hlx goals list\` flags:**
+
+| Flag | Description |
+|------|-------------|
+| \`--status <status>\` | Filter by Goal status (e.g. ACTIVE, COMPLETED) |
+| \`--limit <n>\` | Limit results (default: 20) |
+| \`--json\` | Output results as JSON |
+
+**\`hlx goals get\` flags:**
+
+| Flag | Description |
+|------|-------------|
+| \`--json\` | Output full Goal detail as JSON |
+
+**\`hlx goals terminate\` flags:**
+
+| Flag | Description |
+|------|-------------|
+| \`--verdict <complete\\|failed>\` | Termination verdict (required) |
 
 ### Inspect
 
@@ -242,6 +284,40 @@ hlx tickets artifacts BLD-339 --run <run-id>
 
 Omit \`--run\` to see artifacts across all runs.
 
+### Create a Goal
+
+\`\`\`bash
+hlx goals create --title "Automate RMA process" --description "Build complete RMA approval with approval flow, email notifications, and admin dashboard" --repos my-app,my-api
+\`\`\`
+
+### List active Goals
+
+\`\`\`bash
+hlx goals list --status ACTIVE
+\`\`\`
+
+### Get Goal detail
+
+\`\`\`bash
+hlx goals get <goalId>
+\`\`\`
+
+Includes status, child count, latest evaluation verdict, roadmap summary, and description.
+
+### Get Goal as JSON
+
+\`\`\`bash
+hlx goals get <goalId> --json
+\`\`\`
+
+### Terminate a Goal
+
+\`\`\`bash
+hlx goals terminate <goalId> --verdict complete
+\`\`\`
+
+The \`--verdict\` flag accepts \`complete\` or \`failed\`.
+
 ### Inspect repositories
 
 List all repositories with their available inspection types:
@@ -293,13 +369,15 @@ hlx update --disable-auto   # Turn off automatic checks
 
 ## Troubleshooting
 
-### Stale Symlink After Update
+### CLI Not Working After Update
 
-If \`hlx\` stops working after an update (e.g. "command not found" or "module not found" errors), the global npm symlink may be stale. Fix it with a clean reinstall:
+If \`hlx\` stops working after an update (e.g. "command not found" or "module not found" errors), re-run the update to restore a clean installation:
 
 \`\`\`bash
-npm install -g git+https://github.com/Project-X-Innovation/helix-cli.git#main
+hlx update
 \`\`\`
+
+If \`hlx\` is completely unusable, download the latest release manually from https://github.com/Project-X-Innovation/helix-cli/releases/latest and reinstall.
 
 ### Authentication Issues
 
@@ -333,6 +411,7 @@ This file contains your authentication tokens and organization settings. If you 
     "authentication",
     "login",
     "tickets",
+    "goals",
     "inspect",
     "comments",
     "update",

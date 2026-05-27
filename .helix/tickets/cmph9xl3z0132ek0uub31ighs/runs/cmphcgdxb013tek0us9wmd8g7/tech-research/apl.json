@@ -1,0 +1,45 @@
+{
+  "questions": [
+    "Q1: Should the server return JSON or plain text, given hxFetch always calls response.json()?",
+    "Q2: How should the CLI separate URI output (stdout) from the usage hint (stderr)?",
+    "Q3: Should the new preview command be added to the SKIP_AUTO_UPDATE set?",
+    "Q4: How does the error flow work for 'ticket not found' vs 'no NeonBranchRecord'?"
+  ],
+  "answers": [
+    {
+      "answer": "The server must return JSON ({ connectionUri: '...' }). hxFetch at src/lib/http.ts:81 always calls response.json() on success. There is no text/plain response path. Modifying hxFetch is out of scope. The CLI extracts .connectionUri from the parsed response.",
+      "evidence": [
+        "src/lib/http.ts:81 — return response.json();",
+        "All existing server endpoints use res.json()",
+        "Global error handler returns { error: message } JSON (src/app.ts:93-98)"
+      ]
+    },
+    {
+      "answer": "Use process.stdout.write(uri + '\\n') for the URI and process.stderr.write('# Tip: ...\\n') for the hint. This gives explicit control over which bytes go to each stream. The trailing newline satisfies the 'single trailing newline is acceptable' provision. Error paths never reach the stdout.write call, guaranteeing empty stdout on failure.",
+      "evidence": [
+        "Ticket spec: stdout = URI only, stderr = #-prefixed hint",
+        "Top-level try/catch at src/index.ts:141-144 uses console.error + process.exit(1) for errors",
+        "No existing command uses process.stdout.write — but this command has a unique composability requirement"
+      ]
+    },
+    {
+      "answer": "No. The preview command should NOT be added to SKIP_AUTO_UPDATE. The set currently contains --version, -v, update, --help, -h, and skill (src/index.ts:69). Authenticated command groups (tickets, inspect, comments) are not in the set. The preview command is authenticated and follows the same pattern.",
+      "evidence": [
+        "src/index.ts:69 — SKIP_AUTO_UPDATE = new Set(['--version', '-v', 'update', '--help', '-h', 'skill'])",
+        "tickets, inspect, comments are not in the set",
+        "preview is an authenticated command that benefits from auto-update checks"
+      ]
+    },
+    {
+      "answer": "Two distinct error flows: (1) 'Ticket not found' comes from resolveTicket() in the CLI before the endpoint is called — it throws 'Ticket X not found in org Y' which the top-level catch sends to stderr. This naturally matches hlx tickets get behavior since they use the same resolveTicket function. (2) 'No NeonBranchRecord' comes from the server returning 404 with { error: 'No preview database branch found...' }. hxFetch throws an Error with the HTTP status + body text, caught by the top-level catch.",
+      "evidence": [
+        "src/lib/resolve-ticket.ts:163-166 — throws 'Ticket X not found in org Y'",
+        "src/lib/http.ts:102-103 — buildErrorMessage creates 'HTTP 404 ... — {body text}'",
+        "src/index.ts:141-144 — top-level catch does console.error(error.message) + process.exit(1)",
+        "src/tickets/index.ts:65-67 — same resolveTicket flow as tickets get"
+      ]
+    }
+  ],
+  "statement": "The helix-cli changes are a straightforward additive feature: a new 'preview' command group (src/preview/index.ts + src/preview/db-url.ts) following the established router pattern, plus a case addition and usage update in src/index.ts. The server must return JSON { connectionUri } for hxFetch compatibility. stdout/stderr separation is achieved via explicit process.stdout.write/process.stderr.write. Error handling leverages the existing top-level try/catch and resolveTicket error paths. No new dependencies, no changes to existing commands or shared utilities.",
+  "followups": []
+}

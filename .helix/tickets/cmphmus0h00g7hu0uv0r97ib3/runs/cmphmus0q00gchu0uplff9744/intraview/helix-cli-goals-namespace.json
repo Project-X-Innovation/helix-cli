@@ -1,0 +1,54 @@
+{
+  "title": "T7: CLI Goals Namespace Implementation",
+  "description": "Walkthrough of the new hlx goals CLI namespace with 4 subcommands (create, list, get, terminate)",
+  "steps": [
+    {
+      "file": "src/goals/index.ts",
+      "line": 18,
+      "title": "Goals namespace router",
+      "description": "The main entry point for `hlx goals`. Exports `runGoals` which dispatches to 4 subcommands via a switch statement. Follows the exact pattern from src/tickets/index.ts. For `get` and `terminate`, extracts goalId as a positional argument and validates it's present."
+    },
+    {
+      "file": "src/goals/create.ts",
+      "line": 16,
+      "title": "Create command (POST /api/goals)",
+      "description": "Handles `hlx goals create`. Uses requireFlag for --title and --description (required). Optional flags: --repos (resolved via resolveAllRepos), --max-children (parsed to int), --require-approval (boolean), --sprint. Calls POST /api/goals with basePath '/api'."
+    },
+    {
+      "file": "src/goals/list.ts",
+      "line": 16,
+      "title": "List command (GET /api/goals)",
+      "description": "Handles `hlx goals list`. Passes --status as server-side query param. Applies --limit as client-side Array.slice (server doesn't support pagination). --json outputs JSON.stringify. Table format: id-abbr, status (padEnd 18), child count, updated, title."
+    },
+    {
+      "file": "src/goals/get.ts",
+      "line": 88,
+      "title": "Get command (GET /api/goals/:id)",
+      "description": "Handles `hlx goals get <goalId>`. Displays detailed Goal info: title, status, max children, approval mode, latest evaluation, child tickets, roadmap, and description. Handles null fields gracefully. --json outputs raw server response."
+    },
+    {
+      "file": "src/goals/get.ts",
+      "line": 42,
+      "title": "printGoalDetail helper",
+      "description": "Exported helper that formats Goal detail for console output. Handles null latestEvaluation, null roadmap, empty childTickets arrays. Truncates description at 500 chars. Available for reuse by other commands."
+    },
+    {
+      "file": "src/goals/terminate.ts",
+      "line": 15,
+      "title": "Terminate command (POST /api/goals/:id/terminate)",
+      "description": "Handles `hlx goals terminate <goalId> --verdict <complete|failed>`. Validates verdict against VALID_VERDICTS before API call. Uses requireFlag for --verdict. Error handling follows create.ts pattern with JSON body extraction."
+    },
+    {
+      "file": "src/index.ts",
+      "line": 124,
+      "title": "Goals registered in main CLI router",
+      "description": "The `goals` case in the main switch statement, following the exact `tickets` pattern: configOrHelp(args.slice(1)) then await runGoals(config, args.slice(1)). Import at line 11."
+    },
+    {
+      "file": "src/docs/cli-content.ts",
+      "line": 133,
+      "title": "Goals documentation section",
+      "description": "Added Goals section to Common Commands with command table, flag tables for all 4 commands, and 5 worked examples. Added 'goals' to keywords array for search indexing."
+    }
+  ]
+}

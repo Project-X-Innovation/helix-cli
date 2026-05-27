@@ -1,0 +1,40 @@
+{
+  "questions": [
+    "What specific code changes are needed in perform.ts to replace the shell-based directory copy?",
+    "What should perform.test.ts cover given copyDirRecursive is a private function?",
+    "Should the execSync import be fully removed from perform.ts after replacing copyDirRecursive?"
+  ],
+  "answers": [
+    {
+      "answer": "Three changes in perform.ts: (1) Delete line 1 — remove `import { execSync } from 'node:child_process'` entirely, as no code in perform.ts will call execSync after the replacement. (2) Add `cpSync` to the existing `node:fs` import (lines 2-9) alongside copyFileSync, existsSync, mkdirSync, renameSync, rmSync, writeFileSync. (3) Replace the copyDirRecursive function body (lines 33-39) from execSync with platform-conditional xcopy/cp-R to a single `cpSync(src, dest, { recursive: true })` call. The function signature, JSDoc, safeRename, and all other code remain identical.",
+      "evidence": [
+        "perform.ts:1 — import { execSync } from 'node:child_process' — only used at line 34",
+        "perform.ts:2-9 — existing node:fs imports where cpSync will be added",
+        "perform.ts:33-39 — copyDirRecursive body with execSync xcopy/cp-R to be replaced",
+        "tech-research/tech-research.md — Option A chosen: fs.cpSync(src, dest, { recursive: true })",
+        "Context7 Node.js docs confirm cpSync(src, dest, { recursive: true }) is a direct cross-platform replacement"
+      ]
+    },
+    {
+      "answer": "perform.test.ts should contain 4 test cases: (1) getInstallRoot() returns a non-empty string resolving to an existing directory, (2) getInstallRoot() returns a path whose parent contains package.json, (3) a static verification reading perform.ts source to confirm no execSync/child_process references remain and cpSync is present, (4) a behavioral test that cpSync(src, dest, { recursive: true }) correctly copies a nested directory structure (directly exercising the same API that copyDirRecursive delegates to). copyDirRecursive and safeRename are both module-private — they cannot be imported for direct testing. getInstallRoot() is the only non-performStagedUpdate export and has testable import.meta.url logic.",
+      "evidence": [
+        "perform.ts:24 — getInstallRoot is exported (testable directly)",
+        "perform.ts:33 — copyDirRecursive has no export keyword (module-private)",
+        "perform.ts:46 — safeRename has no export keyword (module-private)",
+        "tech-research/tech-research.md Decision 2 — keep copyDirRecursive private; test indirectly",
+        "tech-research/tech-research.md Decision 4 — perform.test.ts scope defined"
+      ]
+    },
+    {
+      "answer": "Yes. After replacing copyDirRecursive's body with cpSync, the execSync import on perform.ts line 1 has zero remaining callers within perform.ts. It must be removed entirely. The cpSync function is available from the existing node:fs import on lines 2-9. The child_process import line should be deleted. Other files in the update module that use child_process (check.ts for 'gh auth token', validate.ts for spawnSync('node')) have their own imports and are unaffected.",
+      "evidence": [
+        "perform.ts:1 — import { execSync } from 'node:child_process' — only used by copyDirRecursive at line 34",
+        "perform.ts:34 — the sole execSync call in perform.ts, replaced by cpSync",
+        "check.ts:1 — has its own execSync import for 'gh auth token'",
+        "validate.ts:1 — has its own spawnSync import for node --version"
+      ]
+    }
+  ],
+  "statement": "The implementation plan consists of 3 atomic, ordered steps: (1) Modify src/update/perform.ts to replace copyDirRecursive's execSync-based xcopy/cp-R body with cpSync(src, dest, { recursive: true }), remove the unused node:child_process import, and add cpSync to the existing node:fs import. (2) Create src/update/perform.test.ts with 4 test cases covering getInstallRoot(), static verification of no execSync, and cpSync-based directory copy behavior. (3) Run quality gates (npm run build, npm test, node dist/index.js --version). No new dependencies are added. No files other than perform.ts are modified. The primary tar extraction fix (extract.ts) is already complete and requires no changes.",
+  "followups": []
+}

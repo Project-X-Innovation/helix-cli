@@ -1,0 +1,219 @@
+{
+  "problem": "Restructure the bundled hlx-cli skill (skill-content/) to use progressive disclosure, refresh install/update docs for the post-PR-86 GitHub-release-asset flow, add operational gotchas + ticket-prompting reference + recovery guide, create a CI workflow that enforces CLI-surface coverage in skill docs, and add a PR template checkbox.",
+  "files": [
+    {
+      "path": "skill-content/SKILL.md",
+      "why": "Primary file to restructure. Currently 196 lines with flat layout (Guardrails, Environment Setup, Available Commands table, Common Workflows, Flag Conventions). Needs rewrite to 10-section progressive-disclosure format per ticket. Frontmatter has name: hlx-cli and a 149-char description that needs expansion to ≤1024 chars with trigger coverage for CLI-ops AND ticket-writing."
+    },
+    {
+      "path": "skill-content/references/commands.md",
+      "why": "Existing 127-line command reference. Needs expansion to cover every subcommand at every depth with full flag details. Current gaps: missing tickets list flags (--search, --user, --status, --status-not-in, --archived, --sprint, --json, --limit), missing update-description subcommand, missing library commands details (--section, --rating, --reply-to, section-slug-or-heading-text auto-slugify). Missing enum values for --mode and --rating."
+    },
+    {
+      "path": "skill-content/references/current-state.md",
+      "why": "Does NOT exist. Ticket requires appending a dated note about migration from npm self-update to GitHub-release-asset update, citing PR #86."
+    },
+    {
+      "path": "skill-content/references/ticket-prompting.md",
+      "why": "Does NOT exist. Ticket requires creating a bundled ticket-authoring guide with 7 prescribed sections using hard-constraint language patterns."
+    },
+    {
+      "path": "skill-content/references/recovery.md",
+      "why": "Does NOT exist. Ticket requires documenting the GitHub-release-asset install/update flow and broken-install recovery, based on src/update/** behavior."
+    },
+    {
+      "path": ".github/workflows/skill-sync.yml",
+      "why": "Does NOT exist. Ticket requires a new CI workflow that builds the CLI, recursively runs --help on all subcommands, parses tokens, and asserts literal coverage in SKILL.md or commands.md. Must exit non-zero on missing tokens."
+    },
+    {
+      "path": ".github/pull_request_template.md",
+      "why": "Does NOT exist. Ticket requires creating with a skill-update checkbox."
+    },
+    {
+      "path": "scripts/skill-sync/",
+      "why": "Directory does NOT exist. Ticket requires parser script under scripts/skill-sync/ for the CI workflow."
+    },
+    {
+      "path": "src/index.ts",
+      "why": "Main CLI entry point (145 lines). Defines top-level command router with switch cases for: login, token, inspect, comments, library, org, tickets, skill, update, --version/-v, --help/-h. The usage() function (lines 35-66) contains the canonical top-level help text. Source of truth for top-level subcommand names."
+    },
+    {
+      "path": "src/tickets/index.ts",
+      "why": "Tickets command router (150 lines). Defines all tickets subcommands: list, latest, get, create, update-description, rerun, continue, artifacts, artifact, bundle. Usage text (lines 17-32) is canonical for tickets --help. Source of truth for all tickets flags."
+    },
+    {
+      "path": "src/tickets/create.ts",
+      "why": "Ticket creation (185 lines). Implements --description vs --description-file mutual exclusion with file-path detection gotcha (lines 48-58). VALID_MODES = ['AUTO','BUILD','FIX','RESEARCH','EXECUTE']. Flags: --title, --description, --description-file, --repos, --mode, --after, --reference, --implement-from."
+    },
+    {
+      "path": "src/tickets/update-description.ts",
+      "why": "Update description command (41 lines). Implements --file and --text flags (mutually exclusive). Critical for documenting the gotcha about update-description."
+    },
+    {
+      "path": "src/tickets/continue.ts",
+      "why": "Continue command (46 lines). Implements --dry-run flag (line 30). Documents continuation context as required positional arg."
+    },
+    {
+      "path": "src/tickets/artifacts.ts",
+      "why": "Artifacts listing (79 lines). Implements --run flag. Contains logic for terminal-status empty artifacts (lines 56-77) relevant to 'Artifact workflow' section."
+    },
+    {
+      "path": "src/tickets/artifact.ts",
+      "why": "Single artifact view (69 lines). Requires --step and --repo flags, optional --run flag."
+    },
+    {
+      "path": "src/tickets/bundle.ts",
+      "why": "Bundle command (91 lines). Requires --out flag, optional --run flag."
+    },
+    {
+      "path": "src/tickets/list.ts",
+      "why": "List command (115 lines). Flags: --search, --user, --status, --status-not-in, --archived, --sprint, --json. These flags are missing from current commands.md."
+    },
+    {
+      "path": "src/tickets/latest.ts",
+      "why": "Latest command (52 lines). Flags: --status-not-in, --archived, --sprint."
+    },
+    {
+      "path": "src/inspect/index.ts",
+      "why": "Inspect command router (130 lines). Subcommands: repos, db, logs, api. Contains PowerShell quoting tips in help text (lines 22-29). Source of truth for inspect flags: --repo, --query, --query-file, --limit."
+    },
+    {
+      "path": "src/comments/index.ts",
+      "why": "Comments command router (53 lines). Subcommands: list, post. Flags: --ticket, --helix-only, --since."
+    },
+    {
+      "path": "src/library/index.ts",
+      "why": "Library command router (73 lines). Subcommands: list, show, comments. Nested comments has list/post subcommands."
+    },
+    {
+      "path": "src/library/comments.ts",
+      "why": "Library comments router (51 lines). Subcommands: list, post. Usage text shows --section, --rating, --reply-to flags. Documents rating values: thumbs-up (up), thumbs-down (down), love."
+    },
+    {
+      "path": "src/library/comments-post.ts",
+      "why": "Library comments post (78 lines). Implements RATING_MAP (lines 5-11): thumbs-up->THUMBS_UP, up->THUMBS_UP, thumbs-down->THUMBS_DOWN, down->THUMBS_DOWN, love->LOVE. Auto-slugify for section headings (line 25). --reply-to makes --rating optional."
+    },
+    {
+      "path": "src/library/comments-list.ts",
+      "why": "Library comments list (87 lines). Implements --section filter with auto-slugify."
+    },
+    {
+      "path": "src/org/index.ts",
+      "why": "Org command router. Subcommands: current, list, switch."
+    },
+    {
+      "path": "src/token/index.ts",
+      "why": "Token command router. Subcommand: add. Flags: --token, --url, --name, --current."
+    },
+    {
+      "path": "src/login.ts",
+      "why": "Login command (110 lines). Implements --manual flag for non-browser auth. OAuth flow with browser auto-open."
+    },
+    {
+      "path": "src/update/index.ts",
+      "why": "Update command handler (207 lines). Flags: --enable-auto, --disable-auto. Implements checkAutoUpdate() pre-command hook. Recovery message on failure (lines 107-112): 'hlx update' or download from GitHub releases."
+    },
+    {
+      "path": "src/update/check.ts",
+      "why": "GitHub release checking (136 lines). CANONICAL_REPO='Project-X-Innovation/helix-cli', CANONICAL_BRANCH='main'. Fetches latest release via GitHub API, looks for 'helix-cli.tgz' asset. Discovers auth from GITHUB_TOKEN, GH_TOKEN, or gh CLI."
+    },
+    {
+      "path": "src/update/perform.ts",
+      "why": "Staged update pipeline (241 lines). STAGING_BASE='~/.hlx/staging/'. Flow: download tarball -> extract in-process -> validate -> rename-based swap with .bak rollback -> cleanup. Critical for recovery.md documentation."
+    },
+    {
+      "path": "src/update/validate.ts",
+      "why": "Staged update validation (66 lines). Checks dist/index.js exists, package.json exists, runs 'node dist/index.js --version' with HLX_SKIP_UPDATE_CHECK=1. Critical for recovery.md."
+    },
+    {
+      "path": "src/update/extract.ts",
+      "why": "Pure JS tar/gzip extraction. No external binary dependency. Relevant for recovery.md documentation."
+    },
+    {
+      "path": "src/update/version.ts",
+      "why": "Version reporting. Format: '1.3.4 (c8620a5)' or '1.3.4'. Reads from package.json + build-metadata.json."
+    },
+    {
+      "path": "src/skill/install.ts",
+      "why": "Skill install command (130 lines). Three-tier resolution: --target, --for <claude|codex>, auto-detect. --force for overwrite. Copies SKILL.md and references/ directory. Behavior must remain unchanged per invariants."
+    },
+    {
+      "path": "src/skill/show.ts",
+      "why": "Skill show command (25 lines). Reads SKILL.md from bundled skill-content/ and writes to stdout. Recovery message already points to 'hlx update' and GitHub releases."
+    },
+    {
+      "path": "src/skill/paths.ts",
+      "why": "Skill content path resolution (34 lines). SKILL_DIR_NAME='hlx-cli'. Resolves bundled skill-content/ from dist/skill/paths.js at runtime."
+    },
+    {
+      "path": "src/skill/skill.test.ts",
+      "why": "Skill tests (290 lines). Tests: SKILL_DIR_NAME, getSkillContentDir, cmdShow, cmdInstall (--target, no-overwrite, --force, auto-detect, --for validation, atomic rollback). Validates install copies SKILL.md and references/ byte-for-byte."
+    },
+    {
+      "path": "src/docs/cli-content.ts",
+      "why": "CLI docs content export (351 lines). Contains an installation section that references manual GitHub release download. Not in ticket scope to modify but shows current install guidance for consistency."
+    },
+    {
+      "path": ".github/workflows/build-release.yml",
+      "why": "Build and release workflow (60 lines). Triggers on push to main. Creates tarball with dist/, skill-content/, package.json, build-metadata.json. Publishes as 'latest' GitHub release. Source of truth for what tarball contains."
+    },
+    {
+      "path": ".github/workflows/publish.yml",
+      "why": "npm publish workflow (63 lines). Validates dist/index.js, package.json, skill-content/SKILL.md in tarball. Not to be modified per invariants."
+    },
+    {
+      "path": "package.json",
+      "why": "Package config. scripts: build (tsc), typecheck (tsc --noEmit), test (tsc && node --test dist/**/*.test.js), prepare (npm run build). files: dist, skill-content. The CI skill-sync workflow needs npm ci + npm test pattern."
+    },
+    {
+      "path": "tsconfig.json",
+      "why": "TypeScript config. outDir: dist, rootDir: src, target: ES2022, module: Node16. Build outputs to dist/."
+    },
+    {
+      "path": "src/lib/flags.ts",
+      "why": "Flag parsing utilities. Provides getFlag(), hasFlag(), isHelpRequested(), getPositionalArgs(), requireFlag(). Manual parsing — no yargs/commander dependency."
+    },
+    {
+      "path": "src/lib/resolve-ticket.ts",
+      "why": "Ticket reference resolution. Accepts internal ID, short ID (e.g. BLD-339), or ticket number (e.g. 339). Used by tickets, comments commands."
+    },
+    {
+      "path": "src/lib/resolve-library-item.ts",
+      "why": "Library item reference resolution. Accepts internal ID, ticket short ID (e.g. RSH-439), or title substring."
+    }
+  ],
+  "facts": [
+    "skill-content/ currently contains only SKILL.md (196 lines) and references/commands.md (127 lines). No current-state.md, recovery.md, or ticket-prompting.md exist.",
+    "SKILL.md frontmatter: name: hlx-cli, description is 149 chars (well under 1024 limit). Description lacks trigger words for ticket-writing, org switching, broken-install recovery.",
+    "SKILL.md body has 5 sections (Guardrails, Environment Setup, Available Commands, Common Workflows, Flag Conventions) but ticket requires 10 sections in a specific order.",
+    "commands.md is missing: tickets list full flags (--search, --user, --status, --status-not-in, --archived, --sprint, --json), tickets latest flags, update-description subcommand entirely, full library comments post flags (--section, --rating, --reply-to, rating enum values), mode enum values (AUTO|BUILD|FIX|RESEARCH|EXECUTE), artifact subcommand (--step, --repo, --run), bundle --run flag.",
+    "No .github/workflows/skill-sync.yml exists. No scripts/ directory exists at repo root. No .github/pull_request_template.md exists.",
+    "Top-level CLI commands (from src/index.ts): login, token, inspect, comments, library, org, tickets, skill, update, --version/-v, --help/-h.",
+    "Tickets subcommands (from src/tickets/index.ts): list, latest, get, create, update-description, rerun, continue, artifacts, artifact, bundle.",
+    "Inspect subcommands (from src/inspect/index.ts): repos, db, logs, api.",
+    "Library subcommands (from src/library/index.ts): list, show, comments. Library comments subcommands: list, post.",
+    "Org subcommands (from src/org/index.ts): current, list, switch.",
+    "Token subcommand (from src/token/index.ts): add.",
+    "Skill subcommands (from src/skill/index.ts): show, install.",
+    "Comments subcommands (from src/comments/index.ts): list, post.",
+    "Update flow (post-PR-86): GitHub API fetches latest release tagged 'latest' from Project-X-Innovation/helix-cli. Downloads helix-cli.tgz asset. Stages to ~/.hlx/staging/{sha}/. Extracts in-process (no external tar binary). Validates: dist/index.js exists, package.json exists, node dist/index.js --version succeeds. Rename-based atomic swap with .bak backup for rollback. On failure: recovery message says 'hlx update' or manual download from releases.",
+    "Build-release.yml tarball includes: dist/, skill-content/, package.json, build-metadata.json (excludes test files).",
+    "skill install copies SKILL.md and all files in references/ directory. Test validates byte-for-byte copy. Adding new reference files (recovery.md, ticket-prompting.md, current-state.md) will be automatically included by the install logic (readdirSync on references/).",
+    "Package build: npm ci triggers prepare->build->tsc. Tests: tsc && node --test dist/**/*.test.js. Build outputs to dist/. CI sync workflow will need: npm ci, then node dist/index.js --help plus recursive subcommand help.",
+    "RATING_MAP in src/library/comments-post.ts: thumbs-up->THUMBS_UP, up->THUMBS_UP, thumbs-down->THUMBS_DOWN, down->THUMBS_DOWN, love->LOVE.",
+    "The --description flag in tickets create has a gotcha: if the value resolves to a readable file path, CLI errors and tells user to use --description-file instead (src/tickets/create.ts lines 48-58).",
+    "tickets create description has no explicit 10,000-char cap in client code; the cap is likely server-enforced.",
+    "Auto-update check skips for: --version, -v, update, --help, -h, skill (src/index.ts line 69)."
+  ],
+  "unknowns": [
+    "The 10,000-char description cap mentioned in the ticket for 'tickets create' is not enforced client-side. It may be a server-side constraint. The gotchas section should document it per ticket requirements regardless.",
+    "PR #36 (PREVIEW_READY fix) and PR #86 (GitHub release asset migration) are referenced in the ticket but their full PR descriptions are not accessible from the repo state alone. Document content must rely on the ticket description and current code behavior.",
+    "The exact token budget for SKILL.md body (≤5,000 tokens) cannot be verified at scout time without a tokenizer. Implementation will need to count tokens after writing.",
+    "Whether the CI skill-sync workflow should use exact same Node version as build-release.yml (22) or can differ.",
+    "How deep the recursive --help walk needs to go for the CI script. Current CLI has max 3 levels: hlx -> library -> comments -> list/post. The parser script must handle arbitrary depth."
+  ],
+  "ormDetection": {
+    "type": "no-orm",
+    "evidence": "package.json has no ORM dependencies. No schema files or migration directories found."
+  }
+}

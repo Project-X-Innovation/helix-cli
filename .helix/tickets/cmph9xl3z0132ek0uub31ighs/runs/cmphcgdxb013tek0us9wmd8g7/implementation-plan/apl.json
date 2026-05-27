@@ -1,0 +1,37 @@
+{
+  "questions": [
+    "Q1: What files need to be created/modified and in what order?",
+    "Q2: How should the CLI handler separate stdout and stderr output?",
+    "Q3: How does error handling work without custom try/catch in the handler?"
+  ],
+  "answers": [
+    {
+      "answer": "Create src/preview/db-url.ts (handler) first, then src/preview/index.ts (router, imports db-url), then modify src/index.ts (imports preview router, adds case + usage text). This order ensures each file's dependencies exist when it is created. Total: 2 new files, 1 modified file.",
+      "evidence": [
+        "src/tickets/index.ts — reference router that imports from ./get.ts, ./list.ts, etc.",
+        "src/index.ts — imports from ./tickets/index.js, ./comments/index.js, etc.",
+        "Tech research summary table: new files = src/preview/index.ts, src/preview/db-url.ts; modified = src/index.ts"
+      ]
+    },
+    {
+      "answer": "Use process.stdout.write(uri + '\\n') for the URI and process.stderr.write('# Tip: $env:DATABASE_URL = (hlx preview db-url <ticket>); npm run dev\\n') for the hint. This gives explicit control over which bytes go to each stream. The trailing newline satisfies 'single trailing newline is acceptable'. On error paths, the handler never reaches the stdout.write call, guaranteeing empty stdout.",
+      "evidence": [
+        "Ticket output contract: 'stdout: the connection URI and nothing else'",
+        "Ticket spec: 'The usage hint must go to stderr'",
+        "Tech research Decision 4: explicit stream writes for composability guarantee",
+        "src/index.ts:141-144 — top-level catch uses console.error + process.exit(1)"
+      ]
+    },
+    {
+      "answer": "Two error sources, both caught by the top-level try/catch at src/index.ts:141-144: (1) resolveTicket() throws 'Ticket X not found in org Y' when the ticket identifier doesn't match — this is the same error as hlx tickets get. (2) hxFetch throws with HTTP status + body text for server errors (404 for no NeonBranchRecord, 500 for decryption failure). Both paths result in console.error(error.message) + process.exit(1), satisfying the fail-closed requirement.",
+      "evidence": [
+        "src/lib/resolve-ticket.ts:163-166 — throws 'Ticket X not found in org Y'",
+        "src/lib/http.ts:102-103 — buildErrorMessage creates 'HTTP 404 ... — body text'",
+        "src/index.ts:141-144 — console.error(error.message) + process.exit(1)",
+        "Tech research Decision 5: error handling leverages existing top-level try/catch"
+      ]
+    }
+  ],
+  "statement": "The helix-cli implementation plan requires two new files (src/preview/index.ts, src/preview/db-url.ts) and one modified file (src/index.ts). The command group follows the established tickets/comments router pattern. The handler calls hxFetch for the server endpoint, extracts .connectionUri from JSON, and writes URI to stdout and hint to stderr. Error handling is entirely delegated to the existing top-level try/catch. No new dependencies.",
+  "followups": []
+}

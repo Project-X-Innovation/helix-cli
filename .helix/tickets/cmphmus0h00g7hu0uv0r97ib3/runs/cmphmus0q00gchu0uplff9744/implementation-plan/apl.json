@@ -1,0 +1,79 @@
+{
+  "questions": [
+    "What files need to be created and modified for the T7 CLI Goals namespace?",
+    "What is the exact command registration pattern in src/index.ts?",
+    "What are the server API request/response contracts for the 4 goal endpoints?",
+    "How should goal IDs be handled as CLI arguments?",
+    "What flags are required vs optional for each command?",
+    "How should --repos be handled (comma-separated with resolveAllRepos or raw IDs)?",
+    "Does the server support pagination for goals list, or must the CLI handle it client-side?",
+    "What output formatting patterns should the commands follow?"
+  ],
+  "answers": [
+    {
+      "answer": "5 new files in src/goals/ (index.ts, create.ts, list.ts, get.ts, terminate.ts) and 2 modified files (src/index.ts for command registration, src/docs/cli-content.ts for documentation). The src/goals/ directory does not exist yet.",
+      "evidence": [
+        "ls src/goals/ confirms directory does not exist",
+        "Research report Section 8.2 lists the exact 4 command files plus router",
+        "Research report Section 13 T7 deliverables: src/goals/ directory, 4 command files, index.ts registration, docs update"
+      ]
+    },
+    {
+      "answer": "src/index.ts uses a switch statement (lines 79-148). Each namespace gets a case that calls configOrHelp(args.slice(1)) then awaits the runner. Pattern: case 'goals': { const config = configOrHelp(args.slice(1)); await runGoals(config, args.slice(1)); break; }. Import runGoals from './goals/index.js'. Add hlx goals line to usage text.",
+      "evidence": [
+        "src/index.ts:116-119 shows the tickets case pattern",
+        "src/index.ts:88-92 shows the inspect case pattern",
+        "All namespace cases follow identical structure with configOrHelp + await runner"
+      ]
+    },
+    {
+      "answer": "POST /api/goals: body {title, description, maxChildren?, requireApproval?, repositoryIds?, sprintId?} -> 201 {goal}. GET /api/goals?status=X -> 200 {items} with _count.childTickets. GET /api/goals/:id -> 200 {goal} with childTickets[], latestEvaluation. POST /api/goals/:id/terminate: body {verdict: 'complete'|'failed'} -> 200 {goal}.",
+      "evidence": [
+        "goal-controller.ts CreateGoalSchema verified in diagnosis/apl.json",
+        "goal-controller.ts TerminateGoalSchema requires verdict: z.enum(['complete', 'failed'])",
+        "tech-research/tech-research.md Core API/Methods section confirms all 4 endpoints and response shapes"
+      ]
+    },
+    {
+      "answer": "Goal IDs are raw positional cuid arguments (first arg after subcommand). Goals have no short ID or ticket-number system, so the ticket resolution pattern (extractTicketRef + resolveTicket) is inappropriate. Pattern: const goalId = rest[0]; if (!goalId) error and exit.",
+      "evidence": [
+        "tech-research Decision 2: raw positional cuid chosen over ticket-style resolution",
+        "Goal model has only 'id' (cuid), no shortId field",
+        "Research report Section 8.3: 'hlx goals get clxyz123abc' uses raw cuid"
+      ]
+    },
+    {
+      "answer": "create: --title and --description required (requireFlag), --repos/--max-children/--require-approval/--sprint optional. list: --status/--limit/--json all optional. get: goalId positional required, --json optional. terminate: goalId positional required, --verdict required (requireFlag), validated against ['complete', 'failed'].",
+      "evidence": [
+        "Server CreateGoalSchema: title (min 1) and description (min 1) required; others optional with defaults",
+        "Server TerminateGoalSchema: verdict required as z.enum(['complete', 'failed'])",
+        "product/product.md SCN-01 shows create with only title+description"
+      ]
+    },
+    {
+      "answer": "--repos uses comma-separated input processed through resolveAllRepos, exactly matching the hlx tickets create pattern. The repos flag is optional for goals (unlike tickets where it's required).",
+      "evidence": [
+        "tech-research Decision 3: comma-separated with resolveAllRepos chosen",
+        "src/tickets/create.ts:62-77 shows the existing pattern",
+        "tech-research Decision 7: --repos optional because goals can defer repo assignment"
+      ]
+    },
+    {
+      "answer": "Server does NOT support pagination for goals list. The --limit flag must be client-side truncation via Array.slice(0, limit).",
+      "evidence": [
+        "tech-research Decision 5: server listGoals handler reads only ?status, no limit/offset",
+        "tech-research/apl.json answer 4: goal-controller.ts:73-78 reads only req.query.status"
+      ]
+    },
+    {
+      "answer": "List: one-line-per-goal table (id-abbr, status, child count, updated, title). Get: multi-section formatted output (title, id, status, max children, approval mode, children count, latest evaluation, child tickets, roadmap, description). Create/terminate: structured confirmation text. --json on list and get outputs JSON.stringify(data, null, 2).",
+      "evidence": [
+        "tech-research TD-3: list table format specified",
+        "tech-research TD-4: get detail format specified",
+        "src/tickets/list.ts:106-113 and src/tickets/get.ts:62-113 provide reference patterns"
+      ]
+    }
+  ],
+  "statement": "T7 is a well-defined greenfield CLI feature adding 5 new files and modifying 2 existing files in helix-cli only. All implementation patterns are established by the existing tickets namespace. The server API contracts are verified (4 endpoints with exact response shapes). Key technical decisions resolved: raw cuid for goal IDs, comma-separated --repos with resolveAllRepos, client-side --limit truncation, --verdict flag matching server TerminateGoalSchema, --json on list and get. No new dependencies required. The plan has 8 atomic steps ordered by dependency: router first, then 4 command files, then registration, documentation, and quality gates.",
+  "followups": []
+}

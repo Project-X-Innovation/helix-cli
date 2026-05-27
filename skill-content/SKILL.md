@@ -1,195 +1,83 @@
 ---
 name: hlx-cli
-description: Operational guidance for AI agents using the Helix CLI (hlx) to inspect production systems, manage tickets, and interact with the Helix platform.
+description: >-
+  Helix CLI (hlx) skill for AI agents. Triggers: hlx login, hlx token add,
+  HELIX_API_KEY, HELIX_URL, hlx org current/list/switch, hlx tickets
+  list/latest/get/create/rerun/continue/artifacts/artifact/bundle/update-description,
+  ticket-ref resolution (numeric, short-id, internal-id), hlx inspect
+  repos/db/logs/api, hlx comments list/post, hlx library list/show/comments,
+  writing Helix tickets, ticket prompting, hlx update, hlx skill show/install,
+  broken hlx install, install recovery.
 ---
 
-# hlx-cli Agent Skill
+## Workflow
 
-This skill provides operational guidance for AI agents working with the Helix CLI (`hlx`). It covers authentication, ticket management, production inspection, and common workflows.
+1. Authenticate: set `HELIX_API_KEY` and `HELIX_URL` env vars, or run `hlx login <server-url>`.
+2. Verify org: `hlx org current`. Switch if needed: `hlx org switch <alias>`.
+3. Discover tickets: `hlx tickets list` or `hlx tickets latest`.
+4. Inspect a ticket: `hlx tickets get <ref>` — refs accept numeric ID, short ID (e.g. BLD-339), or internal ID.
+5. View artifacts: `hlx tickets artifacts <ref>` then `hlx tickets artifact <ref> --step <id> --repo <key>`.
+6. Create a ticket: `hlx tickets create --title "..." --repos my-app --description "..."`.
+7. Continue work: `hlx tickets continue <ref> "context"`.
+8. Inspect production: `hlx inspect repos`, then `hlx inspect db --repo <name> --query "..."`.
+9. Post a comment: `hlx comments post "message"`.
+
+Trust the current `helix-cli/src/**` for CLI behavior. Pass ticket refs as-given — the CLI resolves them. Switch orgs before working in a repo that lives in a different org.
 
 ## Guardrails
 
-- **Read-only inspection**: Use `hlx inspect` commands for read-only production checks only. Do not create, update, or delete production records through inspection.
-- **Authentication required**: Most commands require authentication. Run `hlx token add` or `hlx login` before using API-dependent commands.
-- **No secrets in output**: Do not log or display full API keys. Use `hlx org list` which masks tokens automatically.
-- **Respect org context**: Always verify the active org with `hlx org current` before running commands that target a specific organization.
+- **Auth required.** Most commands need `HELIX_API_KEY`/`HELIX_URL` or a stored config via `hlx login`.
+- **`hlx inspect *` is read-only.** Do not create, update, or delete production records through inspection.
+- **Do not log full tokens.** Use `hlx org list` which masks tokens automatically.
+- **Verify org context.** Run `hlx org current` before commands that target a specific organization.
 
-## Environment Setup
-
-The `hlx` CLI authenticates via one of two methods:
-
-1. **Environment variables** (preferred for CI/automation):
-   - `HELIX_API_KEY` — your Helix API key
-   - `HELIX_URL` — the Helix server URL
-
-2. **Config file** (interactive use):
-   - Run `hlx login <server-url>` for browser-based OAuth login
-   - Or `hlx token add --token <hxi_key> --url <server>` for direct token setup
-   - Config is stored at `~/.hlx/config.json`
-
-## Available Commands
+## Commands at a glance
 
 | Command | Description |
 |---------|-------------|
-| `hlx login <server-url>` | Authenticate with a Helix server via browser |
-| `hlx login --manual` | Paste API key manually |
-| `hlx token add` | Add an API token directly |
-| `hlx org current\|list\|switch` | Manage organization context |
-| `hlx tickets list\|latest\|get` | Discover and inspect tickets |
-| `hlx tickets create\|rerun\|continue` | Ticket lifecycle actions |
-| `hlx tickets artifacts\|artifact` | Inspect step artifacts |
-| `hlx tickets bundle <id> --out <dir>` | Bundle ticket for Codex |
-| `hlx inspect repos` | List available repositories and inspection types |
-| `hlx inspect db --repo <name> "<sql>"` | Run a read-only database query |
-| `hlx inspect logs --repo <name> "<query>"` | Search application logs |
-| `hlx inspect api --repo <name> <path>` | Make a read-only API inspection call |
-| `hlx comments list` | List ticket comments |
-| `hlx comments post <message>` | Post a comment to a ticket |
-| `hlx library list` | List library items with ID, title, status, date |
-| `hlx library show <ref>` | Show report with section headings annotated with [slug] and comment summaries |
-| `hlx library comments list <ref> [--section <slug>]` | List comments grouped by section |
-| `hlx library comments post <ref> --section <slug> --rating <value> [message]` | Post section rating with optional text |
-| `hlx update` | Check for and apply CLI updates |
-| `hlx skill show` | Print the bundled hlx-cli skill to stdout |
-| `hlx skill install` | Install the skill to an agent's skills directory |
+| `login` | Authenticate with a Helix server |
+| `token` | Add an API token directly |
+| `org` | Manage organization context (current, list, switch) |
+| `tickets` | Discover, inspect, create, continue, bundle tickets |
+| `inspect` | Read-only production inspection (repos, db, logs, api) |
+| `comments` | List or post ticket comments |
+| `library` | Browse and rate published research reports |
+| `skill` | Show or install the bundled hlx-cli skill |
+| `update` | Check for and apply CLI updates from GitHub |
 
-## Common Workflows
+Full flag reference: [references/commands.md](references/commands.md)
 
-### Authentication
+## Ticket work — gotchas
 
-```bash
-# Option 1: Environment variables
-export HELIX_API_KEY=hxi_...
-export HELIX_URL=https://your-helix-server.example.com
+- **`--description` vs `--description-file`:** The CLI errors when `--description <value>` resolves to a readable file path. Use `--description-file <path>` to load from a file.
+- **10,000-char description cap:** Server-enforced. Truncate or split before submitting.
+- **Dependency flags:** `--after <ref>` (run after), `--reference <ref1,ref2>` (cross-ref, max 5), `--implement-from <ref>` (implement from research).
+- **`--dry-run` on continue:** `hlx tickets continue <ref> "context" --dry-run` previews the payload without starting a run.
+- **`update-description`:** `hlx tickets update-description <ref> --file <path>` or `--text <string>`.
+- **`--mode RESEARCH`:** Drop implementation-shaped sections from the description. Skip "research only" boilerplate.
 
-# Option 2: Interactive login
-hlx login https://your-helix-server.example.com
+## Artifact workflow
 
-# Option 3: Direct token
-hlx token add --token hxi_... --url https://your-helix-server.example.com --name my-org --current
-```
+Terminal statuses (`DEPLOYED`, `UNVERIFIED`, `FAILED`) may return an empty `artifacts` summary. Pass `--run <runId>` to target a specific run.
 
-### Ticket Management
+`PREVIEW_READY` status is fixed by PR #36.
 
-```bash
-# List recent tickets
-hlx tickets list
+## Inspection
 
-# Get the latest ticket
-hlx tickets latest
+PowerShell users: prefer `--query '<sql>'` over positional SQL when the query contains double-quoted Postgres identifiers. Use `--query-file <path>` for complex queries to avoid all quoting issues.
 
-# Get a specific ticket
-hlx tickets get <ticket-id>
+## Writing tickets
 
-# View step artifacts
-hlx tickets artifacts <ticket-id>
-hlx tickets artifact <ticket-id> --step <step> --artifact <name>
+See [references/ticket-prompting.md](references/ticket-prompting.md) for the ticket-authoring guide covering required structure, constraint language, common failure modes, and a draft review checklist.
 
-# Create a new ticket
-hlx tickets create --title "Fix login bug" --repo my-app
+## Install and update
 
-# Create a ticket that depends on another (dependency chain)
-hlx tickets create --title "Build API" --after RSH-490 --repos my-app --description "Implement after schema is ready"
+Install and update both download from GitHub release assets (the `latest` release of `Project-X-Innovation/helix-cli`).
 
-# Create a ticket with cross-references
-hlx tickets create --title "Update docs" --reference RSH-490,RSH-491 --repos my-app --description "Update docs for new endpoints"
+- **Install:** Download `helix-cli.tgz` from the GitHub Releases page, extract, and verify `dist/index.js` exists.
+- **Update:** Run `hlx update`. The CLI downloads, validates, and swaps atomically with rollback.
+- **Recovery:** See [references/recovery.md](references/recovery.md).
 
-# Create an implementation from a research ticket
-hlx tickets create --title "Implement caching" --implement-from RSH-485 --repos my-app --description "Implement based on research findings"
+## Source of truth
 
-# Continue work on a ticket
-hlx tickets continue <ticket-id>
-```
-
-### Production Inspection
-
-```bash
-# List available repos and inspection types
-hlx inspect repos
-
-# Run a database query
-hlx inspect db --repo my-app "SELECT id, name FROM users LIMIT 10"
-hlx inspect db --repo my-app --query "SELECT id FROM users LIMIT 5"
-hlx inspect db --repo my-app --query-file complex-query.sql
-
-# Search logs
-hlx inspect logs --repo my-app "error" --limit 50
-
-# API inspection
-hlx inspect api --repo my-app /health
-```
-
-### Organization Management
-
-```bash
-# Check current org
-hlx org current
-
-# List all configured orgs
-hlx org list
-
-# Switch active org
-hlx org switch <org-id-or-alias>
-```
-
-### Skill Installation
-
-```bash
-# Print skill content to stdout
-hlx skill show
-
-# Install to auto-detected agent skills directory
-hlx skill install
-
-# Install for a specific agent
-hlx skill install --for claude
-hlx skill install --for codex
-
-# Install to a custom path
-hlx skill install --target /path/to/skills
-
-# Overwrite existing installation
-hlx skill install --force
-```
-
-### Library Reports
-
-```bash
-# List all library items
-hlx library list
-
-# Show report with section annotations and comment summaries
-hlx library show RSH-439
-
-# List comments grouped by section
-hlx library comments list RSH-439
-
-# Filter comments by section
-hlx library comments list RSH-439 --section key-findings
-
-# Post a section rating
-hlx library comments post RSH-439 --section key-findings --rating thumbs-up "Dive deeper into this"
-
-# Post a thumbs-down rating
-hlx library comments post RSH-439 --section market-overview --rating down "Totally extra"
-
-# Post a love rating
-hlx library comments post RSH-439 --section introduction --rating love
-
-# Reply to an existing comment (--rating optional for replies)
-hlx library comments post RSH-439 --section key-findings --reply-to <commentId> "I disagree, this is the right level"
-
-# Reply with a rating
-hlx library comments post RSH-439 --section key-findings --reply-to <commentId> --rating thumbs-up "Good point"
-
-# Rating values: thumbs-up (up), thumbs-down (down), love
-# Section accepts both raw slugs and heading text (auto-slugified)
-# --reply-to accepts a comment ID (from comments list output)
-```
-
-## Flag Conventions
-
-- All flags use `--long-name` format (e.g., `--repo`, `--ticket`, `--force`).
-- Help is available on every command with `--help` or `-h`.
-- Flags that take values use `--flag <value>` syntax (space-separated, not `=`).
-- Boolean flags (e.g., `--force`, `--json`, `--current`) are presence-based.
+See [references/current-state.md](references/current-state.md) for dated changelog notes on the CLI's install and update mechanisms.

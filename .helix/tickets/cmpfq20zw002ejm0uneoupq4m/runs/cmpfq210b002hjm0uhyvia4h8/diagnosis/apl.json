@@ -1,0 +1,67 @@
+{
+  "questions": [
+    "Q1: What is the current structure and content of SKILL.md, and how far is it from the 10-section progressive-disclosure target?",
+    "Q2: What CLI surface tokens (subcommands, flags, enum values) are missing from the existing commands.md?",
+    "Q3: Is the install/update documentation still referencing the old npm flow, or has it been updated for the GitHub-release-asset flow (PR #86)?",
+    "Q4: How does the skill install mechanism work, and will adding new reference files break it?",
+    "Q5: What does the CI sync script need to parse from --help output, and what are the edge cases?",
+    "Q6: Are there any existing CI workflows, PR templates, or scripts/ directories that would conflict with the new additions?"
+  ],
+  "answers": [
+    {
+      "answer": "SKILL.md has 196 lines with a flat 5-section layout (Guardrails, Environment Setup, Available Commands, Common Workflows, Flag Conventions). The ticket requires 10 sections in a specific order: YAML frontmatter, Workflow, Guardrails, Commands at a glance, Ticket work gotchas, Artifact workflow, Inspection, Writing tickets, Install and update, Source of truth. The frontmatter description is 149 chars (well under the 1024-char limit) and lacks trigger words for ticket-writing, org switching, and broken-install recovery. A complete rewrite is needed, not a patch.",
+      "evidence": [
+        "skill-content/SKILL.md lines 1-4: frontmatter has name: hlx-cli, description is 149 chars",
+        "SKILL.md body has 5 sections (lines 6-196): Guardrails, Environment Setup, Available Commands, Common Workflows, Flag Conventions",
+        "Ticket requires 10 sections in specific order per Required Behavior item 1"
+      ]
+    },
+    {
+      "answer": "Significant gaps exist in commands.md. Missing entirely: tickets list full flags (--search, --user, --status, --status-not-in, --archived, --sprint, --json, --limit), tickets latest flags (--status-not-in, --archived, --sprint), update-description subcommand (--file, --text), --mode enum values (AUTO|BUILD|FIX|RESEARCH|EXECUTE) in create, --rating enum values and aliases in library section, artifact subcommand flags (--step, --repo, --run), bundle --run flag, tickets get --json flag. The existing coverage is partial for tickets (only --limit on list, no action command flags detailed) and missing library comments detail.",
+      "evidence": [
+        "src/tickets/list.ts lines 45-75: --json, --archived, --status-not-in, --sprint, --user, --search flags all implemented",
+        "src/tickets/index.ts line 18: usage text shows full flag sets not reflected in commands.md",
+        "commands.md lines 43-60: tickets section lacks --search, --user, --status, --status-not-in, --archived, --sprint, --json, --mode enums, update-description",
+        "src/library/comments-post.ts lines 5-11: RATING_MAP defines thumbs-up, up, thumbs-down, down, love",
+        "src/tickets/artifact.ts referenced in scout: --step, --repo, --run flags"
+      ]
+    },
+    {
+      "answer": "SKILL.md does NOT reference the npm install flow or GitHub release assets at all. It has no install/update section. The update section in commands.md (line 93-98) describes 'hlx update' and auto-update flags correctly but does not explain the underlying mechanism. The recovery.md (which would document the flow) does not exist. The update flow is fully implemented in src/update/**: check.ts fetches from GitHub API for latest release, perform.ts downloads/extracts/validates/swaps, validate.ts checks dist/index.js and --version. The recovery message in src/update/index.ts lines 107-112 points to 'hlx update' and the GitHub releases page.",
+      "evidence": [
+        "SKILL.md: no install/update section exists",
+        "src/update/index.ts lines 107-112: recovery message says 'hlx update' or download from releases page",
+        "src/update/check.ts line 6-7: CANONICAL_REPO='Project-X-Innovation/helix-cli', fetches latest release tag",
+        "src/update/perform.ts lines 17,73-239: STAGING_BASE at ~/.hlx/staging/, full staged update pipeline",
+        "src/update/validate.ts lines 14-65: validates dist/index.js, package.json, runs --version"
+      ]
+    },
+    {
+      "answer": "The skill install mechanism (src/skill/install.ts) copies SKILL.md and then iterates references/ via readdirSync (line 58). Adding new files to references/ (recovery.md, ticket-prompting.md, current-state.md) will be automatically picked up without any code changes. This is confirmed by the install logic at lines 54-60.",
+      "evidence": [
+        "src/skill/install.ts lines 54-60: readdirSync(refsDir) iterates all files in references/ and copies each",
+        "src/skill/skill.test.ts (290 lines per scout): tests validate byte-for-byte copy of SKILL.md and references/"
+      ]
+    },
+    {
+      "answer": "The CI sync script must: (1) build via npm ci (which triggers tsc via prepare script), (2) run 'node dist/index.js --help' to get top-level help, (3) parse subcommand names from the usage text, (4) recursively run '--help' on each subcommand (max depth 3: hlx -> library -> comments -> list/post), (5) extract long-form flags (--flag-name) and enum values from usage lines, (6) check each token appears as literal substring in SKILL.md or commands.md (case-sensitive, backticks stripped). The help text format is consistent across all commands (manually written usage() functions with 'Usage:' prefix), making parsing feasible. Edge cases: some subcommands show combined usage for multiple sub-subcommands (e.g., tickets --help lists all tickets subcommands); flags may appear as '--flag <value>' or '--flag' (boolean); enum values appear in angle brackets like '<AUTO|BUILD|FIX|RESEARCH|EXECUTE>'.",
+      "evidence": [
+        "src/index.ts lines 35-63: usage() function shows consistent format with 'hlx <subcmd>' lines",
+        "src/tickets/index.ts lines 17-32: ticketsUsage() shows 'hlx tickets <subcmd> [flags]' format",
+        "src/tickets/create.ts line 17: help shows '--mode <AUTO|BUILD|FIX|RESEARCH|EXECUTE>' enum syntax",
+        "package.json line 19: prepare script runs build (tsc), so npm ci triggers build"
+      ]
+    },
+    {
+      "answer": "No conflicts exist. The .github/workflows/ directory has only build-release.yml and publish.yml. No .github/pull_request_template.md exists. No scripts/ directory exists at the repo root. All new files can be created without modifying or conflicting with existing content.",
+      "evidence": [
+        "ls .github/workflows/: build-release.yml, publish.yml only",
+        "ls .github/: only workflows/ subdirectory, no pull_request_template.md",
+        "Glob scripts/**/*: no files found",
+        "ls skill-content/references/: commands.md only"
+      ]
+    }
+  ],
+  "statement": "This ticket addresses documentation drift and missing CI enforcement in helix-cli's bundled skill. The root cause is a compound gap: (1) SKILL.md was never restructured after the skill was first created, leaving a flat 5-section layout vs. the required 10-section progressive-disclosure format; (2) PR #86 migrated the update mechanism from npm to GitHub release assets but the skill documentation was not updated to reflect this; (3) commands.md has significant flag and subcommand coverage gaps accumulated as the CLI surface grew; (4) no CI mechanism exists to detect skill-docs drift; (5) three reference documents (recovery.md, ticket-prompting.md, current-state.md) specified in the current requirements don't exist yet. All changes are documentation, CI, and scripting — no CLI binary behavior is modified. The skill install mechanism (readdirSync on references/) will automatically pick up new reference files without code changes.",
+  "followups": []
+}

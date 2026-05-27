@@ -1,0 +1,58 @@
+{
+  "problem": "Goals: Polish & Final - CLI Goals namespace (hlx goals create/list/get/terminate) needs quality verification and potential polish. Five command files totaling ~380 lines with documentation in cli-content.ts.",
+  "files": [
+    {
+      "path": "src/goals/index.ts",
+      "why": "Goals command router (76 lines). Routes subcommands (create, list, get, terminate) with help text. Help text duplicated across switch cases."
+    },
+    {
+      "path": "src/goals/create.ts",
+      "why": "Create goal command (90 lines). Thorough flag validation, repo name resolution, error parsing. Error parsing logic (lines 68-79) duplicated in terminate.ts."
+    },
+    {
+      "path": "src/goals/list.ts",
+      "why": "List goals command (60 lines). Clean output formatting with columns. No validation of status filter values against allowed statuses. Hardcoded limit default of 20."
+    },
+    {
+      "path": "src/goals/get.ts",
+      "why": "Get goal detail command (99 lines). Comprehensive detail printing with roadmap/previews. ID display uses shortId fallback to abbreviated ID -- inconsistent with list.ts approach. Description truncation at 500 chars arbitrary."
+    },
+    {
+      "path": "src/goals/terminate.ts",
+      "why": "Terminate goal command (55 lines). Strict verdict validation. Error parsing code (lines 31-43) duplicated from create.ts -- should be shared utility."
+    },
+    {
+      "path": "src/docs/cli-content.ts",
+      "why": "CLI documentation (lines 133-172 for goals, 287-319 for examples). Comprehensive goal command documentation with flags and worked examples."
+    },
+    {
+      "path": "src/index.ts",
+      "why": "Goals command registration at lines 124-128. Properly registered with import from ./goals/index.js."
+    },
+    {
+      "path": "src/tickets/create.ts",
+      "why": "VALID_MODES at line 13. Confirmed unchanged at 5 values (AUTO, BUILD, FIX, RESEARCH, EXECUTE) -- no GOAL mode added."
+    },
+    {
+      "path": "package.json",
+      "why": "Scripts: build (tsc), typecheck (tsc --noEmit), test (tsc + node --test)."
+    }
+  ],
+  "facts": [
+    "CLI Goals namespace fully implemented with 5 files (index.ts, create.ts, list.ts, get.ts, terminate.ts) totaling ~380 lines",
+    "Error parsing logic duplicated between create.ts (lines 68-79) and terminate.ts (lines 31-43) - extracts JSON error body from backend responses",
+    "VALID_MODES unchanged at 5 values (AUTO, BUILD, FIX, RESEARCH, EXECUTE) at src/tickets/create.ts line 13",
+    "Goals command registered at src/index.ts lines 124-128 with import from ./goals/index.js",
+    "Documentation complete in cli-content.ts with command flags (lines 133-172) and worked examples (lines 287-319)",
+    "ID display inconsistency: list.ts uses id.slice(0, 8)+'...' while get.ts prefers shortId with fallback",
+    "No validation of --status filter values against allowed GoalStatus enum values in list.ts",
+    "Create command validates required flags, resolves repo names, and supports --max-children with range check (>= 1)",
+    "Terminate command validates verdict against VALID_VERDICTS ['complete', 'failed']",
+    "No test files found for goal commands"
+  ],
+  "unknowns": [
+    "Whether typecheck passes cleanly on current branch - node_modules not installed in sandbox",
+    "Whether tests exist elsewhere for CLI commands or if test coverage is zero",
+    "Whether the error parsing duplication is a pattern across other CLI commands (not just goals) that would justify extraction"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "repos": [
+    {
+      "repoKey": "helix-cli",
+      "intent": "target",
+      "rationale": "All changes are in this repo: SKILL.md rewrite, commands.md expansion, three new reference docs in skill-content/references/, new CI workflow (.github/workflows/skill-sync.yml), new parser script (scripts/skill-sync/), and new PR template (.github/pull_request_template.md). No other repositories are selected or affected."
+    }
+  ],
+  "updatedBy": "diagnosis"
+}

@@ -1,0 +1,24 @@
+{
+  "title": "Goals Polish - CLI Error Parsing DRY Fix",
+  "description": "Extract shared parseApiError utility and update consumers",
+  "steps": [
+    {
+      "file": "src/goals/utils.ts",
+      "line": 10,
+      "title": "Shared parseApiError utility",
+      "description": "New utility function that extracts the error parsing pattern previously duplicated in create.ts and terminate.ts. Handles hxFetch error format: 'HTTP <status> \\u2014 <JSON body>'. Returns the parsed error string or raw message."
+    },
+    {
+      "file": "src/goals/create.ts",
+      "line": 5,
+      "title": "create.ts uses shared utility",
+      "description": "Import parseApiError from utils.js. Catch block reduced from 15 lines to a single console.error call."
+    },
+    {
+      "file": "src/goals/terminate.ts",
+      "line": 4,
+      "title": "terminate.ts uses shared utility",
+      "description": "Import parseApiError from utils.js. Same 15-line inline block replaced with single-line call."
+    }
+  ]
+}

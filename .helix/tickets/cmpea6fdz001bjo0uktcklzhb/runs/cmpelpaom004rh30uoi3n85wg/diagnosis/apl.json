@@ -1,0 +1,60 @@
+{
+  "questions": [
+    "What is the root cause of the Windows tar extraction failure in hlx update?",
+    "Is the primary fix (in-process tar extraction) already implemented on this branch?",
+    "What shell-outs remain in the update module and do any violate the acceptance criteria?",
+    "Should the user's getTarExecutable() approach be incorporated, or does it conflict with the ticket requirements?",
+    "What remaining changes are needed to fully satisfy both the ticket and the user's continuation context?"
+  ],
+  "answers": [
+    {
+      "answer": "The root cause is that performStagedUpdate() originally called execSync('tar -xzf ...') to extract the GitHub release tarball. On Windows where Git for Windows is installed, GNU tar (C:\\Program Files\\Git\\usr\\bin\\tar.exe) appears first in PATH and interprets the drive-letter colon in Windows paths (e.g. C:\\Users\\...) as remote-host tape-archive syntax (host:path), producing 'Cannot connect to C: resolve failed'. This happens from PowerShell (the normal end-user shell), not just Git Bash, confirming it is a PATH ordering issue affecting the majority of Windows developers.",
+      "evidence": [
+        "Prior run feedback describes exact error: 'tar (child): Cannot connect to C: resolve failed'",
+        "extract.ts:55-63 JSDoc documents the original bug and rationale for in-process replacement",
+        "Staging paths include drive letters: perform.ts:17 STAGING_BASE = join(homedir(), '.hlx', 'staging') resolves to C:\\Users\\... on Windows"
+      ]
+    },
+    {
+      "answer": "Yes. The branch already contains src/update/extract.ts (149 lines) implementing complete in-process tar.gz extraction using only Node.js built-ins: gunzipSync from node:zlib plus manual USTAR header parsing. perform.ts:125 calls extractTarGz(tarballPath, stagingDir) instead of shelling out. extract.test.ts (322 lines) provides 6 comprehensive tests including a colon-in-path test that reproduces the original GNU tar failure mode. Zero new runtime dependencies were needed.",
+      "evidence": [
+        "extract.ts:65 exports extractTarGz(tarballPath, destDir) using readFileSync + gunzipSync",
+        "perform.ts:14 imports extractTarGz from './extract.js'",
+        "perform.ts:125 calls extractTarGz(tarballPath, stagingDir) inside try/catch",
+        "extract.test.ts:174-202 colon-in-path test reproduces GNU tar failure mode",
+        "package.json has zero runtime dependencies — extraction uses only node:zlib, node:fs, node:path"
+      ]
+    },
+    {
+      "answer": "Three execSync/spawnSync usages remain in the update module, none of which are tar invocations: (1) perform.ts:34 copyDirRecursive shells out to xcopy (Windows) or cp -R (others) for the EXDEV cross-filesystem rename fallback, (2) check.ts:30 execSync('gh auth token') for GitHub auth token discovery, (3) validate.ts:38 spawnSync('node', ...) for version check. Acceptance criterion #3 requires no remaining external tar invocation, which is already satisfied. However, copyDirRecursive's execSync is an unnecessary shell dependency that should be replaced with fs.cpSync (available since Node 16.7+; project requires >=18).",
+      "evidence": [
+        "perform.ts:1 imports execSync from node:child_process",
+        "perform.ts:34-38 execSync with platform-conditional xcopy/cp-R for EXDEV fallback",
+        "check.ts:30 execSync('gh auth token') for GitHub token — expected, not tar",
+        "validate.ts:38 spawnSync('node', ...) for version check — expected, not tar",
+        "Context7 Node.js docs confirm fs.cpSync(src, dest, { recursive: true }) is a direct replacement"
+      ]
+    },
+    {
+      "answer": "No. getTarExecutable() should NOT be incorporated. The ticket's Do Not Re-Decide section explicitly states: 'Do not paper over the bug by detecting and rejecting GNU tar at runtime, or by hardcoding C:\\Windows\\System32\\tar.exe. The fix must remove the shell dependency entirely.' The in-process extraction in extract.ts already fully eliminates the external tar dependency, making getTarExecutable() both unnecessary and contradictory to ticket requirements. The user's continuation context describes this local fix, but the branch already has the superior in-process approach.",
+      "evidence": [
+        "Ticket Do Not Re-Decide: 'Do not paper over the bug by detecting and rejecting GNU tar at runtime, or by hardcoding C:\\Windows\\System32\\tar.exe'",
+        "Ticket Goal: 'Replace the shell-based tar invocation... with an in-process tar extraction so the update path does not depend on any user-side tar binary'",
+        "extract.ts already provides the in-process solution — no external tar is invoked",
+        "getTarExecutable() does not exist on the branch — the superior fix is already in place"
+      ]
+    },
+    {
+      "answer": "Two targeted changes remain: (1) Replace copyDirRecursive body (perform.ts:33-39) with fs.cpSync(src, dest, { recursive: true }) and remove the execSync import from perform.ts since no other code in that file uses it. This eliminates the last unnecessary shell dependency in perform.ts. (2) Add perform.test.ts covering the EXDEV copy fallback and safeRename behavior. The tests should cover fs.cpSync-based directory copying, not getTarExecutable() since that function does not and should not exist.",
+      "evidence": [
+        "perform.ts:33-39 copyDirRecursive with execSync is the only remaining shell-out in perform.ts",
+        "perform.ts:1 execSync import will be unused after fs.cpSync replacement",
+        "No perform.test.ts exists on branch (glob search confirmed)",
+        "User continuation context requests both fs.cpSync replacement and perform.test.ts",
+        "fs.cpSync available in Node >=16.7 per Context7 docs; project requires >=18"
+      ]
+    }
+  ],
+  "statement": "The primary root cause — GNU tar on Windows misinterpreting drive-letter colons as remote-host syntax — is already fixed on this branch via in-process tar.gz extraction in extract.ts using only Node.js built-ins (zero new dependencies). The remaining work is a targeted robustness improvement: replace copyDirRecursive's execSync (xcopy/cp-R) in perform.ts lines 33-39 with fs.cpSync to eliminate the last unnecessary shell dependency in the update orchestration module, remove the now-unused execSync import, and add perform.test.ts for the EXDEV copy fallback. The user's getTarExecutable() approach is superseded by the in-process extraction and contradicts the ticket's explicit constraints — it must not be incorporated.",
+  "followups": []
+}

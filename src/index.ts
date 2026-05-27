@@ -8,10 +8,12 @@ import { runLogin } from "./login.js";
 import { runOrg } from "./org/index.js";
 import { runToken } from "./token/index.js";
 import { runTickets } from "./tickets/index.js";
+import { runGoals } from "./goals/index.js";
 import { getPackageVersion } from "./update/version.js";
 import { runUpdate, checkAutoUpdate } from "./update/index.js";
 import { runSkill } from "./skill/index.js";
 import { runLibrary } from "./library/index.js";
+import { runPreview } from "./preview/index.js";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -45,12 +47,14 @@ Usage:
   hlx tickets create|rerun|continue  Ticket actions
   hlx tickets artifacts|artifact  Inspect step artifacts
   hlx tickets bundle <id> --out <dir>  Bundle for Codex
+  hlx goals create|list|get|terminate  Manage Goals
   hlx inspect repos               List repositories and inspection types
   hlx inspect db --repo <name> "<sql>"
   hlx inspect logs --repo <name> "<query>"
   hlx inspect api --repo <name> <path>
   hlx comments list [--ticket <id>] [--helix-only] [--since <iso-date>]
   hlx comments post [--ticket <id>] <message>
+  hlx preview db-url <ticket-ref>  Print Neon preview branch connection URI
   hlx library list                List library items
   hlx library show <ref>          Show report with section annotations
   hlx library comments list <ref> List section-grouped comments
@@ -95,6 +99,12 @@ try {
       break;
     }
 
+    case "preview": {
+      const config = configOrHelp(args.slice(1));
+      await runPreview(config, args.slice(1));
+      break;
+    }
+
     case "library": {
       const config = configOrHelp(args.slice(1));
       await runLibrary(config, args.slice(1));
@@ -108,6 +118,12 @@ try {
     case "tickets": {
       const config = configOrHelp(args.slice(1));
       await runTickets(config, args.slice(1));
+      break;
+    }
+
+    case "goals": {
+      const config = configOrHelp(args.slice(1));
+      await runGoals(config, args.slice(1));
       break;
     }
 

@@ -1,0 +1,35 @@
+{
+  "questions": [
+    "Was the shared error parsing utility created and used?",
+    "Was the list.ts ID display aligned?",
+    "Do CLI quality gates pass?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes. src/goals/utils.ts created with parseApiError function. Both create.ts and terminate.ts now import and use it, replacing the duplicated inline error parsing blocks.",
+      "evidence": [
+        "Direct read of utils.ts: exports parseApiError function",
+        "create.ts line 5: import { parseApiError } from './utils.js'",
+        "create.ts line 68: console.error(`Error: ${parseApiError(error)}`)",
+        "terminate.ts line 4: import { parseApiError } from './utils.js'",
+        "terminate.ts line 32: console.error(`Error: ${parseApiError(error)}`)"
+      ]
+    },
+    {
+      "answer": "Left as-is (documented as API-constrained). The GoalListItem type from the server's list endpoint does not include a shortId field. Goals use cuid IDs with no shortId format (unlike tickets which have ticket numbers). The slice(0, 8) approach is appropriate.",
+      "evidence": [
+        "list.ts GoalListItem type (lines 5-12): no shortId field",
+        "get.ts uses child.shortId for child tickets (which have shortIds), but goal IDs themselves are cuids"
+      ]
+    },
+    {
+      "answer": "Yes. Both typecheck (tsc --noEmit) and build (tsc) pass with exit 0.",
+      "evidence": [
+        "npm run typecheck: exit 0",
+        "npm run build: exit 0"
+      ]
+    }
+  ],
+  "statement": "CLI refactoring complete: shared parseApiError utility extracted to utils.ts, both create.ts and terminate.ts updated. list.ts ID display left as-is (goals lack shortId). All quality gates pass.",
+  "followups": []
+}

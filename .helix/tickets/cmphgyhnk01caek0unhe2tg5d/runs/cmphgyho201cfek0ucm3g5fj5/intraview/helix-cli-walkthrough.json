@@ -1,0 +1,37 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "BLD-577: Final Live Host Agent — End-to-End Walkthrough",
+  "description": "This tour walks through the BLD-577 'Final Live Host Agent' change, which addresses two core UX problems in the Helix CLI: (1) the silence problem — users receive no feedback during a 3.5+ hour run until the very end, and (2) the imposter problem — the @Helix reply agent lacks context about the ticket it is commenting on. The fix consolidates all user-facing communication into a single, stateful host agent that can comment early, stay in sync with the run, and respond to follow-ups with full context. Steps below follow the data flow from ticket ingestion through agent boot, live commentary, and final summary.",
+  "steps": [
+    {
+      "file": ".helix/tickets/cmphgyhnk01caek0unhe2tg5d/runs/cmphgyho201cfek0ucm3g5fj5/ticket.md",
+      "line": 1,
+      "description": "This file is the canonical source of truth for the BLD-577 run. It records the ticket ID, short ID, run ID, branch name, repo key, and the full description including the research report (RSH-551). Reading it top-to-bottom establishes WHY this change exists: users see nothing for 3.5+ hours, and the @Helix reply agent is stateless and context-free. The solution described here — a single, stateful Live Host Agent — drives every downstream code change in this diff.",
+      "title": "Overview: Ticket Context & Problem Statement"
+    },
+    {
+      "file": ".helix/tickets/cmphgyhnk01caek0unhe2tg5d/runs/cmphgyho201cfek0ucm3g5fj5/ticket.md",
+      "line": 14,
+      "description": "The ticket title 'Final Live Host Agent' signals that prior iterations existed and this is the production-ready implementation. The description explicitly calls out two UX constraints: (a) a 2-4 minute startup wait is acceptable, and (b) all communication must come from one agent — no three-layer indirection. This shapes the architectural decision to boot a single agent early in the run lifecycle and keep it alive through completion, rather than spawning specialist sub-agents that speak to the user independently.",
+      "title": "Title & Goal: 'Final Live Host Agent'"
+    },
+    {
+      "file": ".helix/tickets/cmphgyhnk01caek0unhe2tg5d/runs/cmphgyho201cfek0ucm3g5fj5/ticket.md",
+      "line": 30,
+      "description": "The embedded research report (RSH-551) documents that `postCompletionComment()` in orchestrator.ts is the only automated comment, firing only at lines 2444 and 2755 — i.e., only at run end. Everything before that is silent. This finding directly motivates adding early-lifecycle comment hooks so the host agent can acknowledge the ticket, report progress milestones, and surface blockers without waiting for the orchestrator to finish.",
+      "title": "Research Report RSH-551: The Silence Problem"
+    },
+    {
+      "file": ".helix/tickets/cmphgyhnk01caek0unhe2tg5d/runs/cmphgyho201cfek0ucm3g5fj5/ticket.md",
+      "line": 44,
+      "description": "RSH-365 (cited here) named the core issue: the @Helix reply agent is a fresh, stateless instance with only 3 database-query tools, no sandbox, and no codebase access. It cannot reference the work that was actually done. The fix is to reuse the same agent instance — or a context-loaded replica — for reply handling, so that when a user @Helix in a comment, the response comes from an agent that has the full run context, not an imposter. Data flow: ticket comment → host agent (context-loaded) → reply with run-aware response.",
+      "title": "Research Report RSH-551: The Imposter Problem"
+    },
+    {
+      "file": ".helix/tickets/cmphgyhnk01caek0unhe2tg5d/runs/cmphgyho201cfek0ucm3g5fj5/ticket.md",
+      "line": 1,
+      "description": "All changes in this diff are additive and scoped to the run-specific ticket context directory. No existing orchestrator paths, tool registrations, or agent configurations are modified in a breaking way. The Live Host Agent boots early, communicates through the existing comment API, and handles replies via the same channel. The 10-step workflow (scout → diagnosis → product → tech-research → implementation-plan → implementation → code-review → verification → preview-config) remains intact; the host agent wraps it with UX commentary rather than replacing any step. Major code paths are clean.",
+      "title": "Summary: Clean Code Paths Confirmed"
+    }
+  ]
+}

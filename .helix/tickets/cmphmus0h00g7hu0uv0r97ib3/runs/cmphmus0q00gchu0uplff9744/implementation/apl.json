@@ -1,0 +1,70 @@
+{
+  "questions": [
+    "Were all 5 new files created in src/goals/ following established patterns?",
+    "Does src/index.ts register the goals namespace correctly?",
+    "Does src/docs/cli-content.ts document the hlx goals namespace?",
+    "Does npm run typecheck pass with zero errors?",
+    "Does npm run build succeed and produce dist/goals/ output?",
+    "Is VALID_MODES in src/tickets/create.ts unchanged?",
+    "Do all imports use .js extensions (ES module compliance)?",
+    "Do all hxFetch calls use basePath: '/api'?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes. Created src/goals/index.ts, create.ts, list.ts, get.ts, terminate.ts. All 5 files follow the established src/tickets/ patterns for router structure, flag parsing, HTTP calls, and output formatting.",
+      "evidence": [
+        "ls src/goals/ shows: create.ts, get.ts, index.ts, list.ts, terminate.ts",
+        "Each file mirrors the corresponding tickets/ pattern: create.ts uses requireFlag/getFlag/resolveAllRepos, list.ts uses getFlag/hasFlag with table output, get.ts has printGoalDetail export, terminate.ts validates --verdict against VALID_VERDICTS"
+      ]
+    },
+    {
+      "answer": "Yes. src/index.ts imports runGoals from './goals/index.js' at line 11, has 'case \"goals\"' at line 124 following the exact tickets pattern (configOrHelp + await runGoals), and usage text includes 'hlx goals create|list|get|terminate  Manage Goals'.",
+      "evidence": [
+        "grep shows import at line 11: import { runGoals } from './goals/index.js'",
+        "grep shows case at line 124: case 'goals': { const config = configOrHelp(args.slice(1)); await runGoals(config, args.slice(1)); break; }",
+        "node dist/index.js --help output includes 'hlx goals create|list|get|terminate  Manage Goals'"
+      ]
+    },
+    {
+      "answer": "Yes. Added Goals section to Common Commands after Tickets (line 133) with command table, 4 flag tables, and 5 worked examples. Added 'goals' to keywords array at line 414.",
+      "evidence": [
+        "grep '### Goals' shows section at line 133",
+        "grep '\"goals\"' shows keyword at line 414"
+      ]
+    },
+    {
+      "answer": "Yes. npm run typecheck exits 0 with zero errors.",
+      "evidence": [
+        "Command output: '> tsc --noEmit' with exit code 0, no error output"
+      ]
+    },
+    {
+      "answer": "Yes. npm run build exits 0. dist/goals/ contains 10 files: 5 .js and 5 .d.ts files for all commands.",
+      "evidence": [
+        "ls dist/goals/ shows: create.d.ts, create.js, get.d.ts, get.js, index.d.ts, index.js, list.d.ts, list.js, terminate.d.ts, terminate.js"
+      ]
+    },
+    {
+      "answer": "Yes. VALID_MODES at line 13 of src/tickets/create.ts is exactly: const VALID_MODES = [\"AUTO\", \"BUILD\", \"FIX\", \"RESEARCH\", \"EXECUTE\"] as const;. No reference to VALID_MODES exists in any src/goals/ file.",
+      "evidence": [
+        "Read src/tickets/create.ts line 13 confirms exact value",
+        "grep VALID_MODES src/goals/ returns no matches"
+      ]
+    },
+    {
+      "answer": "Yes. All 18 import statements across the 5 files in src/goals/ use .js extensions. No require() calls exist.",
+      "evidence": [
+        "grep '^import' src/goals/ shows all 18 imports with .js extensions",
+        "grep 'require(' src/goals/ returns no matches"
+      ]
+    },
+    {
+      "answer": "Yes. All 4 hxFetch call sites use basePath: '/api'. Endpoints: /goals (create POST, list GET), /goals/${goalId} (get GET), /goals/${goalId}/terminate (terminate POST).",
+      "evidence": [
+        "grep hxFetch src/goals/ shows 4 call sites, each with basePath: '/api'"
+      ]
+    }
+  ],
+  "statement": "T7 CLI Goals namespace fully implemented in helix-cli. 5 new files created in src/goals/ (index.ts, create.ts, list.ts, get.ts, terminate.ts), 2 files modified (src/index.ts, src/docs/cli-content.ts). All quality gates pass: typecheck (0 errors), build (success with dist/goals/), VALID_MODES unchanged, ES module conventions followed, all API calls use basePath '/api'. CLI help commands verified working: hlx goals --help, hlx goals create --help, hlx goals list --help, hlx goals get --help, hlx goals terminate --help.",
+  "followups": []
+}

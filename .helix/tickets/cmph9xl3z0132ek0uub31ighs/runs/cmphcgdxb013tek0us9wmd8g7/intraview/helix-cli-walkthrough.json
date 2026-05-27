@@ -1,0 +1,67 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "hlx preview db-url: New Preview Command Group",
+  "description": "This tour walks through the addition of the `hlx preview db-url <ticket>` command to the helix-cli. The change introduces a new `preview` command group (two new files) and registers it in the main entry point. The command fetches a Neon preview branch connection URI from the server and prints it to stdout, while routing the usage hint to stderr so that shell piping, variable capture, and redirection all work correctly without any extra filtering by the caller.",
+  "steps": [
+    {
+      "file": "src/preview/db-url.ts",
+      "line": 1,
+      "description": "This is the leaf handler for `hlx preview db-url <ticket>`. It receives an already-resolved ticket ID and a loaded config, calls `GET /api/tickets/:ticketId/preview-db-url` via `hxFetch`, then writes the URI to stdout and the usage hint to stderr. Starting here establishes the data-flow origin before we see how the router feeds it.",
+      "title": "Overview: db-url handler entry point"
+    },
+    {
+      "file": "src/preview/db-url.ts",
+      "line": 5,
+      "description": "hxFetch always calls `response.json()` internally (src/lib/http.ts:81), so the server endpoint must return `{ connectionUri: '...' }`. If the server returns a 404 (no NeonBranchRecord exists) or any non-2xx status, hxFetch throws before the next line is reached, guaranteeing stdout stays empty on all failure paths. The thrown error propagates to the top-level catch in src/index.ts which writes to stderr and calls process.exit(1).",
+      "title": "hxFetch call — JSON response contract"
+    },
+    {
+      "file": "src/preview/db-url.ts",
+      "line": 9,
+      "description": "process.stdout.write(data.connectionUri + '\\n') puts only the URI on stdout. The immediately following process.stderr.write writes the #-prefixed hint to stderr. This explicit stream separation means `> url.txt` captures only the URI, `2>/dev/null` silences the hint, and `$(hlx preview db-url ticket)` captures exactly the URI string — no grep or trim needed by the caller.",
+      "title": "stdout/stderr separation — composability guarantee"
+    },
+    {
+      "file": "src/preview/index.ts",
+      "line": 1,
+      "description": "This file follows the exact router pattern established by src/tickets/index.ts. It exports a `runPreview` function that parses the subcommand from argv, handles `--help`, resolves the ticket reference using `extractTicketRef` + `resolveTicket` (the same shared functions used by `hlx tickets get`), and dispatches to the appropriate handler. Reusing these shared functions ensures ticket identifier resolution and not-found error messages are identical across command groups.",
+      "title": "Preview command group router"
+    },
+    {
+      "file": "src/preview/index.ts",
+      "line": 31,
+      "description": "extractTicketRef(rest) normalises the raw CLI argument into a canonical ticket reference, then resolveTicket(config, rawRef) performs an org-scoped fetch to translate that reference into a server-side ticket ID. This is byte-for-byte the same two-call pipeline used at src/tickets/index.ts:65-66, so nonexistent-ticket error messages and authorization checks are automatically consistent with the rest of the CLI.",
+      "title": "Ticket resolution — shared pipeline"
+    },
+    {
+      "file": "src/index.ts",
+      "line": 15,
+      "description": "A single import line wires the new `runPreview` function from `./preview/index.js` into the main entry point. Following the existing pattern for tickets, comments, and inspect groups keeps the module graph shallow and avoids any circular dependencies.",
+      "title": "Import the preview router"
+    },
+    {
+      "file": "src/index.ts",
+      "line": 55,
+      "description": "The `usage()` function is updated to include a description of the `preview` command group. This ensures `hlx --help` and `hlx preview --help` surface the new command to users without requiring any separate documentation step.",
+      "title": "Usage text — preview group documentation"
+    },
+    {
+      "file": "src/index.ts",
+      "line": 100,
+      "description": "A new `case 'preview'` dispatches to `runPreview(configOrHelp(subArgs), subArgs)`. The `configOrHelp()` helper (src/index.ts:24-33) returns a stub config when `--help` is present so that help text renders without requiring authentication — the same pattern every other command group uses. This is the only modification to existing code; all other changes are additive.",
+      "title": "Switch-case dispatch — registering the preview group"
+    },
+    {
+      "file": "src/index.ts",
+      "line": 149,
+      "description": "The existing top-level try/catch at this location is the single error boundary for all command groups including the new preview group. On any failure (ticket not found, HTTP error, auth failure), the thrown error arrives here, is written to stderr via console.error, and process.exit(1) is called. Because process.stdout.write in the handler is only reached on the success path, stdout is guaranteed to be empty on every error path — no custom try/catch is needed in the handler itself.",
+      "title": "Top-level catch — error path stays clean"
+    },
+    {
+      "file": ".helix/tickets/cmph9xl3z0132ek0uub31ighs/runs/cmph9xl4g0136ek0u9ui99f4o/code-review/code-review-actual.md",
+      "line": 1,
+      "description": "The code review confirmed zero requirements gaps. All nine acceptance criteria are met: URI to stdout, hint to stderr, exit codes, shell composability, 404 on missing NeonBranchRecord, shared resolveTicket error messages, org-scoped authorization, latest-record ordering on the server, and no .env file interaction. No new dependencies were introduced, no non-negotiable invariants (no .env reads, no env var mutation, no subprocesses) were violated, and the existing command groups (tickets, comments, inspect) are completely unaffected.",
+      "title": "Summary: all acceptance criteria verified"
+    }
+  ]
+}

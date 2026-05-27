@@ -1,0 +1,26 @@
+{
+  "questions": [
+    "Where should the shared error parsing utility live in the CLI codebase?",
+    "Which ID display format should be the standard across goal commands?"
+  ],
+  "answers": [
+    {
+      "answer": "Create src/goals/utils.ts colocated with the goal command files. The duplicated error parsing exists only in create.ts:68-79 and terminate.ts:31-43 (both in src/goals/). A utility file in the same directory keeps it scoped and discoverable. The function signature should be parseApiError(error: unknown): string.",
+      "evidence": [
+        "create.ts:68-79 - try/JSON.parse error body/catch fallback pattern",
+        "terminate.ts:31-43 - identical pattern to create.ts",
+        "Both files in src/goals/ directory"
+      ]
+    },
+    {
+      "answer": "Use shortId (from get.ts pattern) as the standard, with fallback to id.slice(0, 8). get.ts uses the shortId field which provides a human-readable format (e.g., 'BLD-42'). list.ts currently uses raw id.slice(0, 8) which shows meaningless cuid fragments. Alignment to shortId is the better UX choice, conditional on the list API response including the field.",
+      "evidence": [
+        "get.ts uses shortId field with fallback to abbreviated ID",
+        "list.ts uses id.slice(0, 8) + '...' for all IDs",
+        "Client convention uses formatShortId() for readable ticket IDs"
+      ]
+    }
+  ],
+  "statement": "CLI needs two minimal refactors: (1) Extract parseApiError to src/goals/utils.ts from create.ts and terminate.ts; (2) Align list.ts to use shortId for goal ID display. Both are internal code quality improvements with no behavior change. Tertiary priority behind client and server changes.",
+  "followups": []
+}
