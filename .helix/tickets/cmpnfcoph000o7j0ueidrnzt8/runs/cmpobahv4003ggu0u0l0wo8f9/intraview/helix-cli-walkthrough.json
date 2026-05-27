@@ -1,24 +1,67 @@
 {
-  "title": "Resume PAUSED Goals - CLI",
-  "description": "Adds hlx goals resume <goalId> command following terminate.ts pattern",
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "FIX-613: Add `hlx goals resume` Command to helix-cli",
+  "description": "This tour walks through the addition of the `hlx goals resume <goalId>` CLI command. The CLI was missing a resume subcommand for goals, even though the server already exposed a POST /api/goals/:id/resume endpoint. The fix follows the existing terminate.ts pattern: a new resume.ts command file, a new switch case in the goals router (index.ts), and updated CLI documentation in cli-content.ts. All changes were verified with typecheck and build quality gates.",
   "steps": [
     {
       "file": "src/goals/resume.ts",
-      "line": 5,
-      "title": "cmdGoalsResume command",
-      "description": "New command file: hxFetch POST to /goals/${goalId}/resume with empty body. parseApiError for errors. Displays 'Goal resumed successfully.' on success."
+      "line": 1,
+      "description": "This is the new command entry point for `hlx goals resume`. It mirrors the terminate.ts pattern: imports HxConfig (for auth/config), hxFetch (HTTP client), and parseApiError (error normaliser). The exported async function cmdGoalsResume(config, goalId) is the single responsibility handler. Keeping one file per subcommand is the established convention in this repo, making each lifecycle action independently readable and testable.",
+      "title": "New resume.ts command file"
+    },
+    {
+      "file": "src/goals/resume.ts",
+      "line": 7,
+      "description": "The core of the command: hxFetch POSTs to `/goals/${goalId}/resume` with an empty body and basePath '/api'. The server's postResume handler reads only the path param and auth header — it ignores the body — so an empty object is safe and harmless. On success the function logs a confirmation message containing the goalId. This is intentionally simpler than terminate.ts, which had to parse a --verdict flag and destructure a richer response.",
+      "title": "POST to /api/goals/:id/resume"
+    },
+    {
+      "file": "src/goals/resume.ts",
+      "line": 14,
+      "description": "Errors are caught, normalised through parseApiError (which extracts a human-readable message from server error responses), printed to stderr, and then the process exits with code 1. This matches the terminate.ts error path exactly and ensures that shell scripts and CI pipelines can detect failures via exit codes.",
+      "title": "Error handling with parseApiError + process.exit(1)"
+    },
+    {
+      "file": "src/goals/index.ts",
+      "line": 7,
+      "description": "The goals router (index.ts) is the single dispatch point for all `hlx goals *` subcommands. Adding the import for cmdGoalsResume here makes the new command available to the switch statement below. Using the `.js` extension is required by the project's ESM module resolution.",
+      "title": "Import cmdGoalsResume into the goals router"
+    },
+    {
+      "file": "src/goals/index.ts",
+      "line": 16,
+      "description": "The usage string shown when a user runs `hlx goals --help` or provides an unknown subcommand is defined near the top of this file. Adding `hlx goals resume <goalId>` here ensures the help text is immediately discoverable and consistent with the other subcommand entries (create, list, get, terminate).",
+      "title": "Usage string updated to include resume"
     },
     {
       "file": "src/goals/index.ts",
       "line": 73,
-      "title": "Resume case in goals switch",
-      "description": "Routes 'resume' subcommand to cmdGoalsResume. Validates goalId argument. Shows help on --help."
+      "description": "This is the routing logic that connects the CLI argument `resume` to the cmdGoalsResume handler. The case follows the terminate pattern exactly: (1) if --help is requested, print help and return; (2) extract goalId from rest[0]; (3) validate that goalId is present and does not start with '--' (which would indicate a flag was passed instead of an ID); (4) call cmdGoalsResume. The validation prevents accidental misuse and provides a clear error message to the user.",
+      "title": "New 'resume' case in the goals switch statement"
     },
     {
       "file": "src/docs/cli-content.ts",
       "line": 141,
-      "title": "CLI docs - command table",
-      "description": "Added resume row: hlx goals resume <goalId> | Resume a paused Goal"
+      "description": "The CLI documentation is driven from cli-content.ts. Adding the resume row to the goals command table here ensures it appears alongside create, list, get, and terminate in the rendered docs. Format and column structure match the surrounding rows.",
+      "title": "Resume row added to the Goals command table"
+    },
+    {
+      "file": "src/docs/cli-content.ts",
+      "line": 174,
+      "description": "Each subcommand gets its own flags section in the docs. Because resume only takes a positional goalId argument (unlike terminate which has --verdict), the flags section simply states 'No flags required'. This explicit note prevents users from guessing whether flags were omitted accidentally.",
+      "title": "Resume flags section — no flags required"
+    },
+    {
+      "file": "src/docs/cli-content.ts",
+      "line": 327,
+      "description": "A concrete usage example showing `hlx goals resume <goalId>` is added in the examples section. The bash code block format matches surrounding examples for create, list, get, and terminate. Good examples are the fastest path to correct usage for new developers.",
+      "title": "Resume example with bash code block"
+    },
+    {
+      "file": ".helix/tickets/cmpnfcoph000o7j0ueidrnzt8/runs/cmpobahv4003ggu0u0l0wo8f9/code-review/code-review-actual.md",
+      "line": 1,
+      "description": "The automated code review cross-referenced all three changed files against the product spec (SCN-02), the implementation plan, and the terminate.ts pattern. No requirement gaps, correctness issues, or regression risks were found. Both quality gates passed: `npm run typecheck` exited 0 with zero type errors, and `npm run build` compiled resume.ts and all dependent files cleanly. The change set is complete and self-contained.",
+      "title": "Code review confirms no issues — quality gates pass"
     }
   ]
 }
