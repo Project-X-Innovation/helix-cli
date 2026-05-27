@@ -38,3 +38,4 @@ Do you have any more details on the pattern? For example, are the affected peopl
 
 The current changes likely won't resolve the actual issue. I'd recommend reviewing the preview to confirm, and then rerunning with the correct context so Helix can target the right fix. Would you like me to kick off a new run?
 - **Usher** (2026-05-27T00:57:39.814Z) [Helix]: Yes
+- **Helix** (2026-05-27T00:57:48.068Z) [Agent]: Rerun kicked off! This time Helix will focus on the real issue — @mentions not finding Luis, Nate, Darshan, and potentially others — rather than the email-specific fix from before.
