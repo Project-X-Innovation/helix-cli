@@ -1,0 +1,31 @@
+{
+  "problem": "The CLI has no resume command for goals. The goals subcommands (src/goals/index.ts) are: create, list, get, terminate. A 'hlx goals resume <goalId>' command is needed to match the server's new resume endpoint.",
+  "files": [
+    {
+      "path": "src/goals/index.ts",
+      "why": "Goals command router (lines 8-75). Switch statement handles create/list/get/terminate. No resume case exists. New 'resume' case would follow the terminate pattern: validate goalId arg, call cmdGoalsResume."
+    },
+    {
+      "path": "src/goals/terminate.ts",
+      "why": "Closest pattern for resume. POSTs to /api/goals/:id/terminate with verdict body. Resume would POST to /api/goals/:id/resume with empty or minimal body."
+    },
+    {
+      "path": "src/goals/utils.ts",
+      "why": "Shared parseApiError utility for error handling in goal commands."
+    },
+    {
+      "path": "src/docs/cli-content.ts",
+      "why": "CLI documentation content (lines 133-172, 287-319). Goals section would need resume command added."
+    }
+  ],
+  "facts": [
+    "CLI goals subcommands: create, list, get, terminate (src/goals/index.ts:8-14)",
+    "No resume command exists in the CLI",
+    "terminate.ts pattern: parse goalId from args, POST to /api/goals/:id/terminate with JSON body, display result",
+    "CLI quality gates: npm run typecheck (tsc --noEmit), npm run build (tsc), npm test (tsc && node --test)",
+    "CLI docs in src/docs/cli-content.ts would need update for resume command"
+  ],
+  "unknowns": [
+    "Whether resume needs any CLI flags (e.g., --force to bypass maxChildren check) or is a simple no-arg command"
+  ]
+}
