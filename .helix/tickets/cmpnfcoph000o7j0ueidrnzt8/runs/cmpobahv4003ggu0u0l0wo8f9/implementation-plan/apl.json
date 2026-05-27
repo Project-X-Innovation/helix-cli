@@ -1,0 +1,32 @@
+{
+  "questions": [
+    "What pattern should the resume command follow?",
+    "How should the command be integrated into the goals router?",
+    "What CLI documentation changes are needed?"
+  ],
+  "answers": [
+    {
+      "answer": "The resume command follows terminate.ts: import hxFetch and parseApiError, export async function cmdGoalsResume(config, goalId), POST to /goals/${goalId}/resume with empty body, display confirmation. Simpler than terminate since no --verdict flag is needed.",
+      "evidence": [
+        "src/goals/terminate.ts — hxFetch POST pattern with parseApiError error handling",
+        "tech-research.md (cli) — Option A: new resume.ts file following terminate.ts pattern"
+      ]
+    },
+    {
+      "answer": "Add a 'resume' case to the switch in src/goals/index.ts following the terminate case pattern: isHelpRequested check, goalId validation (required, not a flag), call cmdGoalsResume. Import cmdGoalsResume from './resume.js'. Update usage string to include resume.",
+      "evidence": [
+        "src/goals/index.ts:57-68 — terminate case: help check, goalId validation, command call",
+        "src/goals/index.ts:8-14 — usage string format"
+      ]
+    },
+    {
+      "answer": "Three changes in src/docs/cli-content.ts: (1) Add resume row to Goals command table around line 140, (2) Add resume flags section (no flags required) after line 171, (3) Add resume example in examples section around line 319.",
+      "evidence": [
+        "src/docs/cli-content.ts:133-171 — Goals command table and flags sections",
+        "src/docs/cli-content.ts:287-319 — Goals examples section"
+      ]
+    }
+  ],
+  "statement": "The CLI implementation plan creates src/goals/resume.ts (following terminate.ts pattern), adds a resume case to goals/index.ts switch, and updates CLI docs in cli-content.ts. No new dependencies, no flags. Quality gates (typecheck, build) must pass.",
+  "followups": []
+}
