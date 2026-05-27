@@ -1,0 +1,32 @@
+{
+  "questions": [
+    "What is the correct CLI command structure for a no-flag lifecycle action?",
+    "How should the CLI handle the { ok: true } response from the resume endpoint?",
+    "What CLI documentation needs updating?"
+  ],
+  "answers": [
+    {
+      "answer": "Follow the terminate.ts pattern but without flags: new resume.ts file exports cmdGoalsResume(config, goalId) that POSTs to /goals/:id/resume with empty body. The goals/index.ts switch gets a new 'resume' case that validates goalId and calls the function. Help text includes the resume usage.",
+      "evidence": [
+        "src/goals/terminate.ts — cmdGoalsTerminate: hxFetch POST, parseApiError, console.log display",
+        "src/goals/index.ts:57-68 — terminate case: help check, goalId validation, call command"
+      ]
+    },
+    {
+      "answer": "Display a simple confirmation message ('Goal resumed successfully') with the goalId. The server returns { ok: true } which confirms the action succeeded. Unlike terminate (which returns the goal object with id, title, status), resume returns a boolean acknowledgment. The CLI should display the goalId it was given.",
+      "evidence": [
+        "Server tech research — resume endpoint returns { ok: true }, not the goal object",
+        "src/goals/terminate.ts:36-40 — terminate displays goal.id, goal.title, goal.status from response"
+      ]
+    },
+    {
+      "answer": "Update src/docs/cli-content.ts: add 'hlx goals resume <goalId>' to the goals command table (around line 140), and add a 'Resume a paused Goal' example section (around line 319).",
+      "evidence": [
+        "src/docs/cli-content.ts:135-171 — goals command table with 4 entries",
+        "src/docs/cli-content.ts:288-319 — goals examples section"
+      ]
+    }
+  ],
+  "statement": "The CLI resume implementation adds a new resume.ts file following the terminate.ts pattern: POST to /goals/:id/resume with empty body, display confirmation. A new 'resume' case in goals/index.ts and updated CLI docs in cli-content.ts complete the change. No flags needed, no new dependencies.",
+  "followups": []
+}
