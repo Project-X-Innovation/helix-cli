@@ -138,6 +138,7 @@ hlx org switch     # Switch to a different org
 | \`hlx goals list\` | List Goals with optional status filter |
 | \`hlx goals get <goalId>\` | Get Goal detail by ID |
 | \`hlx goals terminate <goalId>\` | Terminate a Goal with a verdict |
+| \`hlx goals resume <goalId>\` | Resume a paused Goal |
 
 **\`hlx goals create\` flags:**
 
@@ -169,6 +170,10 @@ hlx org switch     # Switch to a different org
 | Flag | Description |
 |------|-------------|
 | \`--verdict <complete\\|failed>\` | Termination verdict (required) |
+
+**\`hlx goals resume\`:**
+
+No flags required. Resumes a paused Goal, re-triggering evaluation.
 
 ### Inspect
 
@@ -317,6 +322,14 @@ hlx goals terminate <goalId> --verdict complete
 \`\`\`
 
 The \`--verdict\` flag accepts \`complete\` or \`failed\`.
+
+### Resume a paused Goal
+
+\`\`\`bash
+hlx goals resume <goalId>
+\`\`\`
+
+Resumes evaluation for a Goal in PAUSED status.
 
 ### Inspect repositories
 

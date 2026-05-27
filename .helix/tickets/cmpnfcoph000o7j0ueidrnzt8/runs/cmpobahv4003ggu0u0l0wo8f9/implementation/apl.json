@@ -1,0 +1,40 @@
+{
+  "questions": [
+    "Was the resume.ts command file created following the terminate.ts pattern?",
+    "Is the resume case added to the goals switch in index.ts?",
+    "Are the CLI docs updated with the resume command?",
+    "Do all quality gates pass?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes. src/goals/resume.ts exports cmdGoalsResume(config, goalId) following the terminate.ts pattern: hxFetch POST to /goals/${goalId}/resume with empty body, parseApiError for error handling, console.log for confirmation. Simpler than terminate (no --verdict flag).",
+      "evidence": [
+        "src/goals/resume.ts — file created with correct pattern",
+        "npm run typecheck passes with zero type errors"
+      ]
+    },
+    {
+      "answer": "Yes. The 'resume' case was added to the switch in src/goals/index.ts at line 73, following the terminate case pattern: help check, goalId validation, cmdGoalsResume call. Usage string updated to include 'hlx goals resume <goalId>'.",
+      "evidence": [
+        "src/goals/index.ts:7 — import added",
+        "src/goals/index.ts:16 — usage string includes resume",
+        "src/goals/index.ts:73-84 — resume case with help check and goalId validation"
+      ]
+    },
+    {
+      "answer": "Yes. CLI docs in src/docs/cli-content.ts updated with: (1) resume row in goals command table, (2) 'hlx goals resume' flags section (no flags required), (3) resume example in the examples section.",
+      "evidence": [
+        "grep -n 'resume' src/docs/cli-content.ts shows 3 additions in command table, flags section, and examples"
+      ]
+    },
+    {
+      "answer": "Yes. Both quality gates pass: typecheck (zero errors), build (tsc compiles all files including resume.ts).",
+      "evidence": [
+        "npm run typecheck — exit 0, zero errors",
+        "npm run build — exit 0, tsc compilation clean"
+      ]
+    }
+  ],
+  "statement": "CLI implementation complete: src/goals/resume.ts command file, resume case in goals switch (index.ts), and CLI docs updated (cli-content.ts). Command parses arguments, POSTs to /goals/:id/resume, handles errors with parseApiError. All quality gates pass. Verified via `node dist/index.js goals --help` showing resume subcommand and `node dist/index.js goals resume nonexistent-id` showing proper error handling.",
+  "followups": []
+}

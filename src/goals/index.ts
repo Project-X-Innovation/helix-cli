@@ -4,6 +4,7 @@ import { cmdGoalsCreate } from "./create.js";
 import { cmdGoalsList } from "./list.js";
 import { cmdGoalsGet } from "./get.js";
 import { cmdGoalsTerminate } from "./terminate.js";
+import { cmdGoalsResume } from "./resume.js";
 
 function goalsUsage(exitCode: number = 1): never {
   const output = exitCode === 0 ? console.log : console.error;
@@ -11,7 +12,8 @@ function goalsUsage(exitCode: number = 1): never {
   hlx goals create --title <title> --description <desc> [--repos <name1,name2>] [--max-children <n>] [--require-approval] [--sprint <id>]
   hlx goals list [--status <status>] [--limit <n>] [--json]
   hlx goals get <goalId> [--json]
-  hlx goals terminate <goalId> --verdict <complete|failed>`);
+  hlx goals terminate <goalId> --verdict <complete|failed>
+  hlx goals resume <goalId>`);
   process.exit(exitCode);
 }
 
@@ -65,6 +67,20 @@ export async function runGoals(config: HxConfig, args: string[]): Promise<void> 
         process.exit(1);
       }
       await cmdGoalsTerminate(config, goalId, rest.slice(1));
+      break;
+    }
+
+    case "resume": {
+      if (isHelpRequested(rest)) {
+        console.log("Usage: hlx goals resume <goalId>");
+        process.exit(0);
+      }
+      const goalId = rest[0];
+      if (!goalId || goalId.startsWith("--")) {
+        console.error("Error: <goalId> is required. Usage: hlx goals resume <goalId>");
+        process.exit(1);
+      }
+      await cmdGoalsResume(config, goalId);
       break;
     }
 
