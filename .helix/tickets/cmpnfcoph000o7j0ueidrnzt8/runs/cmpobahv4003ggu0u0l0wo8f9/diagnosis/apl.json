@@ -1,0 +1,16 @@
+{
+  "questions": [
+    "Does the CLI have a resume command for goals?"
+  ],
+  "answers": [
+    {
+      "answer": "No. The goals subcommands (src/goals/index.ts:8-14) are create, list, get, and terminate. No resume case exists in the switch statement. The terminate.ts command is the closest pattern for implementing resume.",
+      "evidence": [
+        "src/goals/index.ts:8-14 — switch handles create/list/get/terminate only",
+        "src/goals/terminate.ts — POST /api/goals/:id/terminate pattern"
+      ]
+    }
+  ],
+  "statement": "The CLI needs a new 'hlx goals resume <goalId>' command. It follows the terminate.ts pattern: parse goalId from args, POST to /api/goals/:id/resume with empty body, display result. The goals/index.ts switch statement needs a new 'resume' case, and cli-content.ts docs need updating.",
+  "followups": []
+}
