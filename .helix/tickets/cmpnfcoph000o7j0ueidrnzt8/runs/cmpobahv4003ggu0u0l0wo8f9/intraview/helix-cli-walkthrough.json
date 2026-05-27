@@ -1,0 +1,24 @@
+{
+  "title": "Resume PAUSED Goals - CLI",
+  "description": "Adds hlx goals resume <goalId> command following terminate.ts pattern",
+  "steps": [
+    {
+      "file": "src/goals/resume.ts",
+      "line": 5,
+      "title": "cmdGoalsResume command",
+      "description": "New command file: hxFetch POST to /goals/${goalId}/resume with empty body. parseApiError for errors. Displays 'Goal resumed successfully.' on success."
+    },
+    {
+      "file": "src/goals/index.ts",
+      "line": 73,
+      "title": "Resume case in goals switch",
+      "description": "Routes 'resume' subcommand to cmdGoalsResume. Validates goalId argument. Shows help on --help."
+    },
+    {
+      "file": "src/docs/cli-content.ts",
+      "line": 141,
+      "title": "CLI docs - command table",
+      "description": "Added resume row: hlx goals resume <goalId> | Resume a paused Goal"
+    }
+  ]
+}
