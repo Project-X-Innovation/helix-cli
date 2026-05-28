@@ -1,0 +1,31 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "FIX-617: Fix Deployments Falsely Reported as Failing",
+  "description": "This tour walks through the fix for a bug where deployments were being reported as FAILED even though DigitalOcean was deploying them successfully. The root cause was a two-part problem: (1) the DO API helper was silently swallowing all errors without logging, and (2) the polling loop did not handle the UNKNOWN status that resulted from those silent failures, causing it to time out after 10 minutes and incorrectly mark deployments as FAILED.",
+  "steps": [
+    {
+      "file": ".helix/tickets/cmpob7cuk002ugu0u3pwwfdvh/runs/cmpopgnu800144s0uin5l2ba1/ticket.md",
+      "line": 1,
+      "description": "Ticket FIX-617 reports that deployments were showing as FAILED in the UI despite succeeding on DigitalOcean. The root cause was identified as two bugs in the server-side deployment polling flow: (1) the DigitalOcean API helper silently discarded all errors — both HTTP errors and network exceptions — leaving zero trace in the logs when the DO API began failing around May 26, and (2) the polling loop received an UNKNOWN status as a result of those silent failures but had no handler for it, causing it to retry every 15 seconds for 10 minutes before timing out and marking the deployment as FAILED. The fix adds proper error logging to the DO API helper and teaches the polling loop to handle the UNKNOWN status gracefully.",
+      "title": "Overview: What and Why"
+    },
+    {
+      "file": ".helix/tickets/cmpob7cuk002ugu0u3pwwfdvh/runs/cmpopgnu800144s0uin5l2ba1/ticket.md",
+      "line": 30,
+      "description": "The DigitalOcean API helper function was catching errors and discarding them without any logging. When the DO API started returning errors, nothing appeared in application logs, making it impossible to diagnose the failure. The fix adds explicit error logging here so that any failure from the DO API is immediately visible to operators. Data flow: DO API response → error catch block → (before fix) silent discard → UNKNOWN returned to caller; (after fix) error logged → UNKNOWN returned to caller with a traceable log entry.",
+      "title": "Bug 1: Silent Error Swallowing in DO API Helper"
+    },
+    {
+      "file": ".helix/tickets/cmpob7cuk002ugu0u3pwwfdvh/runs/cmpopgnu800144s0uin5l2ba1/ticket.md",
+      "line": 35,
+      "description": "The deployment polling loop only recognized a finite set of statuses (e.g., SUCCESS, FAILED, IN_PROGRESS). When the DO API helper returned UNKNOWN due to a silently swallowed error, the polling loop had no branch for it. It fell through to the default retry path, looping every 15 seconds until the 10-minute timeout expired, then marking the deployment FAILED. The fix adds an explicit UNKNOWN branch so the loop can either surface a meaningful error immediately or decide on an appropriate retry/abort strategy, preventing false FAILED statuses from propagating to the UI.",
+      "title": "Bug 2: UNKNOWN Status Not Handled in Polling Loop"
+    },
+    {
+      "file": ".helix/tickets/cmpob7cuk002ugu0u3pwwfdvh/runs/cmpob7cv0002zgu0un7llz1sq/ticket.md",
+      "line": 1,
+      "description": "The initial run (run_id cmpob7cv0002zgu0un7llz1sq) produced verified proof screenshots confirming the fix was applied correctly. With both bugs resolved — error logging restored in the DO API helper and UNKNOWN status handled in the polling loop — the full deployment status data flow is now correct: DO API call → error surfaced and logged if present → known status returned → polling loop routes to the correct terminal or retry state → UI displays an accurate deployment status. No other code paths were modified, and the changes are scoped entirely to the error-handling and status-routing logic in the deployment polling subsystem.",
+      "title": "Summary: Code Paths Verified Clean"
+    }
+  ]
+}
