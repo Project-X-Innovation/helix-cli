@@ -1,0 +1,76 @@
+{
+  "problem": "The helix-cli provides the callback surface (hlx comments post, hlx inspect) that the in-sprite Host Agent runner uses. The runner authenticates with a scoped, refreshable inspection token. Changes are needed to ensure the CLI works correctly with scoped tokens and potentially supports token refresh for long-lived sprite sessions.",
+  "files": [
+    {
+      "path": "src/comments/post.ts",
+      "why": "Callback surface for in-sprite runner to post replies. POSTs to /api/tickets/{ticketId}/comments. Currently authenticates with broad hxi_ token. Must work with scoped, refreshable tokens."
+    },
+    {
+      "path": "src/comments/list.ts",
+      "why": "Used by runner to fetch latest comments. Supports --helix-only and --since filters. Response includes isAgentAuthored flag."
+    },
+    {
+      "path": "src/comments/index.ts",
+      "why": "Router for comments subcommand: dispatches to 'post' and 'list' handlers."
+    },
+    {
+      "path": "src/inspect/index.ts",
+      "why": "Router for inspect subcommand: dispatches to db, logs, api, repos handlers."
+    },
+    {
+      "path": "src/inspect/db.ts",
+      "why": "Inspect DB handler: POST /api/inspect/{repoId}/database. Subject to inspection key repo scoping (FLAW-05 fix will restrict this to ticket repos)."
+    },
+    {
+      "path": "src/inspect/logs.ts",
+      "why": "Inspect logs handler: POST /api/inspect/{repoId}/logs. Same repo scoping applies."
+    },
+    {
+      "path": "src/inspect/api.ts",
+      "why": "Inspect API handler: GET /api/inspect/{repoId}/api. Same repo scoping applies."
+    },
+    {
+      "path": "src/inspect/repos.ts",
+      "why": "Lists available repositories for inspection. Scoped tokens will restrict the visible set."
+    },
+    {
+      "path": "src/lib/config.ts",
+      "why": "Config loading: priority order is env vars (HELIX_API_KEY/HELIX_INSPECT_TOKEN, HELIX_URL/HELIX_INSPECT_BASE_URL), then multi-token config file (~/.hlx/config.json). In-sprite runner will use env vars injected by control plane."
+    },
+    {
+      "path": "src/lib/http.ts",
+      "why": "HTTP client (hxFetch): sets X-API-Key header for hxi_ tokens, Authorization Bearer for others. Includes X-Helix-Org-ID for org scoping. 3-attempt retry with exponential backoff. 30s timeout."
+    },
+    {
+      "path": "src/index.ts",
+      "why": "Main CLI entry point and command router. Dispatches to inspect, comments, and other subcommands."
+    },
+    {
+      "path": "src/lib/resolve-ticket.ts",
+      "why": "Ticket resolution: extractTicketRef uses --ticket flag or HELIX_TICKET_ID env var. In-sprite runner will set HELIX_TICKET_ID in env."
+    },
+    {
+      "path": "src/lib/resolve-repo.ts",
+      "why": "Repository resolution: resolveRepo matches by ID or display name. Inspect commands use this to map repo names to IDs."
+    },
+    {
+      "path": "package.json",
+      "why": "Pure CLI (no runtime deps, only devDeps). Build: tsc, test: tsc && node --test. No ORM/database."
+    }
+  ],
+  "facts": [
+    "CLI authenticates via HELIX_API_KEY or HELIX_INSPECT_TOKEN env vars (config.ts), or ~/.hlx/config.json multi-token file. hxi_ prefix tokens use X-API-Key header; others use Bearer auth (http.ts).",
+    "hlx comments post: resolves ticket via --ticket flag or HELIX_TICKET_ID env, POSTs {content: message} to /api/tickets/{ticketId}/comments. Response: {comment: {id}}.",
+    "hlx inspect db/logs/api: all require repo resolution and POST/GET to /api/inspect/{repoId}/{type}. These routes are subject to inspection key repo scoping on the server side.",
+    "No token refresh mechanism exists in the CLI. The token is read from env or config at startup and used for the session duration.",
+    "No direct host-agent or sprite references found in the CLI codebase. The CLI is agnostic to where it runs.",
+    "The CLI is a zero-dependency ESM module (Node 18+, TypeScript). No ORM or database.",
+    "HELIX_TICKET_ID env var is used by resolve-ticket.ts to determine the current ticket context. The in-sprite runner can set this at sprite launch.",
+    "hxFetch includes retry logic (3 attempts, exponential backoff with jitter) and 30s request timeout."
+  ],
+  "unknowns": [
+    "Whether token refresh requires CLI changes or is purely a control-plane concern (control plane rotates HELIX_INSPECT_TOKEN in the sprite's env and the CLI re-reads on next invocation).",
+    "Whether the current comment post endpoint supports a dedicated agent/system identity or if FLAW-07 fix requires a server-side change only (the CLI currently just posts content; identity is server-determined from the auth token).",
+    "Whether the CLI needs to support new auth flows for scoped tokens or if the existing hxi_ token handling is sufficient (server-side scoping is the primary change)."
+  ]
+}
