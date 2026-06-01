@@ -1,0 +1,35 @@
+{
+  "questions": [
+    "What CLI interface should the netsuite subcommand expose?",
+    "Should the CLI expose an --environment flag for selecting PRODUCTION vs SANDBOX?",
+    "Does the netsuite subcommand need any NetSuite-specific error handling?"
+  ],
+  "answers": [
+    {
+      "answer": "The netsuite subcommand should match the db subcommand interface exactly: --repo <name> --query '<SuiteQL>' (recommended), --query-file <path> (for complex queries), and positional query argument (convenience). This ensures agents trained on the db interface can use netsuite with identical syntax.",
+      "evidence": [
+        "src/inspect/db.ts: cmdDb(config, repo, query) pattern with resolveRepo + hxFetch POST",
+        "src/inspect/index.ts lines 69-91: db case parses --repo, --query, --query-file flags",
+        "product/product.md: 'hlx inspect netsuite --repo <name> --query \"<SuiteQL>\"' specified"
+      ]
+    },
+    {
+      "answer": "No. The environment (PRODUCTION vs SANDBOX) is determined server-side from the inspection token's nsEnv claim (set by configureInspectionForStep in the orchestrator). Exposing an environment flag would be misleading and insecure — the server ignores client-specified environments. The agent doesn't need to know which environment it's querying.",
+      "evidence": [
+        "helix-global-server tech-research AD-3: environment embedded in signed JWT, not request body",
+        "credentials.ts: resolveNsGmCredentialEnvironmentForStep() maps stepId server-side",
+        "session.ts: JWT is signed with authJwtSecret — cannot be forged by agent"
+      ]
+    },
+    {
+      "answer": "No. The existing hxFetch() error handling (http.ts) covers 429 (rate limit), 401 (unauthorized), and 5xx (server errors) with appropriate retry logic. The server translates NetSuite-specific errors into standard HTTP errors with descriptive messages. The CLI just displays the error message from the server response.",
+      "evidence": [
+        "src/lib/http.ts: retry logic handles 429 and 5xx with exponential backoff",
+        "ns-gm-credential-test-service.ts lines 109-128: translateNsError() produces descriptive messages server-side",
+        "Existing subcommands (db, logs, api) have no type-specific error handling in the CLI"
+      ]
+    }
+  ],
+  "statement": "helix-cli needs one new file (src/inspect/netsuite.ts) following the db.ts template, one switch/case addition in index.ts, and documentation updates. The implementation is a direct copy of the db.ts pattern with the endpoint changed to /netsuite. No new dependencies, no environment flag, no NetSuite-specific error handling. The CLI is a thin transport layer — all business logic (environment routing, OAuth2, sanitization) is server-side.",
+  "followups": []
+}
