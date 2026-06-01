@@ -1,0 +1,59 @@
+{
+  "problem": "The helix-cli currently has no ns-gm or NetSuite-related commands in its inspect module. After ns-gm moves server-side, sandbox agents will need to access NetSuite data through `hlx inspect netsuite` (or similar) subcommand that routes queries through the server-side inspection proxy.",
+  "files": [
+    {
+      "path": "src/inspect/index.ts",
+      "why": "Inspect subcommand router. Currently dispatches to repos, db, logs, api. Must be extended with a netsuite subcommand."
+    },
+    {
+      "path": "src/inspect/db.ts",
+      "why": "Database inspection implementation. Serves as a template for the netsuite implementation — same pattern: parse args, call hxFetch, display results."
+    },
+    {
+      "path": "src/inspect/logs.ts",
+      "why": "Logs inspection implementation. Another template showing the subcommand pattern."
+    },
+    {
+      "path": "src/inspect/api.ts",
+      "why": "API inspection implementation. Template for new subcommand."
+    },
+    {
+      "path": "src/inspect/repos.ts",
+      "why": "Lists available repositories and their inspection types. Must display new NETSUITE type when available."
+    },
+    {
+      "path": "src/lib/http.ts",
+      "why": "HTTP transport layer with retry logic. Calls /api/inspect/* endpoints. Will be used by new netsuite subcommand to POST queries to the server."
+    },
+    {
+      "path": "src/lib/resolve-repo.ts",
+      "why": "Repository name/ID resolution used by all inspect commands."
+    },
+    {
+      "path": "src/index.ts",
+      "why": "Main CLI entry point. Routes 'inspect' to runInspect()."
+    },
+    {
+      "path": "skill-content/references/commands.md",
+      "why": "User-facing command documentation. Must be updated with new netsuite subcommand."
+    },
+    {
+      "path": "package.json",
+      "why": "Build scripts: build=tsc, typecheck=tsc --noEmit, test=tsc && node --test."
+    }
+  ],
+  "facts": [
+    "No ns-gm, nsgm, or NetSuite references exist in helix-cli src/ (confirmed by grep)",
+    "hlx inspect currently has 4 subcommands: repos, db, logs, api (src/inspect/index.ts)",
+    "The CLI communicates with the server at /api/inspect/* endpoints via hxFetch() in src/lib/http.ts",
+    "Authentication uses either hxi_ API keys (X-API-Key header) or Bearer tokens (Authorization header)",
+    "HTTP client has retry logic: 3 attempts, exponential backoff, retryable on 429/5xx",
+    "Each inspect subcommand follows the same pattern: parse flags, resolve repo, call hxFetch, display results",
+    "The skill-content directory has no ns-gm documentation"
+  ],
+  "unknowns": [
+    "What the netsuite subcommand's interface should look like — whether it mirrors ns-gm CLI syntax or uses a new syntax (e.g., `hlx inspect netsuite --repo X --query 'SuiteQL'`)",
+    "Whether multiple netsuite subcommands are needed (suiteql, saved-search, script-logs, record) or a single generic one",
+    "Whether the repos subcommand already handles NETSUITE type display or needs changes"
+  ]
+}
