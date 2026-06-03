@@ -1,0 +1,18 @@
+{
+  "questions": [
+    "How should the CLI handle disabled Goals feature?",
+    "Where should the error handling be placed?"
+  ],
+  "answers": [
+    {
+      "answer": "Reactive error handling: catch server 404 responses and display the extracted error message. No pre-flight check or local feature flag state.",
+      "evidence": ["tech-research/tech-research.md (cli): Decision 1 — Reactive error handling", "product/product.md: SCN-06 — CLI shows friendly message instead of raw error"]
+    },
+    {
+      "answer": "Wrapper try/catch in runGoals function around the switch statement. This covers all 5 commands consistently, including list and get which lack local try/catch blocks.",
+      "evidence": ["tech-research/tech-research.md (cli): Decision 2 — Wrapper try/catch in runGoals", "src/goals/index.ts: switch statement at lines 28-89 has no wrapper catch"]
+    }
+  ],
+  "statement": "The CLI implementation plan adds a try/catch wrapper in runGoals that uses parseApiError to display friendly error messages when the server returns 404 for disabled Goals. One file changed, no new dependencies.",
+  "followups": []
+}
