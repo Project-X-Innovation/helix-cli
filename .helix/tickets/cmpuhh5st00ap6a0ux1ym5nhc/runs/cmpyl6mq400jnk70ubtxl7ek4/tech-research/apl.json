@@ -1,35 +1,56 @@
 {
   "questions": [
-    "What CLI interface should the netsuite subcommand expose?",
-    "Should the CLI expose an --environment flag for selecting PRODUCTION vs SANDBOX?",
-    "Does the netsuite subcommand need any NetSuite-specific error handling?"
+    "Q1: What CLI interface should hlx inspect netsuite expose?",
+    "Q2: What CLI interface should hlx run expose?",
+    "Q3: Should the CLI expose an --env flag for either command?",
+    "Q4: What basePath should hlx run use — the default /api/inspect or an override?",
+    "Q5: Does either command need NetSuite-specific error handling in the CLI?"
   ],
   "answers": [
     {
-      "answer": "The netsuite subcommand should match the db subcommand interface exactly: --repo <name> --query '<SuiteQL>' (recommended), --query-file <path> (for complex queries), and positional query argument (convenience). This ensures agents trained on the db interface can use netsuite with identical syntax.",
+      "answer": "hlx inspect netsuite should support two modes via body type discriminator: (a) SuiteQL queries matching the db subcommand interface exactly: --repo <name> --query '<SuiteQL>' (recommended), --query-file <path> (for complex queries), and positional query argument (convenience); (b) Script log retrieval with flags: --repo <name> --logs --script-id <id> [--date-from <date>] [--date-to <date>] [--log-type <type>]. The --logs flag discriminates between query and log modes. Default mode (no --logs flag) is SuiteQL query.",
       "evidence": [
         "src/inspect/db.ts: cmdDb(config, repo, query) pattern with resolveRepo + hxFetch POST",
         "src/inspect/index.ts lines 69-91: db case parses --repo, --query, --query-file flags",
-        "product/product.md: 'hlx inspect netsuite --repo <name> --query \"<SuiteQL>\"' specified"
+        "product/product.md SCN-01: 'hlx inspect netsuite --repo <name> \"SELECT id, companyname FROM customer\"'",
+        "product/product.md SCN-02: script log retrieval with filter parameters"
       ]
     },
     {
-      "answer": "No. The environment (PRODUCTION vs SANDBOX) is determined server-side from the inspection token's nsEnv claim (set by configureInspectionForStep in the orchestrator). Exposing an environment flag would be misleading and insecure — the server ignores client-specified environments. The agent doesn't need to know which environment it's querying.",
+      "answer": "hlx run is a new top-level command (not under inspect) following the configOrHelp pattern from src/index.ts:26-35. Interface: hlx run --repo <name> '<code>' (inline), hlx run --repo <name> --script-file <path> (from file), optional --modules <comma-separated> for specifying NetSuite modules. The handler follows the same resolveRepo -> hxFetch -> console.log pattern. New module at src/run/index.ts with a new case in src/index.ts switch.",
+      "evidence": [
+        "src/index.ts:81-156 — no 'run' case exists; 13 cases verified; configOrHelp pattern established",
+        "product/product.md SCN-03: 'hlx run --repo <name> \"record.load(...)\"'",
+        "ls src/run/ — directory does not exist; ready for creation",
+        "src/index.ts:26-35 — configOrHelp pattern available for new commands"
+      ]
+    },
+    {
+      "answer": "No. The environment (PRODUCTION vs SANDBOX) is determined server-side from the inspection token's nsEnv claim (set by configureInspectionForStep in the orchestrator). Exposing an --env flag would be misleading and insecure — the server ignores client-specified environments. The agent doesn't need to know which environment it's querying. A human-facing --env flag is a future consideration (product/product.md Future Considerations).",
       "evidence": [
         "helix-global-server tech-research AD-3: environment embedded in signed JWT, not request body",
-        "credentials.ts: resolveNsGmCredentialEnvironmentForStep() maps stepId server-side",
-        "session.ts: JWT is signed with authJwtSecret — cannot be forged by agent"
+        "credentials.ts:9-14: resolveNsGmCredentialEnvironmentForStep() maps stepId server-side",
+        "session.ts: JWT signed with authJwtSecret — cannot be forged by agent",
+        "product/product.md: '--env flag' listed under 'Features Explicitly Out of Scope'"
       ]
     },
     {
-      "answer": "No. The existing hxFetch() error handling (http.ts) covers 429 (rate limit), 401 (unauthorized), and 5xx (server errors) with appropriate retry logic. The server translates NetSuite-specific errors into standard HTTP errors with descriptive messages. The CLI just displays the error message from the server response.",
+      "answer": "hlx run uses the default basePath '/api/inspect' because the server endpoint is POST /api/inspect/:repositoryId/run (under the inspect prefix, per helix-global-server AD-1). No basePath override needed. The hxFetch call is: hxFetch(config, '/${repoId}/run', { method: 'POST', body: { code, modules? } }).",
       "evidence": [
-        "src/lib/http.ts: retry logic handles 429 and 5xx with exponential backoff",
-        "ns-gm-credential-test-service.ts lines 109-128: translateNsError() produces descriptive messages server-side",
+        "helix-global-server tech-research AD-1: both surfaces under /api/inspect/ prefix",
+        "src/lib/http.ts:43 — basePath defaults to '/api/inspect'",
+        "src/inspect/db.ts: existing pattern uses '/${repoId}/database' relative to default basePath"
+      ]
+    },
+    {
+      "answer": "No. The existing hxFetch() error handling (http.ts) covers 429 (rate limit with Retry-After), 401 (unauthorized), and 5xx (server errors) with 3-attempt retry and exponential backoff. The server translates NetSuite-specific errors into standard HTTP errors with descriptive messages (via translateNsError in ns-gm-credential-test-service.ts:108-127). The CLI displays the error message from the server response. No NetSuite-specific error handling needed in the CLI.",
+      "evidence": [
+        "src/lib/http.ts:71-130 — retry logic handles 429 and 5xx with exponential backoff, Retry-After support",
+        "ns-gm-credential-test-service.ts:108-127 — translateNsError() produces descriptive messages server-side",
         "Existing subcommands (db, logs, api) have no type-specific error handling in the CLI"
       ]
     }
   ],
-  "statement": "helix-cli needs one new file (src/inspect/netsuite.ts) following the db.ts template, one switch/case addition in index.ts, and documentation updates. The implementation is a direct copy of the db.ts pattern with the endpoint changed to /netsuite. No new dependencies, no environment flag, no NetSuite-specific error handling. The CLI is a thin transport layer — all business logic (environment routing, OAuth2, sanitization) is server-side.",
+  "statement": "helix-cli needs two additions: (1) hlx inspect netsuite — new case in inspect router + new handler file (src/inspect/netsuite.ts) following the db.ts template for SuiteQL queries and a --logs mode for script log retrieval, and (2) hlx run — new top-level case in main dispatcher + new module (src/run/index.ts) for arbitrary SuiteScript execution. Both use the default basePath '/api/inspect' because the server routes both surfaces under the inspect prefix. Both use existing hxFetch with dual-mode auth and retry. No --env flag (token-bounded). No NetSuite-specific error handling. Zero new dependencies. The implementation is a direct application of established patterns with minimal risk.",
   "followups": []
 }
