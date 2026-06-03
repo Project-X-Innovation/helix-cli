@@ -1,0 +1,24 @@
+{
+  "title": "Goals Feature Flag — CLI Changes",
+  "description": "Tour of CLI changes to catch server 404 errors when Goals is disabled and display friendly messages",
+  "steps": [
+    {
+      "file": "src/goals/index.ts",
+      "line": 8,
+      "title": "Import parseApiError",
+      "description": "Import the existing parseApiError utility from utils.ts which extracts the .error field from HTTP error response bodies."
+    },
+    {
+      "file": "src/goals/index.ts",
+      "line": 29,
+      "title": "try block wraps switch statement",
+      "description": "The entire switch statement dispatching goals subcommands is now wrapped in try/catch. This covers list and get commands which lack local error handling."
+    },
+    {
+      "file": "src/goals/index.ts",
+      "line": 93,
+      "title": "catch block with parseApiError",
+      "description": "Catches any error from goals commands, extracts the clean message via parseApiError, prints 'Error: <message>', and exits. For 404 from disabled Goals, this produces 'Error: Goals feature is not available.' instead of a raw HTTP error."
+    }
+  ]
+}
