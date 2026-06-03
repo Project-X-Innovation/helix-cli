@@ -1,0 +1,63 @@
+{
+  "problem": "The CLI has fully implemented goals commands (create, list, get, terminate, resume) with no feature-flag gating. Commands hit server API directly. If the server returns errors when goals is disabled, the CLI would show raw error messages with no graceful handling.",
+  "files": [
+    {
+      "path": "src/goals/index.ts",
+      "why": "Goals command router (92 lines). runGoals dispatches subcommands with no feature-flag check. Entry point for all goals CLI commands."
+    },
+    {
+      "path": "src/goals/create.ts",
+      "why": "Create goal command with flags (--title, --description, --repos, --max-children, --require-approval, --sprint)."
+    },
+    {
+      "path": "src/goals/list.ts",
+      "why": "List goals command with filters (--status, --limit, --json)."
+    },
+    {
+      "path": "src/goals/get.ts",
+      "why": "Get goal detail command."
+    },
+    {
+      "path": "src/goals/terminate.ts",
+      "why": "Terminate goal command with --verdict flag."
+    },
+    {
+      "path": "src/goals/resume.ts",
+      "why": "Resume paused goal command."
+    },
+    {
+      "path": "src/goals/utils.ts",
+      "why": "Shared error parsing utility for goals commands."
+    },
+    {
+      "path": "src/index.ts",
+      "why": "Main CLI entry point. Routes 'hlx goals' to runGoals (line 124-127). No feature-flag check."
+    },
+    {
+      "path": "src/docs/cli-content.ts",
+      "why": "Full documentation for all goals commands (lines 133-176). Would need updating if commands become conditional."
+    },
+    {
+      "path": "src/lib/config.ts",
+      "why": "CLI configuration (HELIX_API_KEY, HELIX_URL, etc.). No feature flag env vars."
+    },
+    {
+      "path": "package.json",
+      "why": "Scripts: build (tsc), typecheck (tsc --noEmit), test (tsc + node --test). No ORM."
+    }
+  ],
+  "facts": [
+    "5 goals subcommands implemented: create, list, get, terminate, resume",
+    "runGoals in src/goals/index.ts:20 dispatches with no feature-flag gate",
+    "Main CLI entry (src/index.ts:124-127) routes 'hlx goals' unconditionally",
+    "No feature flag patterns exist anywhere in the CLI codebase",
+    "CLI config uses env vars HELIX_API_KEY, HELIX_URL — no feature flag env vars",
+    "CLI hits server API directly; if server returns errors for disabled goals, CLI shows raw errors",
+    "Quality gates: npm run build (tsc), npm run typecheck (tsc --noEmit), npm run test"
+  ],
+  "unknowns": [
+    "Should CLI gate goals commands locally (e.g., check a server /features endpoint before dispatching)?",
+    "Should CLI show a user-friendly message when goals is server-disabled, or just forward the server error?",
+    "Should goals CLI docs be conditional or always visible regardless of flag state?"
+  ]
+}
