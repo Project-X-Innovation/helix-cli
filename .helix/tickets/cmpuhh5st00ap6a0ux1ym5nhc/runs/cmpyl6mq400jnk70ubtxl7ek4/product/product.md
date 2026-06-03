@@ -1,170 +1,175 @@
-# Product: Server-Side ns-gm Migration via hlx inspect
+# Product Specification — ns-gm Server-Side Migration (helix-cli)
 
 ## Problem Statement
 
-The ns-gm CLI currently runs directly inside ephemeral Vercel sandboxes with decrypted production PEM private keys written to the filesystem. This means sandbox agents have uncontrolled, unmediated access to the entire production NetSuite account — no rate limiting, no write-blocking, no audit logging, no result sanitization. Combined with unrestricted internet egress, this creates a data exfiltration pathway where an agent can query any production data and send it to any external endpoint.
+Workflow agents running in ephemeral sandboxes currently access production NetSuite data through the ns-gm CLI, which runs entirely inside the sandbox. Production OAuth2 credentials — PEM private keys, accountId, clientId, certificateId — are injected directly into the sandbox at `/tmp/nsgm-{runId}.pem` and used for direct NetSuite API calls. This bypasses all server-side controls: write-blocking validation, rate limiting, result sanitization, secret redaction, and audit logging.
 
-An existing server-side inspection proxy already handles DATABASE, LOGS, and API queries with full security controls (write-blocking, 200-row cap, 1MB cap, rate limiting, audit logging). The ns-gm CLI path operates entirely outside that proxy's scope.
+Meanwhile, all other data access (database, logs, API) already flows through a governed server-side inspection proxy with those exact controls, accessed via `hlx inspect db/logs/api`. The ns-gm path is the only uncontrolled data access channel in the architecture.
+
+With ns-gm moving server-side (helix-global-server), agents need CLI commands to access the new server surfaces. Currently, helix-cli has no NetSuite-related commands.
 
 ## Product Vision
 
-Move all NetSuite production data access from an uncontrolled in-sandbox CLI to the existing server-side inspection proxy. After migration, production credentials (PEM private key, accountId, clientId) never enter the sandbox. Agents access NetSuite data via `hlx inspect netsuite`, routed through the server with the same security controls applied to database, logs, and API queries today.
+Provide two new CLI commands that give agents access to the server-side NetSuite proxy, matching the two-surface governance model:
+
+- **`hlx inspect netsuite`** — Read-only data access (SuiteQL queries + NetSuite script logs). Folds into the existing governed inspect surface alongside `hlx inspect db/logs/api`. Read-only safety is enforced server-side.
+- **`hlx run`** — Arbitrary SuiteScript execution. New top-level command for operations whose ceiling is delegated to the account's NetSuite role.
+
+Both commands inherit the CLI's existing HTTP client, authentication, retry logic, and error handling. Zero new dependencies.
 
 ## Users
 
-- **Helix agents (automated):** Primary consumers. Agents running in scout and diagnosis steps query production NetSuite data to investigate tickets. They currently use `ns-gm` CLI directly; after migration they use `hlx inspect netsuite`.
-- **Platform operators:** Benefit from audit visibility, rate limiting, and write-blocking on all production data queries — controls that currently do not exist for ns-gm.
-- **Organization administrators:** Manage NetSuite credentials through the existing settings UI. No new credential setup required.
+| User | Context |
+|------|---------|
+| Workflow agents (scout, diagnosis) | Query production NetSuite data and retrieve script logs to investigate tickets |
+| Workflow agents (implementation, verification) | Query sandbox NetSuite data and execute SuiteScript to validate changes |
+| ns-gm skill | Orchestrates NetSuite queries and SuiteScript execution; calls these CLI commands instead of the removed ns-gm CLI |
+| Human developers (future) | May use these commands via `~/.hlx/config.json` auth for ad-hoc NetSuite inspection |
 
 ## Use Cases
 
-1. **Agent queries production NetSuite data during scout/diagnosis** — the primary use case. The agent runs a SuiteQL query to inspect production records, receiving sanitized results through the server proxy.
-2. **Agent queries sandbox NetSuite data during implementation/verification** — non-production steps receive sandbox environment credentials automatically, preserving current per-step routing behavior.
-3. **Platform enforces security controls on all NetSuite queries** — every query is write-blocked, rate-limited, row-capped, size-capped, and audit-logged, regardless of which agent issued it.
+1. **SuiteQL data inspection** — An agent uses `hlx inspect netsuite` to query NetSuite records. The CLI sends the query to the server proxy and prints sanitized JSON results.
+
+2. **Script log retrieval** — An agent uses `hlx inspect netsuite` with log parameters to retrieve NetSuite script execution logs for debugging.
+
+3. **SuiteScript execution** — An agent uses `hlx run` to execute arbitrary SuiteScript code (or code from a file). The CLI sends the code to the server proxy and prints sanitized JSON results.
+
+4. **Query from file** — An agent saves a complex SuiteQL query to a file and uses `--query-file` to avoid shell quoting issues, following the pattern already established by `hlx inspect db`.
 
 ## Core Workflow
 
-1. Agent in sandbox needs NetSuite data (e.g., to check a record, run a SuiteQL query).
-2. Agent runs `hlx inspect netsuite --repo <name> --query "<SuiteQL>"`.
-3. CLI POSTs the query to the server endpoint (`POST /api/inspect/{repoId}/netsuite`).
-4. Server determines the correct environment (PRODUCTION for scout/diagnosis, SANDBOX for other steps).
-5. Server loads the organization's NsGmCredential, performs OAuth2 M2M token exchange server-side, and calls the NetSuite RESTlet.
-6. Server applies security pipeline: write-keyword blocking, 200-row cap, 1MB response cap, credential redaction, rate limiting (60 req/60s), and audit logging.
-7. Sanitized results returned to the agent.
+1. Agent (or ns-gm skill) invokes `hlx inspect netsuite` or `hlx run` with appropriate flags.
+2. CLI loads config: sandbox agents use `HELIX_INSPECT_TOKEN` env var; human users use `~/.hlx/config.json`.
+3. CLI resolves the repo name to a repository ID via `resolveRepo()`.
+4. CLI sends an authenticated HTTP request to the server via `hxFetch` (dual-mode auth: `hxi_` token -> X-API-Key header, Bearer token -> Authorization header).
+5. Server executes the query/script, applies governance, and returns sanitized JSON.
+6. CLI prints the JSON result to stdout.
 
 ## Essential Features (MVP)
 
-1. **NETSUITE_QUERY inspection proxy type** — new handler in the server-side inspection proxy, following the existing DATABASE/LOGS/API pattern with the full security pipeline (sanitization, rate limiting, write-blocking, audit).
-2. **Server-side OAuth2 M2M token exchange for NetSuite** — server loads PEM credentials and performs the PS256 JWT assertion flow to obtain access tokens. (Note: this capability is already proven in the existing credential test service.)
-3. **Per-step environment routing** — scout/diagnosis steps receive PRODUCTION credentials, other steps receive SANDBOX credentials, matching current behavior but enforced server-side.
-4. **`hlx inspect netsuite` CLI subcommand** — new subcommand in helix-cli following the established db/logs/api pattern, allowing agents to query NetSuite from inside sandboxes.
-5. **Removal of sandbox-side ns-gm injection** — remove `installNsGmCli()`, `runNsGmSetupAndValidateEnv()`, PEM file writes to `/tmp`, and per-step ns-gm CLI switching from the orchestrator.
-6. **Credential bridge from NsGmCredential model** — the new proxy handler loads credentials from the existing per-org NsGmCredential model rather than requiring new per-repo credential configuration.
+1. **`hlx inspect netsuite` subcommand**: New case in inspect router + new handler file following the `db.ts` pattern. Supports inline query and `--query-file` flag.
+2. **`hlx inspect netsuite` log retrieval**: Same subcommand with parameters for log retrieval (scriptId, date range, log type, pagination).
+3. **`hlx run` top-level command**: New case in main dispatcher + new `src/run/` module. Supports inline code and `--script-file` flag.
+4. **Help text**: Updated help output for `hlx inspect --help` and `hlx run --help` with usage examples.
+5. **No auth changes**: Both commands use existing auth paths. Environment routing is token-bounded (nsEnv claim set server-side). No `--env` flag.
 
 ## Features Explicitly Out of Scope (MVP)
 
-1. **Domain allowlist / network egress controls** — the second P0 item from the research report (via `sandbox.update({ networkPolicy })`). Separate work item.
-2. **Multi-agent zone orchestration** — the Hot/Warm/Hot zone chaining pattern. P1 priority, separate work item.
-3. **Silent credential fallback removal** — replacing the orchestrator's silent fallback to the other environment. P1 priority.
-4. **Credential brokering for ANTHROPIC_API_KEY** — using Vercel `injectionRules` for the LLM API key. P2 priority.
-5. **Content-aware DLP for business data** — NLP-based filtering of customer names, financials, etc. P3 priority, no production-ready solution exists.
-6. **helix-global-client UI changes** — no new credential management UI needed if the proxy bridges to the existing per-org NsGmCredential model.
-7. **Prisma InspectionCredentialType enum extension** — if the credential bridge uses NsGmCredential directly (per-org), no schema migration is needed for a new enum value.
-8. **Audit logging hardening** — migrating from fire-and-forget to persistent, tamper-evident audit. P2 priority.
+- **`--env` flag for environment selection** — Environment is token-bounded for workflow agents. A human-facing env flag is a future consideration.
+- **Interactive mode or REPL** — Both commands are single-shot: send request, print result.
+- **Client-side query validation** — Read-only enforcement is server-side. The CLI does not validate queries.
+- **New runtime dependencies** — Both commands use pure TypeScript with existing libraries only.
+- **Changes to existing `hlx inspect db/logs/api` commands** — These remain untouched.
+- **Server-side implementation** — The server surfaces are built in helix-global-server (separate repo scope).
 
 ## Success Criteria
 
-1. **No production credentials in sandboxes** — no PEM file writes, no `npm install -g ns-gm`, no `ns-gm setup:ci/init/env` commands inside any sandbox.
-2. **All NetSuite queries pass through the inspection proxy** — with write-keyword blocking, 200-row cap, 1MB response cap, credential redaction, rate limiting (60 req/60s), and audit logging.
-3. **`hlx inspect netsuite` works from sandboxes** — agents can query NetSuite data using the same `hlx inspect` pattern they use for database, logs, and API queries.
-4. **Per-step environment routing preserved** — scout/diagnosis steps query PRODUCTION, other steps query SANDBOX.
-5. **Existing inspection proxy functionality unaffected** — DATABASE, LOGS, API queries continue to work identically.
-6. **Existing NsGmCredential management UI continues to work** — no changes to the settings UI.
+| # | Criterion |
+|---|-----------|
+| SC-1 | `hlx inspect netsuite --repo <name> "<suiteql>"` executes a SuiteQL query through the server proxy and prints JSON results |
+| SC-2 | `hlx inspect netsuite --repo <name> --query-file <path>` reads query from file and executes it |
+| SC-3 | `hlx inspect netsuite` supports script log retrieval with appropriate filter flags |
+| SC-4 | `hlx run --repo <name> "<code>"` or `hlx run --repo <name> --script-file <path>` executes SuiteScript through the server proxy and prints JSON results |
+| SC-5 | Both commands inherit existing auth, retry (3 attempts + backoff), and error handling from hxFetch |
+| SC-6 | `hlx inspect --help` and `hlx run --help` display accurate usage information |
+| SC-7 | No changes to existing `hlx inspect db/logs/api` commands |
+| SC-8 | Zero new runtime dependencies |
 
 ## User Scenarios
 
-[SCN-01] Agent queries production NetSuite data during scout step
-- Precondition: Organization has PRODUCTION NsGmCredentials configured; a scout step is running in a sandbox
-- Action: Agent runs `hlx inspect netsuite --repo <name> --query "SELECT id, companyname FROM customer WHERE id = 123"`
-- Expected Outcome: Agent receives a JSON response with the query results, limited to 200 rows and 1MB,
-  with any credential-like values redacted. The query is audit-logged on the server.
+[SCN-01] Query NetSuite production data via SuiteQL during scout step
+- Precondition: Organization has PRODUCTION NsGmCredential configured; workflow is on scout step; inspection token issued with nsEnv=PRODUCTION
+- Action: Agent runs `hlx inspect netsuite --repo <name> "SELECT id, companyname FROM customer WHERE isinactive = 'F' LIMIT 10"`
+- Expected Outcome: JSON result with up to 10 customer rows returned; sensitive values redacted; query audited in server logs
 
-[SCN-02] Agent queries sandbox NetSuite data during implementation step
-- Precondition: Organization has SANDBOX NsGmCredentials configured; an implementation step is running
-- Action: Agent runs `hlx inspect netsuite --repo <name> --query "SELECT id FROM customrecord_test"`
-- Expected Outcome: The query executes against the SANDBOX NetSuite environment (not production),
-  and sanitized results are returned.
+[SCN-02] Retrieve NetSuite script execution logs
+- Precondition: Organization has NsGmCredential configured; agent has valid inspection token
+- Action: Agent runs `hlx inspect netsuite` with log retrieval parameters (scriptId, date range, log type)
+- Expected Outcome: Script execution log entries returned as JSON; results sanitized and capped; request audited
 
-[SCN-03] Write query is blocked by the proxy
-- Precondition: Agent is running in any step with NetSuite access
-- Action: Agent runs `hlx inspect netsuite --repo <name> --query "UPDATE customer SET companyname = 'test' WHERE id = 1"`
-- Expected Outcome: The server rejects the query before execution, returning an error indicating
-  write operations are not permitted. No data is modified in NetSuite.
+[SCN-03] Execute SuiteScript in sandbox during implementation step
+- Precondition: Organization has SANDBOX NsGmCredential configured; workflow is on implementation step; inspection token issued with nsEnv=SANDBOX
+- Action: Agent runs `hlx run --repo <name> "record.load({ type: 'inventoryitem', id: 123 }).getValue('itemid')"`
+- Expected Outcome: SuiteScript executes against sandbox NetSuite account; result returned as JSON; output sanitized; execution audited
 
-[SCN-04] Rate limit prevents excessive querying
-- Precondition: Agent is running in a sandbox and has already made 60 NetSuite queries in the past 60 seconds
-- Action: Agent runs another `hlx inspect netsuite` query
-- Expected Outcome: The server returns a rate-limit error (HTTP 429) without executing the query.
-  The agent can retry after the rate window resets.
+[SCN-04] Read-only enforcement blocks write attempts via inspect
+- Precondition: Agent has valid inspection token; agent attempts a DML query
+- Action: Agent runs `hlx inspect netsuite --repo <name> "UPDATE customer SET companyname = 'test' WHERE id = 1"`
+- Expected Outcome: Server rejects the query; agent receives a clear error indicating write operations are not allowed via inspect
 
-[SCN-05] Production credentials are absent from the sandbox filesystem
-- Precondition: A scout or diagnosis step is running (previously, these steps had PEM files in /tmp)
-- Action: Agent examines `/tmp/` for any `nsgm-*.pem` files or checks for the `ns-gm` CLI binary
-- Expected Outcome: No PEM files exist in `/tmp/`. The `ns-gm` CLI is not installed.
-  NetSuite access is only available through `hlx inspect netsuite`.
+[SCN-05] Explicit failure when target environment credential is missing
+- Precondition: Organization has PRODUCTION NsGmCredential configured but not SANDBOX
+- Action: Orchestrator attempts to issue inspection token with nsEnv=SANDBOX for implementation step
+- Expected Outcome: Token issuance fails with an explicit error (not a silent fallback to production); workflow step receives a clear credential-unavailable error
 
-[SCN-06] Agent queries NetSuite when no credentials are configured
-- Precondition: Organization has not configured NsGmCredentials for the target environment
-- Action: Agent runs `hlx inspect netsuite --repo <name> --query "SELECT id FROM customer"`
-- Expected Outcome: The server returns a clear error indicating NetSuite credentials are not configured
-  for the organization/environment. No silent fallback to another environment occurs.
+[SCN-06] SuiteQL query from file avoids shell quoting issues
+- Precondition: Agent has a complex SuiteQL query saved in a file
+- Action: Agent runs `hlx inspect netsuite --repo <name> --query-file ./query.sql`
+- Expected Outcome: Query is read from the file, executed, and results returned identically to inline query
 
-[SCN-07] Large query results are capped
-- Precondition: Agent is querying a table with thousands of records
-- Action: Agent runs `hlx inspect netsuite --repo <name> --query "SELECT * FROM customer"`
-- Expected Outcome: Results are capped at 200 rows maximum. The response indicates truncation
-  occurred. Total response size does not exceed 1MB.
+[SCN-07] SuiteScript execution from file
+- Precondition: Agent has SuiteScript code saved in a file
+- Action: Agent runs `hlx run --repo <name> --script-file ./script.js`
+- Expected Outcome: Code is read from the file, executed, and results returned identically to inline code
 
-[SCN-08] Existing inspection queries continue working
-- Precondition: Organization has DATABASE, LOGS, and/or API inspection credentials configured
-- Action: Agent runs `hlx inspect db --repo <name> --query "SELECT 1"` or similar existing commands
-- Expected Outcome: Existing inspection commands work exactly as before with no behavioral changes.
+[SCN-08] Help text displays correct usage
+- Precondition: CLI is installed
+- Action: User runs `hlx inspect --help` or `hlx run --help`
+- Expected Outcome: Help output includes netsuite subcommand in inspect listing and run command usage with examples
 
-[SCN-09] hlx inspect shows netsuite in available subcommands
-- Precondition: Agent has access to the hlx CLI
-- Action: Agent runs `hlx inspect` or `hlx inspect --help`
-- Expected Outcome: The help output lists `netsuite` as an available subcommand alongside
-  repos, db, logs, and api.
+[SCN-09] Existing database/logs/API inspection unaffected
+- Precondition: Agent has valid inspection token; existing db/logs/api inspection credentials configured
+- Action: Agent runs `hlx inspect db --repo <name> "SELECT 1"` (or logs/api equivalent)
+- Expected Outcome: Results identical to behavior before the ns-gm migration; no regressions
 
-[SCN-10] NetSuite query audit trail is recorded
-- Precondition: Agent is running in a scout step with production access
-- Action: Agent runs multiple `hlx inspect netsuite` queries during the step
-- Expected Outcome: Each query is logged in the audit system with query type (NETSUITE_QUERY),
-  a snippet of the query, the organization, and execution latency.
+[SCN-10] Production credentials removed from sandbox
+- Precondition: Server surfaces are deployed and operational
+- Action: A new workflow run starts on the NETSUITE platform
+- Expected Outcome: No PEM file is written to `/tmp/nsgm-*.pem`; no ns-gm CLI is installed; agent accesses NetSuite exclusively through `hlx inspect netsuite` and `hlx run`
 
 ## Key Design Principles
 
-- **Credentials never leave the server** — production PEM keys, account IDs, and client IDs are loaded, used for token exchange, and discarded within the server process. No credential material enters the sandbox.
-- **Reuse existing security pipeline** — the inspection proxy's sanitization, rate limiting, write-blocking, and audit logging apply to NetSuite queries the same way they apply to database queries. No new security controls need to be invented.
-- **Transparent to the agent** — agents use the same `hlx inspect` pattern they already use for database, logs, and API queries. The command interface is consistent and discoverable.
-- **Preserve credential routing semantics** — scout/diagnosis steps get PRODUCTION access, other steps get SANDBOX access. The routing logic moves from sandbox-side CLI switching to server-side credential loading, but the policy is unchanged.
+1. **Follow established patterns**: Both commands follow the existing handler template (resolve repo -> hxFetch -> print JSON). No architectural innovation needed in the CLI.
+2. **Token-bounded environment**: The `nsEnv` claim on the inspection token is the single source of truth for prod-vs-sandbox. The CLI does not select environment.
+3. **Governance is server-side**: The CLI is a thin client. Read-only enforcement, rate limiting, sanitization, and audit all happen on the server. The CLI trusts the server's response.
+4. **Zero new dependencies**: Both commands use pure TypeScript with existing `hxFetch`, config loading, flag parsing, and repo resolution.
 
 ## Scope & Constraints
 
-- **Two repos change:** helix-global-server (primary: new proxy type, credential bridge, sandbox-side removal) and helix-cli (secondary: new subcommand).
-- **Zero client changes:** helix-global-client requires no changes because the proxy bridges to the existing per-org NsGmCredential model.
-- **Existing credential management is sufficient:** Organizations already configure NsGmCredentials through the settings UI. No new onboarding steps.
-- **OAuth2 M2M signing is already proven server-side:** The `ns-gm-credential-test-service.ts` demonstrates the complete PS256 JWT assertion flow. This is not a new capability.
-- **Architectural precedent exists:** The host-agent service on Sprites already routes `hlx inspect` commands through the server via the `run_helix_cli` MCP tool.
+- **This repo provides the CLI surface only.** Server-side endpoints, governance logic, and token enhancement are in helix-global-server.
+- **Atomicity**: The CLI commands must be deployable at the same time as the server surfaces. If the CLI ships before the server, the commands fail. If the server ships before the CLI, agents have no way to call the surfaces.
+- **basePath**: `hlx inspect netsuite` likely uses the default `/api/inspect` basePath. `hlx run` may need a basePath override depending on server route structure.
+- **hxFetch timeout**: The default 30s timeout in hxFetch may need adjustment for long-running SuiteScript executions, but this is a future optimization.
 
 ## Future Considerations
 
-- **Domain allowlist (P0, separate ticket):** Applying `sandbox.update({ networkPolicy })` to restrict outbound network traffic. Combined with server-side ns-gm, this achieves the 90/10 security value.
-- **Multi-agent zone orchestration (P1):** Hot/Warm/Hot zone chaining where each zone is a separate agent instance. Requires orchestrator changes for new sandbox per zone, artifact sanitization as a gating step.
-- **Silent credential fallback removal (P1):** Replacing the orchestrator's silent fallback (which could give a non-production step PRODUCTION credentials) with explicit failure.
-- **Per-repo NETSUITE credential type:** If future requirements need per-repo NetSuite access (different credentials per repo), the InspectionCredentialType enum would need extension and client UI updates.
+- **`--env` flag**: For human CLI users, an optional `--env prod|sandbox` flag could allow environment selection within token authorization bounds.
+- **`--modules` flag**: A `--modules query,record` flag for `hlx run` to specify which NetSuite modules to inject into the SuiteScript execution context.
+- **`--timeout` flag**: Custom timeout for long-running SuiteScript.
+- **`--params` flag**: JSON input parameters for parameterized SuiteScript execution.
+- **Tab completion**: Shell completion for subcommands and flags.
 
 ## Open Questions / Risks
 
-| # | Question / Risk | Impact |
-|---|----------------|--------|
-| 1 | How should per-step environment (PRODUCTION vs SANDBOX) be communicated through the inspection API? Options: request body parameter, manifest.json config, or inspection token claims. | Affects API design and security model for environment routing. |
-| 2 | Should the credential bridge from NsGmCredential use the repository's organization context, or should the environment be included in the API request? | Determines whether any Prisma schema changes are needed and how credential lookup works. |
-| 3 | What happens when both PRODUCTION and SANDBOX NsGmCredentials are unavailable? The current orchestrator has a silent fallback to the other environment. | Must ensure the new proxy does not replicate the silent fallback behavior — should fail explicitly. |
-| 4 | Does the `ns-gm` CLI support additional operations beyond SuiteQL queries (e.g., saved search, record CRUD) that agents currently use? | If so, the inspection proxy may need additional endpoint variations beyond a single query endpoint. |
-| 5 | Latency impact: adding a server hop for every NetSuite query introduces network latency. The OAuth2 token exchange adds further latency per request (unless tokens are cached). | May need server-side token caching to avoid re-authenticating for every query within a step. |
+| # | Question / Risk |
+|---|----------------|
+| OQ-1 | **basePath for `hlx run`**: Should `hlx run` use `/api/inspect` (default) or `/api/run` (override)? Depends on server route structure (OQ-1 in helix-global-server). |
+| OQ-2 | **Inspect netsuite sub-modes**: Should SuiteQL queries and script log retrieval be distinguished by flags (e.g., `--type query\|logs`) or by separate subcommands? |
+| OQ-3 | **`hlx run` parameter design**: Minimum viable flag set for SuiteScript execution — code/script-file + repo. What about `--modules`, `--params`, `--timeout`? |
+| OQ-4 | **Atomicity with server**: How is synchronized deployment of CLI + server changes coordinated? Both repos must deploy together. |
+| OQ-5 | **hxFetch timeout**: Default 30s may be insufficient for complex SuiteScript. Configurable per-command timeout? |
 
 ## Artifact Inputs Used
 
 | Artifact | Why Used | Key Takeaway |
 |----------|----------|--------------|
-| ticket.md (Research Report RSH-633) | Primary specification for the migration | ns-gm migration is DECIDED. Two changes (server-side ns-gm + domain allowlist) achieve 90% security value. PEM-based signing cannot use credential brokering — must move fully server-side. |
-| scout/scout-summary.md (helix-global-server) | Understand server architecture | Two credential channels: Channel A (ns-gm CLI, uncontrolled) and Channel B (inspection proxy, controlled). OAuth2 M2M already proven server-side. Clear removal/extension boundaries. |
-| diagnosis/diagnosis-statement.md (helix-global-server) | Root cause and success criteria | Architectural gap, not a bug. Current flow (PEM injection) vs target flow (proxy-mediated). Six success criteria defined. |
-| diagnosis/apl.json (helix-global-server) | Design decisions and evidence | Credential bridge design (per-org NsGmCredential, not per-repo). Environment routing options. Seven questions answered with code evidence. |
-| scout/scout-summary.md (helix-cli) | CLI extension pattern | Consistent 12-line subcommand pattern. Zero existing NetSuite code. Transport/auth infrastructure reusable. |
-| diagnosis/diagnosis-statement.md (helix-cli) | CLI change scope | One new handler file, one dispatch case, documentation update. Straightforward extension. |
-| diagnosis/apl.json (helix-cli) | CLI implementation detail | New file src/inspect/netsuite.ts following db.ts pattern. POST to /api/inspect/{repoId}/netsuite. |
-| scout/scout-summary.md (helix-global-client) | Client impact assessment | Zero client changes needed if proxy bridges to per-org NsGmCredential. Existing UI manages the right data. |
-| scout/scout-summary.md (library) | Repo role assessment | Documentation/research repo. No source code changes. Research report is the primary specification. |
-| repo-guidance.json | Repo intent mapping | helix-global-server=target, helix-cli=target, helix-global-client=context, library=context. |
+| ticket.md (Research Report RSH-633) | Primary specification for the migration | Two changes achieve 90% security value: server-side ns-gm + domain allowlist; migration DECIDED |
+| ticket.md (Continuation Context) | Refined two-surface governance model and trust framing | inspect = safe by construction; run = role-bounded + audited; nsEnv token claim; both surfaces in one effort |
+| scout/scout-summary.md (helix-cli) | CLI structure analysis | Handler pattern is 10-14 lines; hxFetch supports basePath override; zero runtime deps; no existing run command |
+| scout/scout-summary.md (helix-global-server) | Server infrastructure context | OAuth2 M2M proven; inspection proxy mature; credential model is per-org not per-repo |
+| diagnosis/diagnosis-statement.md (helix-cli) | CLI change mapping with 3 change areas | Two new commands following established patterns; no auth/config changes needed |
+| diagnosis/diagnosis-statement.md (helix-global-server) | Server change context | 7 server-side changes; understanding required for CLI to align with server endpoints |
+| diagnosis/apl.json (helix-cli) | CLI evidence for 4 diagnostic questions | Command dispatch, inspect router, HTTP client basePath, and env flag design verified |
+| diagnosis/apl.json (helix-global-server) | Server evidence for 9 diagnostic questions | RESTlet protocol, token claims, credential model verified |
+| repo-guidance.json (library run root) | Shared repo intent metadata | helix-cli=target; zero new dependencies confirmed |
+| scout/reference-map.json (helix-cli) | CLI file inventory | 12 files mapped; src/run/ directory does not exist yet; no 'run' case in dispatcher |
