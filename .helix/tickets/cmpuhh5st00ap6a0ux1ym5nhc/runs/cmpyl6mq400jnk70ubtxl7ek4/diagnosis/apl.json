@@ -1,0 +1,26 @@
+{
+  "questions": [
+    "What is the current hlx inspect subcommand pattern and how extensible is it?",
+    "What new files and changes are needed to add a netsuite subcommand?"
+  ],
+  "answers": [
+    {
+      "answer": "The inspect module (src/inspect/index.ts) uses a switch/case dispatcher routing to handler functions. Each handler follows a 12-line pattern: parse flags -> resolveRepo(config, repoNameOrId) -> hxFetch(config, endpoint, options) -> console.log JSON result. The db, logs, and api subcommands are templates. Infrastructure (http.ts transport with retry/auth, resolve-repo.ts, flags.ts) is reusable as-is.",
+      "evidence": [
+        "src/inspect/index.ts: switch(subcommand) with cases for repos, db, logs, api",
+        "src/inspect/db.ts: 12-line implementation using resolveRepo + hxFetch POST",
+        "src/lib/http.ts: hxFetch with 3-attempt retry, auth headers, 30s timeout"
+      ]
+    },
+    {
+      "answer": "One new file (src/inspect/netsuite.ts) following the db.ts pattern, one addition to the switch/case in src/inspect/index.ts, and a usage string update. The new handler POSTs to /api/inspect/{repoId}/netsuite with {query, environment?} body. The skill-content/references/commands.md documentation also needs updating.",
+      "evidence": [
+        "src/inspect/db.ts: cmdDb(config, repo, query) -> hxFetch(config, `/${repoId}/database`, {method:'POST', body:{query}})",
+        "src/inspect/index.ts: import + case 'netsuite' needed",
+        "skill-content/references/commands.md: command documentation"
+      ]
+    }
+  ],
+  "statement": "helix-cli needs a new netsuite subcommand in the inspect module. The implementation is straightforward — one new handler file following the proven db.ts pattern, a dispatch case in index.ts, and documentation updates. All transport and auth infrastructure is reusable.",
+  "followups": []
+}
