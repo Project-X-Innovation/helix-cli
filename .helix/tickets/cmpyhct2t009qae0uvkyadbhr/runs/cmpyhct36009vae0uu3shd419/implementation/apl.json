@@ -1,0 +1,18 @@
+{
+  "questions": [
+    "Does the CLI display a friendly error when Goals is disabled?",
+    "Are existing commands unaffected by the try/catch wrapper?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes. The catch block uses parseApiError(error) which extracts the .error field from the server's JSON response body. For a 404 with {\"error\":\"Goals feature is not available.\"}, the CLI will display 'Error: Goals feature is not available.' instead of the raw HTTP error string.",
+      "evidence": ["src/goals/index.ts lines 93-95: catch block with parseApiError", "src/goals/utils.ts: parseApiError extracts .error from JSON body"]
+    },
+    {
+      "answer": "Yes. Commands with existing local try/catch blocks (create, terminate, resume) catch their own errors via process.exit(1) before the wrapper fires. Commands without local catch (list, get) now benefit from the wrapper. All 63 existing tests pass.",
+      "evidence": ["npm run test: 63 pass, 0 fail", "Code structure: local catch blocks in create.ts, terminate.ts, resume.ts call process.exit(1)"]
+    }
+  ],
+  "statement": "CLI implementation complete: try/catch wrapper added to runGoals with parseApiError for friendly error messages. One file changed, no new dependencies. All quality gates pass.",
+  "followups": []
+}

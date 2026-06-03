@@ -1,0 +1,38 @@
+{
+  "questions": [
+    "Should the CLI pre-check feature flags or handle server errors reactively?",
+    "Where should the error handling for disabled Goals be placed in the CLI?",
+    "Should Goals commands be hidden from CLI help when the feature is disabled?"
+  ],
+  "answers": [
+    {
+      "answer": "Reactive handling. The CLI should catch 404 errors from the server and display a user-friendly message. A pre-flight check adds latency (extra API call per command) and complexity. A CLI-side env var creates dual state. The server's 404 response with 'Goals feature is not available.' message flows through parseApiError naturally.",
+      "evidence": [
+        "src/lib/http.ts:6 — RETRYABLE_STATUS_CODES = Set([429, 500, 502, 503, 504]) — 404 not retried, fails fast",
+        "src/goals/utils.ts:10-25 — parseApiError extracts .error from JSON body",
+        "src/lib/config.ts — CLI config has no feature flag env vars",
+        "Product spec: 'Server is the single source of truth'"
+      ]
+    },
+    {
+      "answer": "A try/catch wrapper in runGoals (goals/index.ts) around the switch statement. This provides consistent error handling for all 5 commands. list.ts and get.ts lack local try/catch blocks and would otherwise show raw HTTP error format from the top-level handler. Commands with existing try/catch (create, terminate, resume) handle their own errors first via process.exit(1).",
+      "evidence": [
+        "src/goals/index.ts:20-91 — runGoals switch dispatches with no wrapper catch",
+        "src/goals/list.ts — No try/catch, errors propagate to top-level",
+        "src/goals/get.ts:88-98 — No try/catch, errors propagate to top-level",
+        "src/goals/create.ts:54-70 — Has local try/catch with parseApiError and process.exit(1)",
+        "src/index.ts:157-160 — Top-level catch shows raw error.message"
+      ]
+    },
+    {
+      "answer": "No. Goals commands should remain visible in help and documentation regardless of server flag state. The CLI doesn't know the server's feature state until a request is made. Removing commands from help would require a pre-flight check adding latency. Clear server-side error messages are sufficient.",
+      "evidence": [
+        "src/docs/cli-content.ts:133-176 — Full docs for all goals commands",
+        "Product spec diagnosis: 'Goals commands remain in CLI help/docs'",
+        "src/goals/index.ts:9-17 — goalsUsage function shows all commands"
+      ]
+    }
+  ],
+  "statement": "The CLI needs a try/catch wrapper in runGoals (goals/index.ts) that catches errors from all 5 subcommands and uses parseApiError to display user-friendly messages. When the server returns 404 'Goals feature is not available.', the CLI displays this cleanly. No pre-flight check, no CLI-side flag state, no new dependencies. One file changed.",
+  "followups": []
+}

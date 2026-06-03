@@ -5,6 +5,7 @@ import { cmdGoalsList } from "./list.js";
 import { cmdGoalsGet } from "./get.js";
 import { cmdGoalsTerminate } from "./terminate.js";
 import { cmdGoalsResume } from "./resume.js";
+import { parseApiError } from "./utils.js";
 
 function goalsUsage(exitCode: number = 1): never {
   const output = exitCode === 0 ? console.log : console.error;
@@ -25,67 +26,72 @@ export async function runGoals(config: HxConfig, args: string[]): Promise<void> 
     goalsUsage(0);
   }
 
-  switch (subcommand) {
-    case "create":
-      if (isHelpRequested(rest)) {
-        console.log("Usage: hlx goals create --title <title> --description <desc> [--repos <name1,name2>] [--max-children <n>] [--require-approval] [--sprint <id>]");
-        process.exit(0);
-      }
-      await cmdGoalsCreate(config, rest);
-      break;
+  try {
+    switch (subcommand) {
+      case "create":
+        if (isHelpRequested(rest)) {
+          console.log("Usage: hlx goals create --title <title> --description <desc> [--repos <name1,name2>] [--max-children <n>] [--require-approval] [--sprint <id>]");
+          process.exit(0);
+        }
+        await cmdGoalsCreate(config, rest);
+        break;
 
-    case "list":
-      if (isHelpRequested(rest)) {
-        console.log("Usage: hlx goals list [--status <status>] [--limit <n>] [--json]");
-        process.exit(0);
-      }
-      await cmdGoalsList(config, rest);
-      break;
+      case "list":
+        if (isHelpRequested(rest)) {
+          console.log("Usage: hlx goals list [--status <status>] [--limit <n>] [--json]");
+          process.exit(0);
+        }
+        await cmdGoalsList(config, rest);
+        break;
 
-    case "get": {
-      if (isHelpRequested(rest)) {
-        console.log("Usage: hlx goals get <goalId> [--json]");
-        process.exit(0);
+      case "get": {
+        if (isHelpRequested(rest)) {
+          console.log("Usage: hlx goals get <goalId> [--json]");
+          process.exit(0);
+        }
+        const goalId = rest[0];
+        if (!goalId || goalId.startsWith("--")) {
+          console.error("Error: <goalId> is required. Usage: hlx goals get <goalId> [--json]");
+          process.exit(1);
+        }
+        await cmdGoalsGet(config, goalId, rest.slice(1));
+        break;
       }
-      const goalId = rest[0];
-      if (!goalId || goalId.startsWith("--")) {
-        console.error("Error: <goalId> is required. Usage: hlx goals get <goalId> [--json]");
-        process.exit(1);
+
+      case "terminate": {
+        if (isHelpRequested(rest)) {
+          console.log("Usage: hlx goals terminate <goalId> --verdict <complete|failed>");
+          process.exit(0);
+        }
+        const goalId = rest[0];
+        if (!goalId || goalId.startsWith("--")) {
+          console.error("Error: <goalId> is required. Usage: hlx goals terminate <goalId> --verdict <complete|failed>");
+          process.exit(1);
+        }
+        await cmdGoalsTerminate(config, goalId, rest.slice(1));
+        break;
       }
-      await cmdGoalsGet(config, goalId, rest.slice(1));
-      break;
+
+      case "resume": {
+        if (isHelpRequested(rest)) {
+          console.log("Usage: hlx goals resume <goalId>");
+          process.exit(0);
+        }
+        const goalId = rest[0];
+        if (!goalId || goalId.startsWith("--")) {
+          console.error("Error: <goalId> is required. Usage: hlx goals resume <goalId>");
+          process.exit(1);
+        }
+        await cmdGoalsResume(config, goalId);
+        break;
+      }
+
+      default:
+        if (subcommand) console.error(`Unknown goals command: ${subcommand}`);
+        goalsUsage();
     }
-
-    case "terminate": {
-      if (isHelpRequested(rest)) {
-        console.log("Usage: hlx goals terminate <goalId> --verdict <complete|failed>");
-        process.exit(0);
-      }
-      const goalId = rest[0];
-      if (!goalId || goalId.startsWith("--")) {
-        console.error("Error: <goalId> is required. Usage: hlx goals terminate <goalId> --verdict <complete|failed>");
-        process.exit(1);
-      }
-      await cmdGoalsTerminate(config, goalId, rest.slice(1));
-      break;
-    }
-
-    case "resume": {
-      if (isHelpRequested(rest)) {
-        console.log("Usage: hlx goals resume <goalId>");
-        process.exit(0);
-      }
-      const goalId = rest[0];
-      if (!goalId || goalId.startsWith("--")) {
-        console.error("Error: <goalId> is required. Usage: hlx goals resume <goalId>");
-        process.exit(1);
-      }
-      await cmdGoalsResume(config, goalId);
-      break;
-    }
-
-    default:
-      if (subcommand) console.error(`Unknown goals command: ${subcommand}`);
-      goalsUsage();
+  } catch (error) {
+    console.error(`Error: ${parseApiError(error)}`);
+    process.exit(1);
   }
 }
