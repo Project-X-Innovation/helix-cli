@@ -1,37 +1,67 @@
-# Diagnosis Statement: ns-gm Server-Side Migration (helix-cli)
+# Diagnosis Statement — helix-cli
 
 ## Problem Summary
 
-After ns-gm moves server-side, sandbox agents need a CLI command to access NetSuite data through the server-side inspection proxy. Currently, helix-cli has no ns-gm or NetSuite-related code — all inspect subcommands (repos, db, logs, api) target existing inspection proxy types. A new `netsuite` subcommand must be added to route NetSuite queries through the server.
+After ns-gm moves server-side, sandbox agents need CLI commands to access NetSuite data and execute SuiteScript through the server-side proxy. Currently, helix-cli has no NetSuite-related commands. Two new commands are required: (1) `hlx inspect netsuite` for read-only SuiteQL queries and script log retrieval, and (2) `hlx run` for arbitrary SuiteScript execution.
 
 ## Root Cause Analysis
 
-This is new functionality, not a bug. The helix-cli currently has zero ns-gm or NetSuite references (confirmed by grep). The existing inspect module provides a clean, consistent pattern for adding new subcommands. The work is a direct extension of the existing architecture.
+The helix-cli currently routes all inspection commands (`hlx inspect db/logs/api`) through the server-side proxy via `hxFetch`. NetSuite access has been handled entirely by the ns-gm CLI running directly inside the sandbox. With ns-gm moving server-side, the CLI needs two new surfaces that follow existing patterns.
+
+### What must change in helix-cli:
+
+**1. `hlx inspect netsuite` subcommand**
+- New case in inspect router (`src/inspect/index.ts:41-128`)
+- New handler file (`src/inspect/netsuite.ts`) following `src/inspect/db.ts` pattern (~12 lines)
+- `resolveRepo -> hxFetch POST /{repoId}/netsuite with { query } -> console.log JSON`
+- Support `--query-file` flag for reading SQL from file (reuse router pattern at lines 70-88)
+- May support `--type query|logs` flag or separate subcommands for SuiteQL vs script logs
+- Update help text at lines 9-31
+
+**2. `hlx run` top-level command**
+- New case in main dispatcher (`src/index.ts:81-156`)
+- New module (`src/run/index.ts`) -- directory does not exist yet
+- Handler pattern: parse `--repo`, `--script-file` or inline code, optional `--modules`
+- `hxFetch POST /{repoId}/run` (or similar) with `{ code, modules? }` body
+- May need `basePath` override to `/api` if server route is under `/api/run` instead of `/api/inspect`
+- Use `configOrHelp` pattern for help/auth flow
+
+**3. No auth or config changes**
+- Both commands use existing auth: `HELIX_INSPECT_TOKEN` env var for sandbox agents, `~/.hlx/config.json` for human users
+- Dual-mode auth already handled by `hxFetch` (`hxi_` -> X-API-Key, else -> Bearer)
+- No `--env` flag needed -- environment is token-bounded (nsEnv claim)
 
 ## Evidence Summary
 
-### CLI architecture is trivially extensible
-`src/inspect/index.ts` dispatches to subcommand handlers via switch/case. Each handler is ~12 lines following the same pattern: parse flags → resolveRepo → hxFetch POST → display JSON. `db.ts` serves as the template.
-
-### Transport and auth infrastructure is reusable
-`src/lib/http.ts` handles auth (hxi_ API keys via X-API-Key header or Bearer tokens via Authorization header), retry logic (3 attempts, exponential backoff on 429/5xx), and 30s timeout. No transport changes needed.
-
-### Zero existing NetSuite code
-No ns-gm, nsgm, or NetSuite references exist in helix-cli src/ (confirmed by grep). This is entirely new functionality with no migration concerns.
+| Evidence | Source | Finding |
+|----------|--------|---------|
+| Command dispatch | src/index.ts:81-156 | No 'run' case exists; 13 existing cases verified; configOrHelp pattern established |
+| Inspect router | src/inspect/index.ts:41-128 | Switch on args[0] for repos/db/logs/api; --query-file handling at lines 70-88 |
+| Handler template | src/inspect/db.ts:1-12 | 12-line handler: resolveRepo -> hxFetch POST /{repoId}/database -> console.log JSON |
+| HTTP client | src/lib/http.ts:37-130 | basePath defaults '/api/inspect'; dual-mode auth; 3-attempt retry; basePath override supported |
+| Config loading | src/lib/config.ts:40-46 | HELIX_INSPECT_TOKEN env var -> config file priority; no changes needed |
+| Flag utilities | src/lib/flags.ts:1-34 | getFlag, hasFlag, requireFlag, getPositionalArgs, isHelpRequested -- all available |
+| No run directory | ls src/run/ | Directory does not exist -- ready for creation |
 
 ## Success Criteria
 
-1. `hlx inspect netsuite --repo <name> --query "<SuiteQL>"` subcommand works from inside sandboxes
-2. Follows the established pattern of db/logs/api subcommands
-3. Documentation in skill-content/references/commands.md is updated
-4. Help text for `hlx inspect` includes the netsuite subcommand
+1. `hlx inspect netsuite --repo <name> "<suiteql>"` executes SuiteQL query through server proxy and prints JSON result
+2. `hlx inspect netsuite --repo <name> --query-file <path>` reads query from file (avoids shell quoting issues)
+3. `hlx inspect netsuite` supports script log retrieval with appropriate filter flags
+4. `hlx run --repo <name> "<code>"` or `hlx run --repo <name> --script-file <path>` executes SuiteScript through server proxy and prints JSON result
+5. Both commands inherit existing auth, retry, and error handling from hxFetch
+6. `hlx inspect --help` and `hlx run --help` display accurate usage information
+7. No changes to existing `hlx inspect db/logs/api` commands
+8. Zero new runtime dependencies
 
 ## Artifact Inputs Used
 
 | Artifact | Why Used | Key Takeaway |
 |----------|----------|--------------|
-| scout/reference-map.json (helix-cli) | Map CLI architecture | 4 existing subcommands, consistent pattern, zero NetSuite code |
-| scout/scout-summary.md (helix-cli) | Architecture overview | Each subcommand is ~12 lines following parse → resolve → fetch → display |
-| src/inspect/index.ts (direct read) | Verify dispatcher | switch/case routing, clean extension point |
-| src/inspect/db.ts (direct read) | Verify handler pattern | 12-line template: resolveRepo + hxFetch POST to server endpoint |
-| ticket.md (Research Report RSH-633) | Primary specification | Agents in sandboxes use hlx inspect instead of ns-gm CLI directly |
+| Continuation Context | Two-surface scope | hlx inspect netsuite (read-only) + hlx run (arbitrary SuiteScript) as CLI commands |
+| scout/reference-map.json (helix-cli) | CLI structure mapping | Command dispatch at index.ts:81-156; inspect router at inspect/index.ts:41-128; no 'run' case |
+| scout/scout-summary.md (helix-cli) | Pattern analysis | Each handler is 10-14 lines; hxFetch supports basePath override; zero runtime deps |
+| src/inspect/db.ts (full file) | Handler template verification | 12-line pattern: resolveRepo -> hxFetch POST -> console.log JSON -- direct template for netsuite |
+| src/lib/http.ts (lines 37-130) | HTTP client verification | basePath defaults '/api/inspect'; dual-mode auth (hxi_ vs Bearer); 3-attempt retry |
+| src/lib/flags.ts (full file) | Flag parsing verification | getFlag, requireFlag, getPositionalArgs available for CLI argument parsing |
+| src/lib/config.ts (lines 13-46) | Config/auth verification | HELIX_INSPECT_TOKEN env var for sandbox agents; no changes needed |
