@@ -1,0 +1,69 @@
+{
+  "problem": "The helix-cli is the tool surface that the proposed host-agent-proxy MCP pattern would use to fulfill requests. If the MCP becomes a thin message-passing layer to a host agent, that agent relies entirely on the CLI's capabilities. The CLI's current command surface, skill system, and authentication model define the boundaries of what the host-agent MCP could offer.",
+  "files": [
+    {
+      "path": "src/index.ts",
+      "why": "CLI entry point — command router dispatching to all major subsystems. Defines the full surface of hlx commands available to the host agent."
+    },
+    {
+      "path": "skill-content/SKILL.md",
+      "why": "Agent-consumable skill documentation — describes the CLI's capabilities as seen by AI agents. The host agent would rely on this surface."
+    },
+    {
+      "path": "src/skill/install.ts",
+      "why": "Skill installation system — installs CLI as a skill to Claude Code and Codex agents. Shows the current agent integration pattern."
+    },
+    {
+      "path": "src/tickets/create.ts",
+      "why": "Ticket creation command — currently on the host agent's CLI deny list. Illustrates command-level access control boundaries."
+    },
+    {
+      "path": "src/inspect/db.ts",
+      "why": "Database inspection command — demonstrates read-only production access through the CLI."
+    },
+    {
+      "path": "src/inspect/logs.ts",
+      "why": "Log inspection command — another read-only production tool available via CLI."
+    },
+    {
+      "path": "src/comments/post.ts",
+      "why": "Comment posting — currently on the host agent's CLI deny list for safety."
+    },
+    {
+      "path": "src/library/show.ts",
+      "why": "Library report access — demonstrates CLI read capabilities the host agent can use."
+    },
+    {
+      "path": "src/lib/config.ts",
+      "why": "Configuration and auth — multi-org support, env var fallback (HELIX_API_KEY, HELIX_URL). Host agent authenticates via these."
+    },
+    {
+      "path": "src/lib/http.ts",
+      "why": "HTTP client with retry logic — 3 attempts, exponential backoff, 30s timeout. Defines reliability characteristics for CLI-via-host-agent."
+    },
+    {
+      "path": "src/docs/cli-content.ts",
+      "why": "Comprehensive CLI documentation compiled into TypeScript — exported as @projectxinnovation/helix-cli/docs."
+    },
+    {
+      "path": "package.json",
+      "why": "Binary: hlx (dist/index.js). Exports: docs, skill-content/SKILL.md. Build: tsc. Test: tsc && node --test."
+    }
+  ],
+  "facts": [
+    "CLI binary is 'hlx' with entry point dist/index.js, published as @projectxinnovation/helix-cli on npm",
+    "Major command groups: login, token, org, tickets (11 subcommands), goals (6 subcommands), inspect (repos/db/logs/api), comments (list/post), library (list/show/comments), skill (show/install), update",
+    "Skill system installs CLI documentation to ~/.claude/skills/hlx-cli/ or ~/.codex/skills/hlx-cli/ for agent consumption",
+    "Host agent's CLI deny list blocks: 'tickets create', 'comments post', 'tickets continue', 'tickets rerun', 'tickets archive' — these are safety-critical write operations",
+    "Authentication supports multi-org contexts with HELIX_API_KEY/HELIX_URL env vars or stored config via hlx login",
+    "HTTP client has retry logic with exponential backoff (3 attempts, retryable: 429, 500, 502, 503, 504) and 30s timeout",
+    "The CLI is installed globally on host agent sprites via 'npm install -g @projectxinnovation/helix-cli'",
+    "Host agent authenticates CLI via inspection API key written to /app/.helix-env on the sprite"
+  ],
+  "unknowns": [
+    "Whether the CLI's current command surface is sufficient for all use cases currently covered by the 13 MCP tool modules — some MCP tools may expose operations not available via the CLI",
+    "Whether the host agent CLI deny list would need revision if the MCP were fully proxied through the host agent — the deny list was designed for ticket-scoped use, not organization-wide access",
+    "Whether file upload/download operations (currently handled by MCP attachments tool) have a CLI equivalent for host-agent proxying",
+    "Whether the CLI needs new commands to support capabilities that the current MCP tools provide but the CLI does not (e.g., sprint management, staging queue, deployment triggers)"
+  ]
+}
