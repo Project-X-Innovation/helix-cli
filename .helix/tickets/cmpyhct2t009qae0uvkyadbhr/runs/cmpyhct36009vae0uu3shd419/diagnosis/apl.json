@@ -1,0 +1,35 @@
+{
+  "questions": [
+    "How does the CLI handle disabled goal endpoints today?",
+    "What is the full ungated Goals CLI surface?",
+    "Should the CLI pre-check feature flags or handle server errors reactively?"
+  ],
+  "answers": [
+    {
+      "answer": "It does not handle them at all. Goals commands hit server API directly with no pre-check. If the server returns an error, the CLI shows raw HTTP error messages via the generic error parsing in goals/utils.ts. There is no feature-flag-specific error handling.",
+      "evidence": [
+        "src/goals/index.ts:20 — runGoals dispatches subcommands with no feature check",
+        "src/index.ts:124-127 — hlx goals always routed to runGoals",
+        "src/goals/utils.ts — generic error parsing, no feature-flag handling"
+      ]
+    },
+    {
+      "answer": "5 subcommands always available: create, list, get, terminate, resume. All dispatched unconditionally from the goals router. Documentation for all commands in cli-content.ts:133-176.",
+      "evidence": [
+        "src/goals/index.ts:28-89 — switch dispatches create, list, get, terminate, resume",
+        "src/goals/create.ts, list.ts, get.ts, terminate.ts, resume.ts — individual command files",
+        "src/docs/cli-content.ts:133-176 — full goals documentation"
+      ]
+    },
+    {
+      "answer": "Reactive handling is simpler and sufficient. When the server returns 404 for goal endpoints (because GOALS_ENABLED=false), the CLI should detect that specific error pattern and display a user-friendly message like 'Goals feature is not enabled on this server'. This avoids adding a pre-flight check endpoint and keeps the CLI stateless with respect to feature flags.",
+      "evidence": [
+        "src/lib/config.ts — CLI config has no feature flag env vars; adding one would create dual state",
+        "src/goals/utils.ts — existing error parsing utility can be extended for feature-flag errors",
+        "Ticket intent: single server env var, not per-client configuration"
+      ]
+    }
+  ],
+  "statement": "The CLI has 5 goals subcommands always available with no feature-flag gating. When the server starts returning 404 for disabled goal endpoints, the CLI needs to catch that response and display a user-friendly disabled message rather than raw HTTP errors. The simplest approach is reactive error handling in the goals command dispatcher or shared utility.",
+  "followups": []
+}
