@@ -1,0 +1,67 @@
+{
+  "problem": "Add two new CLI commands to helix-cli: (1) `hlx inspect netsuite` for read-only SuiteQL queries and NS script logs via the server-side inspection proxy, and (2) `hlx run` as a new top-level command for arbitrary SuiteScript execution. Both route through existing hxFetch HTTP client and inherit auth/retry/error handling. No ns-gm CLI dependency — all NetSuite operations go through server-side proxy.",
+  "files": [
+    {
+      "path": "src/inspect/index.ts",
+      "why": "Main inspect subcommand router (L33-129). Manual switch-case: repos/db/logs/api. Must add 'netsuite' case. Help text at L9-31 needs 'netsuite' entry."
+    },
+    {
+      "path": "src/inspect/db.ts",
+      "why": "Reference handler template (L1-12): resolveRepo → hxFetch POST to /{repoId}/database with body → JSON.stringify result. New netsuite handler follows this exact 12-line pattern."
+    },
+    {
+      "path": "src/inspect/logs.ts",
+      "why": "Reference handler with optional --limit flag (L1-14). NetSuite log handler may need similar optional parameters."
+    },
+    {
+      "path": "src/inspect/api.ts",
+      "why": "Reference handler for API GET (L1-11). Establishes the hxFetch/resolveRepo pattern."
+    },
+    {
+      "path": "src/index.ts",
+      "why": "Top-level CLI dispatch (L80-156). 'inspect' case at L90. Must add 'run' case for `hlx run` top-level command. Usage text at L37-67 needs 'run' entry."
+    },
+    {
+      "path": "src/lib/http.ts",
+      "why": "hxFetch HTTP client (L37-80). basePath defaults to '/api/inspect'. Handles hxi_ API key (X-API-Key header) vs Bearer token auth (L53-61). 3-attempt retry with exponential backoff. 30s timeout via AbortSignal.timeout. `hlx run` may need basePath override or longer timeout."
+    },
+    {
+      "path": "src/lib/config.ts",
+      "why": "HxConfig type (L13-20) and loadConfig (L40-86). Env var priority: HELIX_API_KEY > HELIX_INSPECT_TOKEN > HELIX_INSPECT_API_KEY; HELIX_URL > HELIX_INSPECT_BASE_URL. Both new commands use this config."
+    },
+    {
+      "path": "src/lib/flags.ts",
+      "why": "Flag parsing: getFlag (L5-9), hasFlag (L11-13), getPositionalArgs (L15-22), isHelpRequested (L24-26). Used by all command handlers."
+    },
+    {
+      "path": "src/lib/resolve-repo.ts",
+      "why": "resolveRepo resolves repo name-or-id to ID via /repositories endpoint. Used by all inspect handlers."
+    },
+    {
+      "path": "package.json",
+      "why": "Quality gates: build='tsc', typecheck='tsc --noEmit', test='tsc && node --test dist/**/*.test.js'. No separate lint script."
+    }
+  ],
+  "facts": [
+    "CLI uses manual switch-case dispatch — no Commander.js or yargs.",
+    "Each inspect handler follows a 12-line template: import config → resolveRepo → hxFetch(config, path, {method, body}) → console.log JSON result.",
+    "hxFetch basePath defaults to '/api/inspect'. All inspect handlers build relative paths: /{repoId}/database, /{repoId}/logs, /{repoId}/api.",
+    "Token auth: hxi_* → X-API-Key header; other → Authorization: Bearer header (http.ts:53-57). orgId also sent for hxi_ tokens (L59-61).",
+    "Top-level index.ts has no 'run' case — hlx run is entirely new top-level command.",
+    "inspect/index.ts switch has: repos, db, logs, api. 'netsuite' case must be added.",
+    "getFlag(rest, '--flag') returns string|undefined; hasFlag returns boolean; getPositionalArgs(rest, flagNamesToExclude) returns non-flag args.",
+    "resolveRepo calls hxFetch(config, '/repositories') to list repos then matches by displayName or ID.",
+    "No existing NetSuite, ns-gm, SuiteQL, or SuiteScript references in helix-cli source.",
+    "REQUEST_TIMEOUT_MS is 30s (http.ts:5). SuiteScript execution may need longer.",
+    "hxFetch supports basePath override (options.basePath) so hlx run can use a different API path if needed.",
+    "CLI build: tsc (TypeScript compilation), test: tsc && node --test (compile then run tests)."
+  ],
+  "unknowns": [
+    "Whether hlx inspect netsuite needs sub-subcommands (hlx inspect netsuite query vs hlx inspect netsuite logs) or a single command with --type flag for type discrimination.",
+    "Whether hlx run needs --repo flag like inspect commands, or defaults to org-level NetSuite account.",
+    "What flags hlx run needs: --code <inline>, --file <path>, --modules <list>, --env <prod|sandbox>.",
+    "Whether hlx run needs a longer timeout than 30s REQUEST_TIMEOUT_MS, and if so, how to configure it.",
+    "Whether the 'run' command route uses basePath /api/inspect or needs a different basePath.",
+    "Whether hlx inspect netsuite and hlx run need an --env flag for the user to select prod vs sandbox, or whether env is always determined by the token's nsEnv claim."
+  ]
+}
