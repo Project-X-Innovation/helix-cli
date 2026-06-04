@@ -1,0 +1,41 @@
+{
+  "problem": "Map the CLI as an audit event source and consumer for a comprehensive enterprise audit trail system.",
+  "files": [
+    {
+      "path": "src/lib/http.ts",
+      "why": "Central HTTP layer (hxFetch). All CLI-to-server communication flows through here. Retry logic (3 attempts), 30s timeout, Bearer/API-key auth. Audit events from CLI would be captured server-side via these API calls."
+    },
+    {
+      "path": "src/lib/config.ts",
+      "why": "Credential management: multi-org config in ~/.hlx/config.json. Stores API keys, server URLs, current org. Relevant for audit identity (which CLI user/key performed actions)."
+    },
+    {
+      "path": "src/index.ts",
+      "why": "CLI entry point routing to 9 command modules. Maps the full CLI surface area for audit coverage."
+    },
+    {
+      "path": "src/inspect/",
+      "why": "Inspection commands (repos, db, logs, api). The inspect module is already audit-logged server-side via InspectionAuditLog."
+    },
+    {
+      "path": "src/tickets/",
+      "why": "Ticket commands: create, rerun, continue, list, artifacts. These generate auditable server-side events."
+    },
+    {
+      "path": "src/goals/",
+      "why": "Goal commands: create, terminate, resume. State transition commands that should be audit-logged."
+    }
+  ],
+  "facts": [
+    "CLI version 1.3.4 (hlx binary). Node-based, distributed via GitHub releases.",
+    "9 command modules: tickets, goals, comments, inspect, library, org, token, login, skill, preview, update.",
+    "No client-side audit logging. All operations are API calls to helix-global-server.",
+    "Inspect commands are already audit-logged server-side via InspectionAuditLog (6,516 records in production).",
+    "CLI uses X-Helix-Org-ID header for org-scoped requests — audit identity is available server-side.",
+    "Env var overrides: HELIX_API_KEY, HELIX_URL, HELIX_INSPECT_TOKEN — relevant for audit identity source."
+  ],
+  "unknowns": [
+    "Should the CLI have a local audit log command to view audit events for the current org?",
+    "Are CLI operations distinguishable from UI operations in server-side audit logs? (User-Agent header could differentiate.)"
+  ]
+}
