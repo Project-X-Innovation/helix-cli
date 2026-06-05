@@ -1,0 +1,60 @@
+{
+  "problem": "The CLI currently exposes only library list, show, and comments (list/post) commands. No create, iterate, publish, or delete commands exist. The design must define new CLI surfaces for standalone report authoring and lifecycle management.",
+  "files": [
+    {
+      "path": "src/library/index.ts",
+      "why": "Library command router/dispatcher. Dispatches to list, show, comments subcommands. Entry point for new create/iterate/publish/delete commands."
+    },
+    {
+      "path": "src/library/list.ts",
+      "why": "List command: fetches GET /api/library/items, displays table with ID/Title/Status/CreatedAt. Types: LibraryItem has id/title/status/createdAt."
+    },
+    {
+      "path": "src/library/show.ts",
+      "why": "Show command: fetches item detail + comment summary, parses HTML/markdown headings, annotates sections with comment counts. Types: LibraryItemDetail has content/filePath."
+    },
+    {
+      "path": "src/library/comments.ts",
+      "why": "Comments subcommand router: dispatches to list and post."
+    },
+    {
+      "path": "src/library/comments-list.ts",
+      "why": "Comments list: fetches GET /api/library/items/:id/comments, groups by anchor section."
+    },
+    {
+      "path": "src/library/comments-post.ts",
+      "why": "Comments post: POST /api/library/items/:id/comments with --section/--rating/--reply-to flags."
+    },
+    {
+      "path": "src/lib/resolve-library-item.ts",
+      "why": "Reference resolution utility: resolves item by exact ID, ticket short ID (case-insensitive), or title substring. Used by show and comments commands."
+    },
+    {
+      "path": "src/lib/http.ts",
+      "why": "HTTP client: native fetch with retry (3 attempts, exponential backoff), 30s timeout, API key auth. Pattern for new API calls."
+    },
+    {
+      "path": "src/index.ts",
+      "why": "Main CLI entry point: registers 'library' command at line 108-111."
+    },
+    {
+      "path": "package.json",
+      "why": "Build: 'tsc'. Typecheck: 'tsc --noEmit'. Test: 'tsc && node --test dist/**/*.test.js'. No lint command."
+    }
+  ],
+  "facts": [
+    "CLI stack: TypeScript compiled to ES2022, Node16 module resolution. Native Node test runner.",
+    "Current library commands: list, show <ref>, comments list <ref>, comments post <ref>. No create, iterate, publish, or delete.",
+    "Reference resolution: three-tier (exact ID, ticket short ID, title substring). Fetches full items list to resolve.",
+    "HTTP client: hxFetch with retry logic, API key auth (X-API-Key header), org context (X-Helix-Org-ID header).",
+    "Flag parsing: simple getFlag/hasFlag/requireFlag utilities. New commands would follow this pattern.",
+    "The show command already reads filePath from item detail — pattern exists for file-aware display.",
+    "No existing publish or delete commands despite API endpoints existing for both."
+  ],
+  "unknowns": [
+    "Whether new CLI commands should accept file paths for local content or use stdin/pipe patterns.",
+    "Whether the CLI should support markdown authoring with automatic HTML conversion.",
+    "Whether the CLI needs a 'library publish' and 'library delete' command (API endpoints exist but CLI doesn't expose them).",
+    "How the CLI should handle the --file flag for create/iterate: read local file or reference a git path."
+  ]
+}
