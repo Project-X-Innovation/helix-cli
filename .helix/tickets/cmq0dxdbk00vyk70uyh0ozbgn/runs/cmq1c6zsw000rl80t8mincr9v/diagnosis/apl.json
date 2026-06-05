@@ -1,11 +1,14 @@
 {
   "questions": [
     "Q1: What CLI commands exist for library operations and what's missing?",
-    "Q2: What patterns should new commands follow?"
+    "Q2: What patterns should new commands follow?",
+    "Q3: What new CLI commands does finding #4 (manual reconcile in MVP) add?",
+    "Q4: How does finding #14 (acceptance test) affect the CLI?",
+    "Q5: Does finding #6 (optimistic concurrency) affect the iterate CLI command?"
   ],
   "answers": [
     {
-      "answer": "Current commands: list, show <ref>, comments list|post <ref>. Missing: create (new report from file), iterate <ref> --file (new version), publish <ref>, delete <ref>. The publish and delete API endpoints already exist server-side (POST /library/items/:itemId/publish, DELETE /library/items/:itemId) but the CLI does not expose them. Create and iterate require new server endpoints.",
+      "answer": "Current commands: list, show <ref>, comments list|post <ref>. Missing: create (new report from file), iterate <ref> --file (new version), publish <ref>, delete <ref>, reconcile (finding #4 — new for MVP). The publish and delete API endpoints already exist server-side (POST /library/items/:itemId/publish, DELETE /library/items/:itemId) but the CLI does not expose them. Create and iterate require new server endpoints.",
       "evidence": [
         "src/library/index.ts: switch cases for list, show, comments only",
         "Server api.ts lines 413-414: POST publish and DELETE endpoints exist",
@@ -19,8 +22,31 @@
         "src/lib/resolve-library-item.ts: 3-tier resolution",
         "src/lib/http.ts: hxFetch with retry, API key auth, org header"
       ]
+    },
+    {
+      "answer": "Finding #4 moves manual reconcile from Round 2 to MVP. The CLI must add 'hlx library reconcile' as a new command that calls a server admin endpoint (e.g., POST /admin/library/reconcile). This command triggers a full scan of the library git repo to find unreconciled commits and create missing DB rows. It's the missed-webhook recovery valve.",
+      "evidence": [
+        "report.html lines 1357-1359: 'Periodic reconciliation cron' was deferred to Round 2",
+        "Finding #4: 'Move a manual/cron reconcile into MVP (e.g. hlx library reconcile or an admin endpoint)'",
+        "hxFetch pattern at http.ts:37-134 supports basePath: '/api' for new endpoints"
+      ]
+    },
+    {
+      "answer": "Finding #14 requires the feature to cleanly re-version RSH-667 and RSH-688 via 'hlx library iterate RSH-688 --file reports/RSH-688/report.html'. This is an explicit end-to-end acceptance criterion. The iterate command must support: (a) resolving a reference (ticket short ID) to a library item, (b) reading a local file, (c) calling the iterate API with the file content and baseCommitSha. This validates the entire authoring pipeline.",
+      "evidence": [
+        "Finding #14: 'the feature must cleanly re-version RSH-667 and RSH-688 themselves via hlx library iterate --file'",
+        "resolve-library-item.ts:18-81: supports ticket short ID resolution",
+        "tickets/update-description.ts:22-28: readFileSync with --file flag precedent"
+      ]
+    },
+    {
+      "answer": "Yes. Finding #6 requires the iterate command to pass baseCommitSha to the server. The CLI must: (a) fetch the current item's latest version to get its commitSha, (b) pass that as baseCommitSha in the iterate request, (c) handle 409 Conflict responses with a clear error message ('Report has been updated since your last read. Please try again.').",
+      "evidence": [
+        "Finding #6: 'require an expected baseCommitSha/version and reject stale writes'",
+        "No commitSha handling exists in any current CLI command"
+      ]
     }
   ],
-  "statement": "The CLI needs four new commands: create, iterate, publish, delete. Publish and delete can be implemented immediately against existing server endpoints. Create and iterate depend on new server API endpoints. All commands follow the established dispatcher + hxFetch + flag-parsing pattern. Reference resolution via resolve-library-item.ts is reusable for iterate/publish/delete.",
+  "statement": "The CLI needs five new commands: create, iterate, publish, delete, and reconcile (finding #4 — new MVP scope). Iterate must pass baseCommitSha for optimistic concurrency (finding #6). The acceptance test (finding #14) requires hlx library iterate --file to re-version RSH-667 and RSH-688. Publish and delete can use existing server endpoints. Create, iterate, and reconcile depend on new server API endpoints. All commands follow the established dispatcher + hxFetch + flag-parsing pattern.",
   "followups": []
 }
