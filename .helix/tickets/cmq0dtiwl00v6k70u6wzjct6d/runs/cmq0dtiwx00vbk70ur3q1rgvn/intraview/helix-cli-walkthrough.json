@@ -1,0 +1,18 @@
+{
+  "title": "CLI --json Flag for Comment Polling",
+  "description": "Adds --json output flag to hlx comments list for machine-parseable output with comment IDs",
+  "steps": [
+    {
+      "file": "src/comments/list.ts",
+      "line": 18,
+      "title": "--json flag parsing",
+      "description": "New flag parsed alongside existing --helix-only and --since flags."
+    },
+    {
+      "file": "src/comments/list.ts",
+      "line": 39,
+      "title": "JSON output branch",
+      "description": "When --json is set, outputs JSON.stringify(comments) with all fields including id, then returns early. Default human-readable output is unchanged."
+    }
+  ]
+}

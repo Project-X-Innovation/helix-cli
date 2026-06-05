@@ -1,0 +1,13 @@
+{
+  "questions": [
+    "Does the CLI --json flag output machine-parseable JSON with comment IDs?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes. list.ts parses --json flag and outputs JSON.stringify(comments) which includes id, author, content, isHelixTagged, isAgentAuthored, createdAt fields. Default human-readable output is unchanged.",
+      "evidence": ["helix-cli/src/comments/list.ts lines 18, 39-42"]
+    }
+  ],
+  "statement": "Added --json output flag to hlx comments list command. TypeScript clean, build successful, all 63 tests pass.",
+  "followups": []
+}
