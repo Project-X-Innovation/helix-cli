@@ -1,0 +1,80 @@
+{
+  "problem": "Library report authoring design revision (RSH-688 continuation): CLI needs create, iterate, publish, delete, and reconcile commands. Finding #4 specifically moves 'hlx library reconcile' into MVP as missed-webhook recovery. Finding #14 requires hlx library iterate --file to re-version RSH-667 and RSH-688 as acceptance criteria. show --full returns raw HTML — finding #1 XSS concern.",
+  "files": [
+    {
+      "path": "src/library/index.ts",
+      "why": "Library command dispatcher (lines 19-72): routes list/show/comments. Must add create/iterate/publish/delete/reconcile."
+    },
+    {
+      "path": "src/library/list.ts",
+      "why": "List command (lines 13-48): formatted table output. Pattern for new commands."
+    },
+    {
+      "path": "src/library/show.ts",
+      "why": "Show command (lines 24-87): parses HTML headings, returns raw HTML with --full. Finding #1 XSS concern — raw unsanitized HTML output."
+    },
+    {
+      "path": "src/library/comments.ts",
+      "why": "Comments dispatcher (lines 19-50): routes list/post."
+    },
+    {
+      "path": "src/library/comments-list.ts",
+      "why": "Comments list (lines 30-86): grouped by anchor."
+    },
+    {
+      "path": "src/library/comments-post.ts",
+      "why": "Comments post (lines 22-77): section-anchored with rating."
+    },
+    {
+      "path": "src/lib/resolve-library-item.ts",
+      "why": "3-tier ref resolution (lines 18-81): CUID, ticket short ID, title substring. Reusable for all new commands."
+    },
+    {
+      "path": "src/lib/http.ts",
+      "why": "hxFetch client (lines 37-134): retry, auth headers, basePath override. Library uses basePath: '/api'."
+    },
+    {
+      "path": "src/lib/flags.ts",
+      "why": "Flag parsing (lines 1-36): getFlag, hasFlag, requireFlag. Precedent for --file, --title flags."
+    },
+    {
+      "path": "src/lib/config.ts",
+      "why": "Auth config (lines 1-222): HxConfig, env var fallbacks, token masking."
+    },
+    {
+      "path": "src/tickets/update-description.ts",
+      "why": "Precedent for --file flag (lines 22-28): readFileSync(filePath, 'utf-8'). Pattern for create/iterate --file."
+    },
+    {
+      "path": "src/tickets/create.ts",
+      "why": "Precedent for file reading in creation (lines 39-46)."
+    },
+    {
+      "path": "src/index.ts",
+      "why": "CLI entry point (lines 1-161): library registration at lines 108-112."
+    },
+    {
+      "path": "src/docs/cli-content.ts",
+      "why": "CLI help docs (lines 58-61): only list/show/comments. Must update for new commands."
+    },
+    {
+      "path": "package.json",
+      "why": "Build: tsc. Test: tsc && node --test. Zero runtime deps. ESM Node 18+."
+    }
+  ],
+  "facts": [
+    "CLI library commands are read-only: list, show, comments (list/post). No create, iterate, publish, delete, or reconcile.",
+    "show.ts returns raw HTML without sanitization. The --full flag outputs unprocessed HTML from server — finding #1 XSS vector.",
+    "File reading precedent: tickets/update-description.ts uses readFileSync(filePath, 'utf-8') with --file flag.",
+    "resolveLibraryItem supports 3-tier resolution: CUID, ticket short ID (case-insensitive), title substring. Reusable for all new commands.",
+    "hxFetch has 3-attempt retry with exponential backoff and 30s timeout. Library uses basePath: '/api'.",
+    "Zero runtime dependencies. Zero library-specific tests.",
+    "Finding #4: 'hlx library reconcile' must be in MVP as missed-webhook recovery.",
+    "Finding #14: acceptance test requires hlx library iterate --file to re-version RSH-667 and RSH-688 themselves."
+  ],
+  "unknowns": [
+    "Whether hlx library reconcile calls a server admin endpoint or performs client-side reconciliation.",
+    "How acceptance test (finding #14) is executed — manual CLI test or automated.",
+    "Whether CLI show --full should strip HTML tags for terminal safety given finding #1."
+  ]
+}

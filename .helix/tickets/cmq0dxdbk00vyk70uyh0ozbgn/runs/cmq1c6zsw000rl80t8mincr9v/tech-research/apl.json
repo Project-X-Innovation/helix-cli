@@ -1,0 +1,26 @@
+{
+  "questions": [
+    "Q1: What commands are needed and what server endpoints do they use?",
+    "Q2: How should file content be sent to the server — multipart or JSON body?"
+  ],
+  "answers": [
+    {
+      "answer": "Four commands: create (POST /library/items, new), iterate (POST /library/items/:id/iterate, new), publish (POST /library/items/:id/publish, existing), delete (DELETE /library/items/:id, existing). Publish and delete can be implemented against existing server endpoints. Create and iterate require new server endpoints.",
+      "evidence": [
+        "src/library/index.ts: switch cases for list, show, comments only — no create/iterate/publish/delete",
+        "api.ts lines 413-414: POST publish and DELETE endpoints exist",
+        "Ticket: 'CLI (hlx library create --file, iterate <ref> --file, publish, delete)'"
+      ]
+    },
+    {
+      "answer": "JSON body with content as a string field. Report files are typically <1MB (HTML or markdown text), so reading the entire file into memory and sending as JSON is practical. This avoids multipart form complexity and aligns with the existing hxFetch pattern (JSON request bodies throughout the CLI).",
+      "evidence": [
+        "src/lib/http.ts: hxFetch sends JSON bodies (Content-Type: application/json)",
+        "Library reports are text files (HTML/markdown), typically under 1MB",
+        "No existing multipart upload pattern in the CLI codebase"
+      ]
+    }
+  ],
+  "statement": "CLI needs four new commands following the established dispatcher + hxFetch + flag-parsing pattern. Create and iterate read local files and POST content as JSON. Publish and delete are thin wrappers around existing server endpoints. All use resolveLibraryItem for ref resolution (except create, which has no existing item).",
+  "followups": []
+}
