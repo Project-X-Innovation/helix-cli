@@ -1,26 +1,48 @@
 {
   "questions": [
     "Q1: What commands are needed and what server endpoints do they use?",
-    "Q2: How should file content be sent to the server — multipart or JSON body?"
+    "Q2: How should file content be sent to the server — multipart or JSON body?",
+    "Q3: How does the iterate command handle optimistic concurrency (Finding #6)?",
+    "Q4: Which commands require admin access (Finding #7)?",
+    "Q5: How is manual reconcile exposed via CLI (Finding #4)?"
   ],
   "answers": [
     {
-      "answer": "Four commands: create (POST /library/items, new), iterate (POST /library/items/:id/iterate, new), publish (POST /library/items/:id/publish, existing), delete (DELETE /library/items/:id, existing). Publish and delete can be implemented against existing server endpoints. Create and iterate require new server endpoints.",
+      "answer": "Five commands (revised from 4): create (POST /library/items, new), iterate (POST /library/items/:id/iterate, new), publish (POST /library/items/:id/publish, existing), delete (DELETE /library/items/:id, existing), reconcile (POST /admin/library/reconcile, new — Finding #4). Publish, delete, and reconcile require admin role (Finding #7).",
       "evidence": [
-        "src/library/index.ts: switch cases for list, show, comments only — no create/iterate/publish/delete",
+        "src/library/index.ts: switch cases for list, show, comments only — no create/iterate/publish/delete/reconcile",
         "api.ts lines 413-414: POST publish and DELETE endpoints exist",
-        "Ticket: 'CLI (hlx library create --file, iterate <ref> --file, publish, delete)'"
+        "Finding #4: 'hlx library reconcile' must be in MVP"
       ]
     },
     {
-      "answer": "JSON body with content as a string field. Report files are typically <1MB (HTML or markdown text), so reading the entire file into memory and sending as JSON is practical. This avoids multipart form complexity and aligns with the existing hxFetch pattern (JSON request bodies throughout the CLI).",
+      "answer": "JSON body with content as a string field. Report files are typically <1MB text. Aligns with existing hxFetch pattern.",
       "evidence": [
         "src/lib/http.ts: hxFetch sends JSON bodies (Content-Type: application/json)",
-        "Library reports are text files (HTML/markdown), typically under 1MB",
-        "No existing multipart upload pattern in the CLI codebase"
+        "No existing multipart upload pattern in the CLI"
+      ]
+    },
+    {
+      "answer": "Iterate fetches the current item to obtain commitSha, then sends it as baseCommitSha in the POST body. On 409 Conflict, displays clear error guiding user to reload and retry.",
+      "evidence": [
+        "Finding #6: iterate requires baseCommitSha to prevent lost updates",
+        "Server API returns 409 Conflict with latestCommitSha on stale write"
+      ]
+    },
+    {
+      "answer": "Publish, delete, and reconcile require admin role. On 403 from server, CLI displays 'Admin access required' error.",
+      "evidence": [
+        "Finding #7: publish and delete gated behind requireAdmin",
+        "Finding #4: reconcile is an admin endpoint"
+      ]
+    },
+    {
+      "answer": "hlx library reconcile calls POST /api/admin/library/reconcile (requireAdmin). Displays reconciled/skipped/errored counts. This is the missed-webhook recovery valve moved from Round 2 to MVP.",
+      "evidence": [
+        "Finding #4: manual reconcile must be in MVP, not deferred to Round 2"
       ]
     }
   ],
-  "statement": "CLI needs four new commands following the established dispatcher + hxFetch + flag-parsing pattern. Create and iterate read local files and POST content as JSON. Publish and delete are thin wrappers around existing server endpoints. All use resolveLibraryItem for ref resolution (except create, which has no existing item).",
+  "statement": "CLI adds 5 thin-client commands (create, iterate, publish, delete, reconcile) over server API endpoints. Key revisions from iteration 1: iterate fetches commitSha and sends baseCommitSha for optimistic concurrency (F6), publish/delete/reconcile require admin (F7/F4), reconcile command added in MVP (F4), acceptance test requires re-versioning RSH-667/RSH-688 via iterate (F14).",
   "followups": []
 }
