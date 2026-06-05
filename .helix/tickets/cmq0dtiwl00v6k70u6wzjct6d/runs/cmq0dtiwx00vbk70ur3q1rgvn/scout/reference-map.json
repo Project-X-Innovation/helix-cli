@@ -1,0 +1,51 @@
+{
+  "problem": "The CLI runner must be able to pull unprocessed comments since a marker (`hlx comments list --since` or equivalent) so the host agent can transition from push-based to pull-based comment delivery. The `--since` flag already exists in the CLI but filtering is client-side only — server-side support and/or the pull integration with the runner need to be verified and potentially enhanced.",
+  "files": [
+    {
+      "path": "src/comments/list.ts",
+      "why": "Implements `hlx comments list` with `--since` flag (L18, L30-34). Currently fetches all comments via GET /tickets/{ticketId}/comments and filters client-side by createdAt. Core file for pull-based comment retrieval."
+    },
+    {
+      "path": "src/comments/post.ts",
+      "why": "Implements `hlx comments post`. Used by runner to post replies back. Relevant for understanding the full runner comment lifecycle."
+    },
+    {
+      "path": "src/comments/index.ts",
+      "why": "Command routing for comments subcommand. Registers list and post handlers."
+    },
+    {
+      "path": "src/lib/http.ts",
+      "why": "hxFetch() function (L37-134) — HTTP client with retry logic, auth headers, 30s timeout. Used by comments list/post. basePath '/api' used for comment endpoints."
+    },
+    {
+      "path": "src/lib/flags.ts",
+      "why": "getFlag() utility used to parse --since flag value from args."
+    },
+    {
+      "path": "src/lib/config.ts",
+      "why": "HxConfig type definition — API key and URL configuration for CLI."
+    },
+    {
+      "path": "package.json",
+      "why": "Build: tsc. Test: tsc && node --test dist/**/*.test.js. Typecheck: tsc --noEmit. No ORM or database dependencies."
+    }
+  ],
+  "facts": [
+    "`hlx comments list --since <iso-date>` already exists (src/comments/list.ts:18,30-34). The --since flag is parsed via getFlag() and filters comments where createdAt > sinceDate.",
+    "Filtering is entirely client-side: all comments are fetched via GET /tickets/{ticketId}/comments, then filtered in JavaScript. No query parameter is sent to the server.",
+    "`hlx comments post --ticket <ref> <message>` posts to POST /tickets/{ticketId}/comments with body { content: message }.",
+    "The CLI has no runner or host-agent code. It is a stateless API client. The 'runner' in the ticket context refers to code running inside the sprite that calls `hlx` commands.",
+    "No dedicated test files exist for comments commands. Test framework: Node.js built-in test module.",
+    "No ORM or database dependencies. CLI communicates via HTTP to helix-global-server.",
+    "Auth: hxFetch sends X-API-Key header for hxi_ tokens, Bearer token otherwise. The runner on the sprite has HELIX_API_KEY set via /app/.helix-env.",
+    "No CLAUDE.md or README.md at repo root. Command reference at skill-content/references/commands.md.",
+    "Comment response type includes: id, author (name, email), content, isHelixTagged, isAgentAuthored, createdAt.",
+    "Build scripts: build='tsc', typecheck='tsc --noEmit', test='tsc && node --test dist/**/*.test.js', prepare='npm run build'."
+  ],
+  "unknowns": [
+    "Whether client-side --since filtering is sufficient for the runner pull use case, or if a server-side query parameter is needed for scalability (large comment histories).",
+    "Whether the runner needs to output comments in a machine-parseable format (JSON) for programmatic pull consumption, vs the current human-readable text output.",
+    "Whether additional flags are needed (e.g., --json output, --after-id for cursor-based pagination by comment ID rather than timestamp).",
+    "Whether comment ordering guarantees (createdAt ascending) are sufficient for the runner's idempotent processing, or if comment ID ordering is needed."
+  ]
+}
