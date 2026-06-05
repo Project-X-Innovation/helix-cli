@@ -1,18 +1,49 @@
 {
-  "title": "CLI --json Flag for Comment Polling",
-  "description": "Adds --json output flag to hlx comments list for machine-parseable output with comment IDs",
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "BLD-684: CLI --json Flag for Machine-Parseable Comment Output",
+  "description": "This tour walks through the addition of a --json flag to the `hlx comments list` command in helix-cli. The host agent runner inside the sprite needs to pull unprocessed comments programmatically via the CLI (execFile), but the existing output was human-readable text that omitted comment IDs. Adding --json enables the runner to parse structured comment data including IDs for cursor-based deduplication via the lastProcessedCommentId marker, without breaking the existing human-readable default output.",
   "steps": [
     {
       "file": "src/comments/list.ts",
+      "line": 1,
+      "description": "The `hlx comments list` command was the single file requiring modification for BLD-684. The runner in helix-global-server calls `hlx` via execFile and needs structured output to advance its lastProcessedCommentId cursor. The existing command already had --since filtering and the CommentResponse type already included an `id` field — the only missing piece was a way to emit that data as JSON.",
+      "title": "Overview: Why this file needed to change"
+    },
+    {
+      "file": "src/comments/list.ts",
+      "line": 6,
+      "description": "The CommentResponse type already includes `id: string` among its fields (along with author, content, isHelixTagged, isAgentAuthored, createdAt). This means no type changes were required — the id was always fetched from the API, just never surfaced in the human-readable output. The --json flag leverages this existing shape by calling JSON.stringify on the full array.",
+      "title": "CommentResponse type already has id field"
+    },
+    {
+      "file": "src/comments/list.ts",
       "line": 18,
-      "title": "--json flag parsing",
-      "description": "New flag parsed alongside existing --helix-only and --since flags."
+      "description": "The --json flag is parsed here using the existing getFlag() utility, consistent with how --since and --helix-only are parsed. No new parsing infrastructure was needed. When present, this flag signals that the caller is a machine consumer (the runner) rather than a human operator.",
+      "title": "Parsing the --json flag"
     },
     {
       "file": "src/comments/list.ts",
       "line": 39,
-      "title": "JSON output branch",
-      "description": "When --json is set, outputs JSON.stringify(comments) with all fields including id, then returns early. Default human-readable output is unchanged."
+      "description": "After all filtering (--helix-only, --since) is applied to the comments array, the --json branch checks the flag and emits JSON.stringify(comments) with an early return. This placement is critical: filtering happens first so the runner receives the same subset it would see in human-readable mode. The early return ensures the human-readable loop below never executes when --json is active, keeping both paths cleanly separated.",
+      "title": "JSON output branch with early return"
+    },
+    {
+      "file": "src/comments/list.ts",
+      "line": 49,
+      "description": "The original human-readable output loop ([timestamp] Author [markers]: content) is completely unchanged and only executes when --json is not specified. This is a non-breaking change — existing scripts or humans running `hlx comments list` without --json see identical output. The runner opts in to structured output explicitly, which is the correct default-safe design for a CLI used by both humans and machines.",
+      "title": "Human-readable output preserved unchanged"
+    },
+    {
+      "file": ".helix/tickets/cmq0dtiwl00v6k70u6wzjct6d/runs/cmq0dtiwx00vbk70ur3k1rgvn/code-review/code-review-actual.md",
+      "line": 1,
+      "description": "The code review artifact confirms the implementation is correct and complete: --json flag parsed at L18, JSON.stringify(comments) at L40 includes all fields (id, author, content, isHelixTagged, isAgentAuthored, createdAt), filtering applied before JSON output, and default human-readable output preserved. No changes were required during review. This satisfies all three acceptance criteria: structured JSON with comment IDs, runner-parseable output, and no breaking change to default behavior.",
+      "title": "Code review confirmed correctness"
+    },
+    {
+      "file": ".helix/tickets/cmq0dtiwl00v6k70u6wzjct6d/runs/cmq0dtiwx00vbk70ur3k1rgvn/diagnosis/diagnosis-statement.md",
+      "line": 1,
+      "description": "The complete data flow after this change: runner calls `hlx comments list --since <marker> --json` via execFile → CLI fetches all comments from GET /tickets/{ticketId}/comments → applies client-side --since and --helix-only filters → emits JSON.stringify(comments) including id fields → runner parses the array and advances lastProcessedCommentId. No existing code paths are affected: the human-readable path is unchanged, the API fetch is unchanged, the CommentResponse type is unchanged. The change is minimal, targeted, and the major code paths remain clean.",
+      "title": "Summary: Data flow and codebase integrity"
     }
   ]
 }
