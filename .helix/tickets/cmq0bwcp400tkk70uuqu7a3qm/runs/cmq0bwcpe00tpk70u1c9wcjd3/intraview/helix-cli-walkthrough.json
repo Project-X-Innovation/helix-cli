@@ -1,0 +1,37 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "BLD-678: Playbook Check CLI Commands (hlx playbook check / checks)",
+  "description": "This tour walks through the addition of two new CLI commands — `hlx playbook check <rule-ref>` and `hlx playbook checks <rule-ref>` — that form the CLI surface for the Playbook feature. The check command introduces the first polling pattern in the helix-cli: it POSTs to trigger an async check, then polls GET until a terminal state (PASS/FAIL/ERROR) is reached or a 10-minute timeout expires. The checks command lists historical check results for a rule. All changes are purely additive: three new files plus one new switch case in the main dispatcher.",
+  "steps": [
+    {
+      "file": "src/index.ts",
+      "line": 133,
+      "description": "The main command dispatcher switch statement (L81–156) is the entry point for every `hlx` sub-command. A new `playbook` case is inserted here, mirroring the existing `goals` case exactly: it calls `configOrHelp` to ensure credentials are loaded, then delegates to `src/playbook/index.ts`. This is the only modification to an existing file in this ticket — all other changes are new files. The import for the playbook router is also added at L17. Usage text is updated to advertise both new playbook subcommands.",
+      "title": "Dispatcher: register the playbook command group"
+    },
+    {
+      "file": "src/playbook/index.ts",
+      "line": 1,
+      "description": "This new file is the command-group router for all `hlx playbook *` subcommands. It follows the goals/index.ts pattern precisely: a switch statement dispatches on the first positional argument (`check` or `checks`), calls `isHelpRequested` to short-circuit with help text, and wraps every subcommand in a try/catch that calls `parseApiError` (imported from goals/utils.ts) for user-friendly HTTP error messages. `ruleId` is extracted from positional arguments and validated before dispatch. Unrecognised subcommands fall through to the help text, matching goals behaviour exactly.",
+      "title": "Playbook router: mirrors src/goals/index.ts pattern"
+    },
+    {
+      "file": "src/playbook/check.ts",
+      "line": 1,
+      "description": "This file introduces the first polling pattern in the helix-cli. Flow: (1) POST `/api/playbook/rules/${ruleId}/check` to trigger an async check — the server enqueues a PLAYBOOK_CHECK pipeline run and returns a check record with an id. (2) Enter a polling loop: every POLL_INTERVAL_MS=5000ms, GET `/api/playbook/rules/${ruleId}/checks/${check.id}` and inspect the `status` field against TERMINAL_STATUSES = {PASS, FAIL, ERROR}. (3) After MAX_POLLS=120 iterations (10 minutes) without a terminal state, exit with a timeout message. All hxFetch calls use `basePath: '/api'` matching the server route prefix. Exit code is 0 for PASS, 1 for FAIL/ERROR/timeout. The `--json` flag emits the raw CheckRecord for machine consumption. The CheckRecord type mirrors the server's PlaybookRuleCheck model fields (id, status, complianceRate, compliantCount, violatingCount, interpretation, etc.).",
+      "title": "check.ts: POST trigger + GET polling loop (new pattern)"
+    },
+    {
+      "file": "src/playbook/checks.ts",
+      "line": 1,
+      "description": "This file implements `hlx playbook checks <rule-ref>`, which fetches the full check history for a rule via GET `/api/playbook/rules/${ruleId}/checks` and prints a formatted table with columns: ID (prefix), Status, Compliance %, and Checked At timestamp. An empty list is handled gracefully with a 'No checks found' message. The `--json` flag emits the raw array. The formatting pattern (padEnd column alignment) mirrors src/goals/list.ts. All hxFetch calls use `basePath: '/api'`. This command is read-only and carries no side effects.",
+      "title": "checks.ts: list check history for a rule"
+    },
+    {
+      "file": "src/index.ts",
+      "line": 17,
+      "description": "All changes in this ticket are strictly additive: three new files (src/playbook/index.ts, src/playbook/check.ts, src/playbook/checks.ts) plus one new case in the existing dispatcher switch and one new import. No existing command paths are modified. The polling pattern in check.ts is self-contained and does not affect any shared utilities. Error handling, flag parsing, and HTTP transport all reuse existing lib/ utilities unchanged. The goals/ command group and all other CLI commands remain unaffected. The codebase's major code paths — auth, ticket commands, goal commands, sandbox runtime — are clean.",
+      "title": "Summary: additive-only changes, clean code paths"
+    }
+  ]
+}
