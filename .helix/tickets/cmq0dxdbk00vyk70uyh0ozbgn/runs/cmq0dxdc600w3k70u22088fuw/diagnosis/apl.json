@@ -1,0 +1,26 @@
+{
+  "questions": [
+    "Q1: What CLI commands exist for library operations and what's missing?",
+    "Q2: What patterns should new commands follow?"
+  ],
+  "answers": [
+    {
+      "answer": "Current commands: list, show <ref>, comments list|post <ref>. Missing: create (new report from file), iterate <ref> --file (new version), publish <ref>, delete <ref>. The publish and delete API endpoints already exist server-side (POST /library/items/:itemId/publish, DELETE /library/items/:itemId) but the CLI does not expose them. Create and iterate require new server endpoints.",
+      "evidence": [
+        "src/library/index.ts: switch cases for list, show, comments only",
+        "Server api.ts lines 413-414: POST publish and DELETE endpoints exist",
+        "Ticket description: 'CLI (hlx library create --file, iterate <ref> --file, publish, delete)'"
+      ]
+    },
+    {
+      "answer": "Consistent dispatcher pattern: subcommand router (index.ts) dispatches to command functions that call hxFetch with API key auth. Flag parsing via getFlag/requireFlag utilities. Reference resolution via resolve-library-item.ts (3-tier: exact ID, ticket short ID, title substring). New commands should follow this same structure. For file-based commands (create/iterate), the CLI would read local files and POST content to the API.",
+      "evidence": [
+        "src/library/index.ts: dispatcher pattern",
+        "src/lib/resolve-library-item.ts: 3-tier resolution",
+        "src/lib/http.ts: hxFetch with retry, API key auth, org header"
+      ]
+    }
+  ],
+  "statement": "The CLI needs four new commands: create, iterate, publish, delete. Publish and delete can be implemented immediately against existing server endpoints. Create and iterate depend on new server API endpoints. All commands follow the established dispatcher + hxFetch + flag-parsing pattern. Reference resolution via resolve-library-item.ts is reusable for iterate/publish/delete.",
+  "followups": []
+}
