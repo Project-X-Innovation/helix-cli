@@ -1,0 +1,30 @@
+{
+  "title": "Playbook Check: CLI Implementation",
+  "description": "Walk through the CLI changes for playbook check trigger+poll and check history listing",
+  "steps": [
+    {
+      "file": "src/playbook/index.ts",
+      "line": 15,
+      "title": "Playbook command group router",
+      "description": "Dispatches 'check' and 'checks' subcommands following the goals/ pattern. Shows help text and uses parseApiError for error handling."
+    },
+    {
+      "file": "src/playbook/check.ts",
+      "line": 57,
+      "title": "cmdPlaybookCheck: trigger + poll loop",
+      "description": "POST triggers the check, then polls GET every 5 seconds for up to 10 minutes. Terminal states: PASS, FAIL, ERROR. Supports --json output. Exit code 0 for PASS, 1 otherwise."
+    },
+    {
+      "file": "src/playbook/checks.ts",
+      "line": 14,
+      "title": "cmdPlaybookChecks: list history",
+      "description": "GET check history for a rule, displays formatted table with ID, status, compliance rate, and date. Supports --json output."
+    },
+    {
+      "file": "src/index.ts",
+      "line": 130,
+      "title": "Dispatcher: playbook case",
+      "description": "Added 'playbook' case to the main command switch statement and updated usage text."
+    }
+  ]
+}

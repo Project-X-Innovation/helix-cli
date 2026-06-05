@@ -14,6 +14,7 @@ import { runUpdate, checkAutoUpdate } from "./update/index.js";
 import { runSkill } from "./skill/index.js";
 import { runLibrary } from "./library/index.js";
 import { runPreview } from "./preview/index.js";
+import { runPlaybook } from "./playbook/index.js";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -48,6 +49,8 @@ Usage:
   hlx tickets artifacts|artifact  Inspect step artifacts
   hlx tickets bundle <id> --out <dir>  Bundle for Codex
   hlx goals create|list|get|terminate  Manage Goals
+  hlx playbook check <ruleId>     Trigger a compliance check and poll
+  hlx playbook checks <ruleId>    List check history
   hlx inspect repos               List repositories and inspection types
   hlx inspect db --repo <name> "<sql>"
   hlx inspect logs --repo <name> "<query>"
@@ -124,6 +127,12 @@ try {
     case "goals": {
       const config = configOrHelp(args.slice(1));
       await runGoals(config, args.slice(1));
+      break;
+    }
+
+    case "playbook": {
+      const config = configOrHelp(args.slice(1));
+      await runPlaybook(config, args.slice(1));
       break;
     }
 
