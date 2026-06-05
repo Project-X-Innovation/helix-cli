@@ -1,0 +1,26 @@
+{
+  "questions": [
+    "Q1: Does the CLI already support the pull model for comments that the runner needs?",
+    "Q2: What CLI changes are needed to enable machine-parseable comment pulling for the runner?"
+  ],
+  "answers": [
+    {
+      "answer": "Partially. `hlx comments list --since <iso-date>` exists and provides client-side date filtering. However, output is human-readable text only (timestamp + author + markers + content), unsuitable for programmatic consumption by the runner. The runner calls `hlx` via execFile and would need to parse structured output.",
+      "evidence": [
+        "src/comments/list.ts:18 — --since flag parsed via getFlag()",
+        "src/comments/list.ts:30-34 — client-side filtering: comments.filter(c => new Date(c.createdAt) > sinceDate)",
+        "src/comments/list.ts:42-51 — output format: [timestamp] Author [markers]: content (human-readable)"
+      ]
+    },
+    {
+      "answer": "A --json flag is needed so the runner can parse comment data (id, content, createdAt, isAgentAuthored) programmatically. The runner needs comment IDs to advance the lastProcessedCommentId cursor. Optionally, an --after-id flag for cursor-based pagination by comment ID (rather than timestamp) would be more precise for idempotency.",
+      "evidence": [
+        "src/comments/list.ts:5-14 — CommentResponse type already includes id, content, createdAt fields",
+        "src/comments/list.ts:42-51 — current output omits comment id, only shows human-readable fields",
+        "runner/tools.ts:26-31 — runner uses execFile for CLI calls, needs parseable output"
+      ]
+    }
+  ],
+  "statement": "The CLI already supports `--since` filtering for comments but outputs human-readable text. A `--json` flag is the primary addition needed to enable the runner's pull-based comment consumption. The runner needs structured output including comment IDs for cursor-based deduplication via the lastProcessedCommentId marker.",
+  "followups": []
+}
