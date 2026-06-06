@@ -41,7 +41,7 @@ Ticket says Failed. Run says successful. No info or options to merge on detail p
 Read the manifest file for a complete file listing, or browse the directory directly.
 
 ### FIX-712: Missing Run Fix And other bugs
-- Mode: FIX | Status: STAGING_MERGED
+- Mode: FIX | Status: DEPLOYED
 - Completed runs: 1 (run-1)
 - Materialized files: 1 artifacts
 - Path: `.helix-refs/FIX-712/`
