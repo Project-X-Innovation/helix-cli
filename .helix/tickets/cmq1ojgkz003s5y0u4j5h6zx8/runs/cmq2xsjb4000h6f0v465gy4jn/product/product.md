@@ -1,282 +1,236 @@
-# Product Specification — MVP NetSuite Play Mode
+# Product: MVP NetSuite Play Mode
 
 ## Problem Statement
 
-Helix users describe operations they want performed in NetSuite — batch invoicing, vendor bill reconciliation, inventory adjustments — but have no way to express these as governed, repeatable, previewable automations. The EXECUTE mode exists in the schema but has never been used (0 of 852 production tickets). Users are stuck: either they do the work manually in NetSuite, or they resort to ad-hoc scripts with no preview, no audit trail, and no safety net.
-
-The missing capability is a structured way to go from "I want to do X in NetSuite" to a composed, validated, re-runnable automation — without requiring users to build agents or write queries.
+Helix users can build scripts, fix bugs, and research NetSuite issues through the ticket system. But they cannot create **repeatable, composable automations** — describe an intent once, and run it many times with full visibility. The EXECUTE mode was designed for this but never shipped (zero usage across 872 production tickets). There is no way to go from "I want to find all overdue invoices and send summaries" to a working, auditable, repeatable pipeline without writing code.
 
 ## Product Vision
 
-**Play mode** replaces EXECUTE as a ticket mode where the user describes intent and Helix generates the automation. A Play is three composed steps:
+A **Play** is the automation primitive for Helix in NetSuite.
 
-1. **Map** — gather data (agent-generated SuiteQL, grounded by a sample, with enforced JSON output shape)
-2. **Reduce** — transform data (agent-generated logic, grounded by a sample, with enforced JSON output shape)
-3. **Output/Effects** — act on results (deterministic script: record writes, API calls, emails)
+The user describes what they want in a Helix ticket. Helix generates a composable 3-step pipeline — gather data, transform it, act on it — where each step's output shape is enforced by code. The first two steps are read-only and fully previewable. The third step shows what it *would* do before doing it. Every execution is logged. The user reviews and approves rather than builds.
 
-A Play is **created once** (via the normal Helix ticket system) and **executed many times**. The user reviews and approves — they don't author queries or scripts. Shape enforcement at every step boundary means the pipeline is composable, measurable, and monitorable.
+**One sentence:** Describe intent, get a reviewable automation that runs as many times as you need.
 
 ## Users
 
-| User | Need |
-|------|------|
-| **NetSuite operators** (accountants, ops, finance) | Run governed, repeatable actions on NetSuite records without writing code |
-| **NetSuite admins** | Review, audit, and approve automations before they touch production |
-| **Helix platform users** | Create automations by describing intent, not by building agents |
+- **NetSuite administrators** who need repeatable operations (invoice processing, vendor bill creation, bulk record updates) without writing SuiteScript
+- **Finance and ops teams** who need automation they can trust — visible at every step, auditable after every run
+- **Existing Helix users** who already use the ticket system for build/fix/research and want to extend it to ongoing operations
 
 ## Use Cases
 
-1. **Batch invoice creation** — query open sales orders matching criteria, compute invoice amounts, create invoices
-2. **Vendor bill reconciliation** — pull vendor bills and POs, match and flag discrepancies, update status fields
-3. **Inventory adjustments** — query stock levels, calculate adjustments, write adjustment records
-4. **Reporting with action** — gather data across record types, reshape for business logic, trigger downstream effects
+1. **Automate a recurring NetSuite operation** — "Find open invoices over 90 days, summarize by customer, create a credit hold flag" becomes a play that runs on demand
+2. **Preview before committing** — See exactly what data will be gathered, how it will be transformed, and what records will be affected before anything changes
+3. **Reuse without rebuilding** — A play created once for "monthly vendor bill reconciliation" runs every month with fresh data, same logic
+4. **Audit what happened** — Every run logs the generated query, the transformation, and the output, so finance teams can trace exactly what Helix did and when
 
 ## Core Workflow
 
-### What is a Play?
+**Creation** (one-time, via Helix ticket):
+User submits a Play ticket describing their intent. Helix generates the play's three parts automatically. The user reviews the generated play in sandbox.
 
-A Play is a 3-step composed pipeline. The user describes what they want. Helix generates the machinery.
+**Execution** (many times):
+User triggers the play. Map gathers data. Reduce transforms it. Output/Effects acts on it. Each step boundary enforces the expected shape. Everything is logged.
 
-**Map (Gather)** — Agent generates a SuiteQL query from a prompt that includes a sample query. The query runs read-only in sandbox. The output is structured JSON validated against a declared shape before passing downstream.
+### Play Anatomy
 
-**Reduce (Transform)** — Agent transforms the Map output using a prompt that includes a sample transformation. Still read-only. The output is validated against its declared shape.
+A play has three composable steps:
 
-**Output/Effects (Act)** — A deterministic, authored script (not agent-generated) that acts on the shaped Reduce output. This is where writes happen. Previewed as a dry-run before committing.
+| Step | What it does | How it works | Previewable? |
+|------|-------------|--------------|-------------|
+| **Map** | Gathers data | Agent prompt + sample SuiteQL; JSON output shape enforced by code | Fully -- read-only |
+| **Reduce** | Transforms data | Agent prompt + sample transformation; JSON output shape enforced by code | Fully -- read-only |
+| **Output/Effects** | Acts on results | Deterministic script (CRUD, API calls, messages) | Dry-run -- shows intended writes |
 
-### Key decisions (from ticket discussion consensus)
+Shape enforcement at each boundary is the trust layer. Steps compose because outputs are guaranteed to match the next step's expected input.
 
-- **Agent-generated first.** Map and Reduce prompts include sample queries/transformations as grounding examples. Static authored queries come in V2 via a "promote a proven query" mechanic.
-- **Shape enforcement, not implementation enforcement.** Each step declares a JSON output shape. The agent can generate whatever it wants — but the result must conform before the next step runs.
-- **Creation vs. execution.** A Play is designed once via the ticket system. Helix generates the three parts from the ticket description. The Play is then executed many times against real data.
-- **The user reviews, not builds.** If users had to author prompts, samples, and scripts themselves, you'd have a DIY agent builder — a different product. Helix figures out the SuiteQL, the transformation, and the script skeleton. The user approves.
-- **Canonical examples co-develop with the Play.** The agent drafts a query, ns-gm generates matching sandbox records, the Play runs against them, both refine until convergence. The examples are the Play's proof of correctness.
-
-## Essential Features (MVP)
-
-Five progressive levels. Each delivers independent user value and builds on the previous.
+## Essential Features -- MVP Levels
 
 ### MVP-1: Mode Scaffolding
 
-**User gets:** The ability to create and manage Play tickets through the normal Helix flow.
+Make Play selectable as a ticket mode.
 
-- PLAY added as a ticket mode, replacing unused EXECUTE
-- Available only for NetSuite organizations (same gating pattern)
-- Requires manual mode selection (never auto-assigned)
-- Play icon, label ("Play"), color, and filter in all UI surfaces (web + CLI)
-- PLY- short ID prefix, `play` branch segment
-- CLI accepts `hlx tickets create --mode PLAY`
-- EXECUTE removed from all user-facing surfaces (kept in DB enum only for Postgres safety)
+- PLAY appears in the mode selector for NetSuite organizations
+- EXECUTE removed from all surfaces (confirmed zero usage)
+- PLY- short ID prefix; `play` branch naming convention
+- Works end-to-end: server API, client UI, CLI
 
-### MVP-2: Play Definition
+**User impact:** Users can create Play tickets. The mode exists and is wired up, but plays don't execute yet.
 
-**User gets:** A structured 3-step Play generated from their ticket description.
+### MVP-2: Play Definition + Creation
 
-- PlayDefinition data model storing the pipeline: Map (prompt + sample + output shape), Reduce (prompt + sample + output shape), Output/Effects (script)
-- Play linked to its originating ticket
-- Helix ticket workflow generates the three parts from the ticket description
-- Play lifecycle: draft, validated, active
-- CRUD operations on play definitions
+Helix generates a play from a ticket description.
 
-### MVP-3: Read-Only Preview
+- New data model stores the 3-step play structure: prompts, samples, output schemas, and the effects script
+- When a Play ticket's workflow runs, the agent generates all three parts from the ticket description
+- Play definitions are retrievable and inspectable via API
+- Workflow integration follows the existing research-mode branching pattern
 
-**User gets:** Real sandbox data flowing through their pipeline with shape validation at every boundary.
+**User impact:** Users describe what they want in a ticket, and Helix produces a structured 3-step play definition they can review.
 
-- Map: agent generates SuiteQL from prompt + sample, executes in sandbox via NS-GM, validates output against JSON shape
-- Reduce: agent transforms Map output, validates against JSON shape
-- Results displayed step-by-step to the user
-- Shape validation: clear pass/fail at each step transition
-- Users see real data, not hypothetical samples — zero writes to NetSuite
+### MVP-3: Play Execution + Preview
 
-### MVP-4: Sandbox Execution + Canonical Examples
+Run the pipeline end-to-end in sandbox.
 
-**User gets:** Full end-to-end Play execution in sandbox, with proof it works.
+- Map executes agent-generated SuiteQL in sandbox via NS-GM; output validated against declared schema
+- Reduce transforms Map output; output validated against declared schema
+- Output/Effects runs deterministic script with dry-run preview showing intended writes
+- Shape validation at each boundary -- pipeline halts with clear error on mismatch
+- Per-step results logged with inputs, outputs, timing, and validation status
 
-- Complete 3-step pipeline execution in sandbox including Output/Effects script
-- Canonical example co-development loop: agent drafts query, ns-gm generates matching sandbox records, Play runs against them, both refine until convergence
-- Dry-run output preview: show exactly what would be written before committing
-- 3-5 canonical examples per Play (happy path + edge cases)
-- The Play isn't "done" until proven against its canonical examples
-
-### MVP-5: Production Execution with Governance
-
-**User gets:** Plays running against production data with full safety controls.
-
-- Before-image capture of records before any write
-- Write-operation audit trail (who approved, what changed, before/after state)
-- Idempotency prevention (no double-submit)
-- Human approval mandatory for irreversible actions (emails, external API calls, payment captures)
-- Concurrency/drift detection before undo
-- Governance envelope on the NS-GM RESTlet chokepoint
+**User impact:** Users can execute plays in sandbox, preview every step's output, and see exactly what would happen before committing any changes.
 
 ## Features Explicitly Out of Scope (MVP)
 
-| Feature | Rationale |
-|---------|-----------|
-| Static (hand-authored) Map/Reduce queries | Agent-generated first. Static authoring comes in V2 via "promote a proven query" |
-| Separate play builder UI | Play creation stays within the Helix ticket system — no new authoring surface |
-| Triggered/scheduled plays | Requires circuit-breaker limits, pre-approved bounds, Tier-3 approval at design time |
-| Rollback engine | Requires atomic-inverse library curation per record type — heavy lift, deferred |
-| Tier-2 promotion flywheel | Needs success-count tracking, cross-account annotation, review workflow |
-| Multi-platform support | Play mode is NetSuite-only for now |
-| Canonical examples as platform primitive | The co-development loop applies beyond plays (Build, Fix) but scoped to Play for MVP |
-| Playbook convergence | BLD-677 playbook infra is designed but not merged; convergence is a later concern |
-| Cross-play composition | One Play's output feeding another Play's input — deferred |
+| Feature | Why deferred |
+|---------|-------------|
+| Canonical example generation | Platform-level primitive (not play-specific); separate research needed |
+| Production governance | Before-image capture, rollback, idempotency, NS-GM governance wrapper -- significant infra work |
+| Play builder UI | Creation stays in the ticket system; a separate builder is over-engineering at this stage |
+| Static (authored) query mode | Start agent-generated only; users can "promote" working queries to static in a future version |
+| Playbook convergence | Playbook rules (BLD-677/RSH-411) are architecturally separate; convergence deferred |
+| Cross-play composition | Chaining plays where one's output feeds another's input is a V2 concern |
+| Triggered/scheduled execution | Manual execution only for MVP |
+| Multi-environment execution | Sandbox only; production requires governance (deferred) |
 
 ## Success Criteria
 
-### MVP-1: Mode Scaffolding
-- User can create a PLAY ticket via web UI, CLI, and MCP tools
-- PLAY restricted to NetSuite orgs; non-NetSuite orgs get a clear validation error
-- PLAY tickets display correct icon and "Play" label throughout UI
-- Mode classifier never auto-assigns PLAY
-- PLY- prefix on short IDs
-- EXECUTE no longer visible in any user-facing surface
-- All type checks, lint, and tests pass
+### MVP-1
+- PLAY mode appears in the mode selector for NETSUITE orgs only
+- PLAY mode does NOT appear for non-NETSUITE platforms
+- EXECUTE is removed from all user-facing surfaces (UI, API, CLI)
+- PLY- prefix is used for play ticket short IDs
+- `hlx tickets create --mode PLAY` works from the CLI
+- All quality gates pass across server, client, and CLI
 
-### MVP-2: Play Definition
-- A Play ticket stores a structured 3-step definition (Map, Reduce, Output/Effects)
-- Each step includes its prompt, sample, and output shape
-- Plays can be created, read, updated, and listed per ticket
-- Play lifecycle status tracks correctly
+### MVP-2
+- A Play ticket's workflow produces a PlayDefinition with all three steps populated
+- Each step includes: prompt, sample, output schema (Map/Reduce) or script (Output)
+- Play definitions are retrievable by ticket ID via API
+- Users can view the generated play before any execution
 
-### MVP-3: Read-Only Preview
-- Users see real SuiteQL results from sandbox for the Map step
-- Users see transformed data from the Reduce step
-- Output shape validation reports pass/fail at each step boundary
-- Zero writes to NetSuite occur during preview
-
-### MVP-4: Sandbox Execution + Canonical Examples
-- Full pipeline runs end-to-end in sandbox including Output/Effects
-- Canonical examples generated and stored alongside the Play
-- Users see a dry-run of intended writes before committing
-- Play marked validated only after canonical examples pass
-
-### MVP-5: Production Execution with Governance
-- Every write has a before-image and audit trail
-- Duplicate submissions prevented
-- Irreversible actions require explicit human approval
-- All operations logged with full provenance
+### MVP-3
+- Map step runs SuiteQL in sandbox and produces output conforming to its declared schema
+- Reduce step transforms Map output and produces output conforming to its declared schema
+- Shape validation failure at any boundary halts the pipeline with a clear error message
+- Output/Effects step shows a dry-run preview of intended writes before committing
+- Every step execution is logged with inputs, outputs, duration, and validation status
+- Users can view execution history for any play
 
 ## User Scenarios
 
-[SCN-01] Create a Play ticket via web UI
-- Precondition: User is logged in to a NetSuite-platform organization
-- Action: User creates a new ticket, selects Play mode, describes the desired operation
-- Expected Outcome: Ticket is created with PLAY mode, PLY-prefixed short ID, and play icon visible in the ticket list
+[SCN-01] Create a Play ticket for a NetSuite org
+- Precondition: User has a connected NETSUITE organization in Helix
+- Action: User creates a new ticket, selects Play mode, and describes their intent (e.g., "find all open invoices over 90 days and flag the customer for credit hold")
+- Expected Outcome: Ticket is created with PLY- prefix and Play mode badge; workflow begins generating the play definition
 
-[SCN-02] Create a Play ticket via CLI
-- Precondition: User has Helix CLI installed, authenticated to a NetSuite org
+[SCN-02] Play mode is unavailable for non-NetSuite platforms
+- Precondition: User has only non-NetSuite organizations connected
+- Action: User opens the new ticket form and views available modes
+- Expected Outcome: Play does not appear in the mode selector
+
+[SCN-03] Create a Play ticket via CLI
+- Precondition: User has the Helix CLI installed and authenticated
 - Action: User runs `hlx tickets create --mode PLAY` with a description
-- Expected Outcome: CLI creates a PLAY ticket and displays the PLY-prefixed ticket ID
+- Expected Outcome: Ticket is created with Play mode and PLY- prefix; help text shows PLAY as a valid mode
 
-[SCN-03] Play mode rejected for non-NetSuite org
-- Precondition: User is on a non-NetSuite organization
-- Action: User attempts to create a ticket with PLAY mode
-- Expected Outcome: Clear error message — PLAY mode is only available for NetSuite organizations
+[SCN-04] Helix generates a play definition from ticket description
+- Precondition: User has created a Play ticket describing "reconcile vendor bills against purchase orders and flag mismatches"
+- Action: Helix workflow processes the ticket
+- Expected Outcome: A 3-step play definition is generated: Map step with SuiteQL to query vendor bills and POs, Reduce step to compare and identify mismatches, Output step with script to flag mismatched records -- each with prompt, sample, and output schema
 
-[SCN-04] EXECUTE no longer visible
-- Precondition: User is on a NetSuite organization
-- Action: User opens the ticket creation mode picker
-- Expected Outcome: Modes show AUTO, BUILD, FIX, RESEARCH, PLAY. EXECUTE does not appear
+[SCN-05] Review a generated play definition
+- Precondition: Play definition has been generated from a ticket
+- Action: User views the play definition via the ticket detail or API
+- Expected Outcome: All three steps are visible with their prompts, sample queries/transformations, output schemas, and the effects script
 
-[SCN-05] Review a generated Play definition
-- Precondition: Helix has generated a Play definition from a PLAY ticket
-- Action: User opens the Play ticket and reviews the 3-step definition
-- Expected Outcome: User sees Map prompt + sample + shape, Reduce prompt + sample + shape, and Output/Effects script clearly presented
+[SCN-06] Execute a play and preview Map output
+- Precondition: Play definition exists; sandbox NS-GM credentials configured
+- Action: User triggers play execution in sandbox
+- Expected Outcome: Map step runs SuiteQL against sandbox data; generated query and results are displayed; output is validated against the declared JSON schema
 
-[SCN-06] Preview Map step results in sandbox
-- Precondition: A Play definition exists with a valid Map step
-- Action: User triggers a preview of the Map step
-- Expected Outcome: Real SuiteQL results from sandbox are displayed. Output shape validation shows pass or fail
+[SCN-07] Shape validation catches a bad output
+- Precondition: Play is executing in sandbox
+- Action: A step produces output that does not match its declared schema (e.g., missing required fields)
+- Expected Outcome: Pipeline halts at the step boundary; error message shows expected vs. actual shape; subsequent steps do not execute
 
-[SCN-07] Preview Reduce step results
-- Precondition: Map step previewed successfully
-- Action: User triggers a preview of the Reduce step
-- Expected Outcome: Transformed data displayed. Shape validation shows pass or fail. No writes to NetSuite
+[SCN-08] View dry-run preview for Output/Effects
+- Precondition: Map and Reduce steps have completed successfully
+- Action: Output/Effects step runs in dry-run mode
+- Expected Outcome: User sees exactly what records would be created, updated, or flagged -- without any writes being committed
 
-[SCN-08] Run full Play in sandbox
-- Precondition: Map and Reduce previews pass shape validation
-- Action: User triggers full sandbox execution including Output/Effects
-- Expected Outcome: All three steps execute in sequence. User sees actual output/effects results. Sandbox records created or modified are shown
+[SCN-09] Execute a full play pipeline end-to-end
+- Precondition: Play definition exists with all 3 steps; sandbox is configured
+- Action: User runs the play from start to finish in sandbox
+- Expected Outcome: Map -> Reduce -> Output executes sequentially; each step's output flows to the next; all results are logged with per-step inputs, outputs, timing, and validation status
 
-[SCN-09] View canonical examples
-- Precondition: A Play has been validated with canonical examples
-- Action: User views the Play's canonical examples
-- Expected Outcome: 3-5 example inputs and their actual sandbox outputs displayed, including happy path and edge cases
+[SCN-10] View play execution history
+- Precondition: A play has been executed at least once
+- Action: User views the play's run history
+- Expected Outcome: Each run is listed with status, timestamp, and per-step results including inputs, outputs, duration, and shape validation outcomes
 
-[SCN-10] Dry-run Output/Effects before commit
-- Precondition: Map and Reduce produced valid shaped output
-- Action: User requests a dry-run of the Output/Effects step
-- Expected Outcome: User sees what records would be created/modified and what calls would be made — nothing is actually written
+[SCN-11] EXECUTE mode is no longer accessible
+- Precondition: EXECUTE mode previously existed in the system
+- Action: User attempts to find or use Execute mode via UI, CLI, or API
+- Expected Outcome: Execute mode is absent from all surfaces; PLAY has replaced it
 
-[SCN-11] Execute a Play in production
-- Precondition: Play validated in sandbox, user has production access
-- Action: User triggers production execution
-- Expected Outcome: Play runs against production data. All operations logged with before/after images. Results displayed
-
-[SCN-12] Approve an irreversible action
-- Precondition: Play's Output/Effects includes an irreversible action (email, external API call)
-- Action: System presents the action for human approval
-- Expected Outcome: Action does not execute until explicitly approved. Approval is logged
-
-[SCN-13] View execution audit trail
-- Precondition: A Play has been executed at least once
-- Action: User views execution history
-- Expected Outcome: Every run shown with timestamps, step progression, data at each boundary, writes performed, and who approved
+[SCN-12] Re-run a play with fresh data
+- Precondition: Play was previously executed successfully in sandbox
+- Action: User triggers the same play again
+- Expected Outcome: Play runs with the same definition but against current sandbox data; new run logged independently of previous runs
 
 ## Key Design Principles
 
-1. **Describe, don't build.** Users express intent. Helix generates the automation. Reviewing is the user's job, not authoring.
-2. **Shape contracts at every boundary.** The JSON output shape is the enforced contract between steps. The agent is free to generate any implementation that satisfies it.
-3. **Progressive trust.** Map and Reduce are fully previewable (read-only). Output/Effects gets a dry-run. Production gets governance. Trust scales with risk.
-4. **Created once, executed many.** A Play is a design-time artifact validated once. It runs repeatedly with full logging each time.
-5. **Everything is logged.** Every step's inputs, generated queries/scripts, outputs, shape validation results, and effects are captured.
-6. **Sandbox first.** A Play is proven against canonical examples in sandbox before any production execution.
+1. **Intent in, automation out** -- Users describe what they want; Helix generates the how
+2. **Shape enforcement is the trust layer** -- JSON schemas at step boundaries make plays composable, auditable, and debuggable
+3. **Progressive trust** -- Preview Map and Reduce freely (read-only), dry-run Output (see what would change), then commit with confidence
+4. **Agent-generated first, static later** -- Start with one mode; promote working patterns to static artifacts when ready
+5. **Creation once, execution many** -- Clean separation between designing a play and running it
+6. **Full auditability** -- Every generated query, every transformation, every output is logged and inspectable
+7. **Effects are deterministic** -- The highest-stakes step (Output/Effects) is a script, not agent-generated, because predictability matters most where risk is highest
 
 ## Scope & Constraints
 
-- **NetSuite only.** Play mode gated to NetSuite organizations at the platform config level.
-- **Manual selection only.** PLAY is never auto-assigned by the mode classifier.
-- **Sandbox first.** All Play development and validation in sandbox before production.
-- **Deploy ordering.** Server deploys before CLI — the CLI sends mode to the server, which validates against platform config.
-- **Schema migration note.** Production DB has a PLAYBOOK_CHECK enum value not in the local Prisma schema. Migration must account for this desync with conditional SQL.
-- **NS-GM is the chokepoint.** All NetSuite operations flow through the NS-GM RESTlet. Governance for writes is added at this layer.
-- **Four repos involved.** helix-global-server (primary — schema, API, orchestrator, RESTlet), helix-global-client (UI mode + preview), helix-cli (mode flag), library (context only).
+- **Platform:** NetSuite only (follows existing EXECUTE gating pattern)
+- **Environment:** Sandbox execution only for all MVP levels; production requires governance (deferred)
+- **NS-GM:** Used as the execution gateway in its current state; governance wrapper is a separate initiative
+- **Deploy ordering:** Server must deploy before CLI (CLI sends mode strings to server API)
+- **Schema sync:** Two Prisma migrations needed -- one to sync PLAYBOOK_CHECK (exists in production but not local schema), one to add PLAY
+- **EXECUTE retention:** Value stays in the Postgres enum (cannot DROP enum values without recreating the type) but is removed from all application surfaces
 
 ## Future Considerations
 
-- **Static query promotion.** "Lock in" a proven agent-generated query as a static, versioned artifact. V2 authoring story.
-- **Canonical examples as platform primitive.** The co-development loop applies beyond Plays — to Build and Fix modes too. Play is the first consumer.
-- **Triggered/scheduled plays.** Cron or event-driven execution with circuit-breakers and pre-approved bounds.
-- **Playbook convergence.** BLD-677 playbook infrastructure shares governance patterns with Plays. Convergence is a later architectural concern.
-- **Cross-play composition.** Pipelines of pipelines — one Play's output feeding another Play's input.
-- **BLD-634 convergence.** Direct-to-production approval gates share infrastructure with Play effect approval.
+- **Canonical examples** -- A platform-level primitive where ns-gm generates synthetic sandbox records; logic and examples co-develop in a feedback loop until outputs consistently pass. Applies to build and fix modes too, not just plays.
+- **Production governance** -- Before-image capture, write audit logging, rollback via ordered forward-log with inverse replay, idempotency via externalId, concurrency detection via dateLastModified, NS-GM RESTlet governance wrapper
+- **Static promotion** -- Users "lock in" a generated query or script that works well, converting it from agent-generated to a fixed, versioned artifact
+- **Play composition** -- Chain plays where one's output feeds another's input
+- **Triggered execution** -- Scheduled or event-driven play runs
+- **Playbook convergence** -- Governance rules from the Playbook layer may eventually gate play execution
 
 ## Open Questions / Risks
 
-| # | Question | Status |
-|---|----------|--------|
-| 1 | **ns-gm depth for canonical examples** — Can ns-gm generate records with correct relationships (invoice + customer + terms + line items) or only flat records? | Open — feasibility unknown |
-| 2 | **Sandbox SuiteQL fidelity** — Does sandbox schema match production closely enough that proven queries reliably work live? | Open — needs per-account verification |
-| 3 | **Agent-generated query quality** — Will agents produce SuiteQL that matches real schemas well enough to earn user trust? | Risk — mitigated by sample grounding + shape enforcement |
-| 4 | **Output/Effects script authoring** — Who writes the deterministic script for step 3? Helix generates a skeleton, but how much editing is needed? | Open |
-| 5 | **PLAYBOOK_CHECK schema desync** — Production DB enum has a value not in local Prisma schema. Migration must handle both states. | Known — conditional migration strategy identified |
-| 6 | **Convergence signal** — How does Helix know when canonical examples and Play logic are "solid enough"? What stops the agentic loop? | Open |
-| 7 | **User-event script side effects** — NetSuite UE scripts fire on record.save() and may introduce unpredictable side effects. Account-dependent. | Risk — mitigated by sandbox-first approach |
-| 8 | **REVERSALVOIDING preference** — Void semantics differ per account. Must check at runtime. | Known — runtime check required |
+| # | Question / Risk | Impact |
+|---|----------------|--------|
+| 1 | How does the dry-run preview for Output/Effects work without a quarantined save or BEGIN...ROLLBACK in NetSuite? | Preview fidelity for effects step (SCN-08) |
+| 2 | User-event scripts fire only on record.save() -- in-memory projection misses side effects | What users preview may differ from actual execution |
+| 3 | Quality of agent-generated SuiteQL depends on the agent's understanding of the customer's NetSuite data model | Poor queries erode trust quickly; canonical examples (deferred) are the key mitigator |
+| 4 | PLAYBOOK_CHECK exists in production but not in local schema -- migration ordering is delicate | Could block deployment if first migration fails |
+| 5 | How much of the Output/Effects script can the agent help generate vs. what must be human-authored? | Affects creation time quality and user confidence |
+| 6 | REVERSALVOIDING accounting preference changes void semantics per NetSuite account | Tier-1 reversibility is account-dependent (production governance concern) |
+| 7 | Does the agent know enough about NetSuite record relationships to generate meaningful Map queries from a plain-language description? | Core product value depends on query quality |
 
 ## Artifact Inputs Used
 
 | Artifact | Why Used | Key Takeaway |
 |----------|----------|--------------|
-| ticket.md (Description) | Primary scope definition | Play = 3-step pipeline; canonical examples; full logging; replaces Execute |
-| ticket.md (Discussion — full thread) | Evolved Play definition consensus | Agent-generated first; enforced JSON shapes; creation vs execution split; user reviews not builds; canonical examples co-develop with logic |
-| ticket.md (Research Report RSH-702) | Feasibility assessment | Conditional Go; 6 reusable, 9 net-new; NS-GM raw pipe; 3-tier reversibility; Tier-3 requires human approval |
-| scout/scout-summary.md (library) | Spec hub role | RSH-702 + RSH-411 provide design constraints; no code changes in library |
-| scout/scout-summary.md (helix-global-server) | Server analysis + runtime evidence | EXECUTE=0/852; PLAYBOOK_CHECK desync; NS-GM raw pipe; natural 5-level MVP tiers |
-| scout/scout-summary.md (helix-global-client) | Client mode analysis | TicketMode const; ExecuteIcon play-triangle; platform gating; approval system reusable |
-| scout/scout-summary.md (helix-cli) | CLI analysis | 3 files; VALID_MODES array; thin client delegates to server |
-| diagnosis/diagnosis-statement.md (helix-global-server) | Server root cause + MVP decomposition | 5 MVP levels; migration strategy; PlayDefinition/PlayRun/PlayStepResult models; file-level change map |
-| diagnosis/diagnosis-statement.md (helix-global-client) | Client change plan | L1=12 files; L2/L3 deferred; approval system reusable |
-| diagnosis/diagnosis-statement.md (helix-cli) | CLI change plan | 3 files; server-first deploy ordering |
-| repo-guidance.json | Repo intent classification | library=context; server/client/cli=target |
+| ticket.md -- Description | Primary requirements | Play = 3-step pipeline; created via ticket; sandbox examples; full logging |
+| ticket.md -- Discussion | Refined play anatomy through dialogue | Agent-generated Map/Reduce + sample + shape enforcement; deterministic Output; no play builder UI; canonical examples are platform-level |
+| ticket.md -- Research Report (RSH-702) | Feasibility backdrop | 6 reusable infra components; NS-GM is raw gateway; 3-tier reversibility; conditional go |
+| scout/scout-summary.md (server) | Server codebase analysis | 5 MVP levels identified; mode patterns; credential routing; 13+ relevant files |
+| scout/scout-summary.md (client) | Client codebase analysis | Mode scaffolding across ~14 files; ExecuteIcon already renders play-triangle |
+| scout/scout-summary.md (cli) | CLI codebase analysis | 3 files; thin client; server enforces platform |
+| scout/reference-map.json (library) | Library context | Documentation-only repo; no code changes needed |
+| diagnosis/diagnosis-statement.md (server) | Server diagnosis | 3 in-scope MVP levels; EXECUTE=0 confirmed via runtime; PLAYBOOK_CHECK desync; migration strategy |
+| diagnosis/diagnosis-statement.md (client) | Client diagnosis | ~14 files for EXECUTE->PLAY rename; ExecuteIcon SVG is already a play triangle |
+| diagnosis/diagnosis-statement.md (cli) | CLI diagnosis | 3 files; deploy after server |
