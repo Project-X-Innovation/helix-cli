@@ -1,49 +1,55 @@
 {
   "$schema": "https://aka.ms/codetour-schema",
   "title": "BLD-684: CLI --json Flag for Machine-Parseable Comment Output",
-  "description": "This tour walks through the addition of a --json flag to the `hlx comments list` command. The host agent runner inside the sprite needs to pull unprocessed comments programmatically via the CLI. Previously, the command only output human-readable text and omitted comment IDs, making it unsuitable for the runner's cursor-based deduplication. The fix adds a --json flag that emits the full CommentResponse array as JSON (including IDs), while preserving the existing human-readable default output.",
+  "description": "This tour walks through the addition of a --json flag to the `hlx comments list` command in helix-cli. The host agent runner inside a sprite needs to pull unprocessed comments programmatically via execFile, but the existing output was human-readable text that omitted comment IDs. Adding --json enables the runner to parse structured comment data (including IDs for cursor-based deduplication via lastProcessedCommentId) without breaking existing human-readable output for operators.",
   "steps": [
     {
       "file": "src/comments/list.ts",
       "line": 1,
-      "description": "This is the entry point for `hlx comments list`. Before this change, all output was human-readable (timestamp + author + markers + content) and comment IDs were never surfaced. The runner calls `hlx` via execFile and parses stdout — it needs structured JSON including `id` fields to advance the `lastProcessedCommentId` cursor on the server. The diagnosis confirmed the CommentResponse type already carried `id`, so the fix is purely an output-format addition.",
-      "title": "Overview: Why this file needed changing"
+      "description": "The `hlx comments list` command already supported `--since` filtering and `--helix-only`, but all output was formatted as human-readable text: `[timestamp] Author [markers]: content`. The runner in helix-global-server calls `hlx` via execFile and needs structured output it can parse. Critically, the human-readable format omitted the comment `id` field, which the runner needs to advance the `lastProcessedCommentId` cursor on the server for idempotent deduplication. This file is the sole change target in helix-cli for BLD-684.",
+      "title": "Overview: Why This File Needed Changing"
     },
     {
       "file": "src/comments/list.ts",
-      "line": 6,
-      "description": "The CommentResponse type (imported here) already includes `id: string` alongside `author`, `content`, `isHelixTagged`, `isAgentAuthored`, and `createdAt`. No type changes were needed — the data was always available, just never emitted. This confirms the minimal scope of the change: only the output path needed updating, not the fetch or filtering logic.",
-      "title": "CommentResponse type already has `id`"
+      "line": 5,
+      "description": "The `CommentResponse` type (imported or defined around this line) already includes an `id: string` field along with `author`, `content`, `isHelixTagged`, `isAgentAuthored`, and `createdAt`. No schema changes were needed — the data was always there, just never surfaced in output. This means `JSON.stringify(comments)` will naturally include comment IDs without any transformation logic.",
+      "title": "CommentResponse Type Already Has id"
     },
     {
       "file": "src/comments/list.ts",
       "line": 18,
-      "description": "The `--json` flag is parsed here via the existing `getFlag()` helper, consistent with how `--since` and `--helix-only` are parsed. This keeps the flag-parsing pattern uniform. When present, it signals that the caller (the runner) wants machine-parseable output rather than the human-readable default.",
-      "title": "Parsing the --json flag"
+      "description": "The `--json` flag is parsed here using the existing `getFlag()` utility, consistent with how `--since` and `--helix-only` are already parsed. No new infrastructure is needed. The flag is boolean — its presence triggers JSON output mode. This keeps the change minimal and non-breaking: the default code path (no --json) is completely unchanged.",
+      "title": "Parsing the --json Flag"
     },
     {
       "file": "src/comments/list.ts",
       "line": 30,
-      "description": "Client-side filtering by `--since` (timestamp) and `--helix-only` is applied here, before either output branch executes. This means the `--json` flag receives the same filtered result set as the human-readable path — the runner can safely combine `--since <marker> --json` to get only unprocessed comments as structured data.",
-      "title": "Filtering runs before JSON output"
+      "description": "Client-side filtering (`--since` timestamp comparison and `--helix-only`) is applied to the fetched comments array before the output branch. This is important: both the JSON path and the human-readable path operate on the same filtered dataset. The runner can safely combine `--since <marker> --json` to get only new, unprocessed comments in structured form — the same semantics it would rely on for incremental polling.",
+      "title": "Filtering Applied Before Both Output Paths"
     },
     {
       "file": "src/comments/list.ts",
       "line": 39,
-      "description": "When `--json` is set, `JSON.stringify(comments)` is written to stdout and the function returns early. Because `comments` is the full filtered CommentResponse array, all fields — including `id` — are present in the output. The runner parses this JSON, extracts IDs, processes content, and advances its `lastProcessedCommentId` cursor. The early return ensures the human-readable loop below never executes in this path.",
-      "title": "JSON output branch with early return"
+      "description": "When `--json` is specified, `JSON.stringify(comments)` is written to stdout and the function returns early. The full filtered array is serialized, including all fields: `id`, `author`, `content`, `isHelixTagged`, `isAgentAuthored`, `createdAt`. The runner's execFile call captures this stdout, parses it, and uses the `id` fields to track `lastProcessedCommentId`. The early return ensures the human-readable loop below never executes in this branch.",
+      "title": "JSON Output Branch with Early Return"
     },
     {
       "file": "src/comments/list.ts",
       "line": 49,
-      "description": "The original human-readable loop (`[timestamp] Author [markers]: content`) is completely unchanged and only executes when `--json` is not specified. This is a non-breaking change: existing operator workflows and shell scripts that rely on the current text format continue to work identically. The APL review confirmed this path is unmodified.",
-      "title": "Human-readable output preserved (default path)"
+      "description": "The original `[timestamp] Author [markers]: content` formatting loop is completely untouched. It only executes when `--json` is not passed, preserving backwards compatibility for human operators using the CLI interactively. No existing scripts or workflows that parse the human-readable format are affected. This satisfies the acceptance criterion: default output is preserved, --json is purely additive.",
+      "title": "Human-Readable Output Path Unchanged"
     },
     {
-      "file": ".helix/tickets/cmq0dtiwl00v6k70u6wzjct6d/runs/cmq0dtiwx00vbk70ur3q1rgvn/code-review/code-review-actual.md",
+      "file": ".helix/tickets/cmq0dtiwl00v6k70u6wzjct6d/runs/cmq0dtiwx00vbk70ur3k1rgvn/code-review/code-review-actual.md",
       "line": 1,
-      "description": "The code review confirmed the implementation is correct and complete: the `--json` flag is parsed, `JSON.stringify(comments)` includes all CommentResponse fields (including `id`), filtering is applied before output, and the default human-readable path is preserved. No follow-up items were raised. This is the terminal validation artifact for the BLD-684 CLI change, and all TypeScript/build/test gates pass unchanged.",
-      "title": "Code review outcome: no issues found"
+      "description": "The code review artifact confirms the implementation is complete and correct. All acceptance criteria are met: --json flag parsed at L18, JSON.stringify output includes all fields including `id` at L40, filtering applied before output, human-readable default preserved, and no breaking changes. The review explicitly verified that comment IDs are included in JSON output for cursor-based deduplication — the core requirement from the runner's perspective. No follow-up changes were required.",
+      "title": "Code Review: No Issues Found"
+    },
+    {
+      "file": ".helix/tickets/cmq0dtiwl00v6k70u6wzjct6d/runs/cmq0dtiwx00vbk70ur3k1rgvn/diagnosis/diagnosis-statement.md",
+      "line": 1,
+      "description": "The complete data flow is now: (1) Runner calls `hlx comments list --since <lastProcessedCommentId marker> --json` via execFile. (2) CLI fetches all comments from `GET /tickets/{ticketId}/comments`, filters by --since and --helix-only, then outputs JSON array to stdout. (3) Runner parses JSON, processes each comment, and advances lastProcessedCommentId using the `id` field. This closes the pull loop described in the diagnosis. The change is minimal (one flag, one branch in list.ts), non-breaking, and directly unblocks the host agent series (BLD-681 through BLD-684) by giving the runner structured access to the comment stream.",
+      "title": "Summary: Data Flow Through the Full Pull Loop"
     }
   ]
 }
