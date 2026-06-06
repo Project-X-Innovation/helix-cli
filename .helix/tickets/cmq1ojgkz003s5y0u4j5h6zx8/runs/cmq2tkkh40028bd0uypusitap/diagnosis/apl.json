@@ -1,25 +1,34 @@
 {
   "questions": [
-    "Q1: What CLI files reference EXECUTE and need PLAY updates?",
-    "Q2: Is the CLI change safe to deploy independently?"
+    "Q1: What CLI files need PLAY updates?",
+    "Q2: Should EXECUTE be removed or PLAY added alongside?",
+    "Q3: What is the deploy ordering requirement?"
   ],
   "answers": [
     {
-      "answer": "Two files: (1) create.ts line 13 — VALID_MODES array, line 17 — help text. (2) cli-content.ts line 109 — mode documentation table. The mode validation logic (lines 79-88) normalizes to uppercase and checks includes() — no structural change, just swap EXECUTE for PLAY in the array and text.",
+      "answer": "Three files need updates: (1) src/tickets/create.ts — VALID_MODES array (line 13) and help text (line 17), (2) src/tickets/index.ts — usage text (line 21) and help text (line 73), (3) src/docs/cli-content.ts — mode table (line 109), example (line 247), and mode description (line 250). The mode validation logic normalizes to uppercase and checks inclusion — no structural change needed.",
       "evidence": [
-        "src/tickets/create.ts:13 — VALID_MODES = ['AUTO','BUILD','FIX','RESEARCH','EXECUTE'] as const",
-        "src/tickets/create.ts:17 — help text shows --mode <AUTO|BUILD|FIX|RESEARCH|EXECUTE>",
-        "src/docs/cli-content.ts:109 — mode list in docs table"
+        "create.ts line 13: VALID_MODES = ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE'] as const",
+        "create.ts lines 79-87: Mode validation normalizes to uppercase + inclusion check",
+        "index.ts lines 21, 73: Help text references modes in 2 locations",
+        "cli-content.ts lines 109, 247, 250: Mode docs in 3 locations"
       ]
     },
     {
-      "answer": "Deploy server first. The CLI sends mode to POST /api/tickets — if PLAY is sent before the server knows PLAY, the server rejects with 400 (mode not in platformConfig.allowedModes). With server deployed first, CLI sending PLAY works immediately.",
+      "answer": "Replace EXECUTE with PLAY in VALID_MODES and all help text. The CLI is a thin client — users should see PLAY not EXECUTE. Since EXECUTE has zero production usage, no backward compatibility concern exists. The server is the authoritative gatekeeper for platform enforcement. If backward compat is desired for scripts, both could coexist, but the simpler approach is clean replacement.",
       "evidence": [
-        "create.ts:147 — mode sent in POST body",
-        "ticket-controller.ts:152-154 — server validates mode against allowedModes"
+        "Production DB: EXECUTE has 0 tickets — no existing scripts depend on --mode EXECUTE",
+        "create.ts line 147: mode sent in POST body — server validates against allowedModes"
+      ]
+    },
+    {
+      "answer": "Server must deploy first. If CLI sends mode:'PLAY' before the server recognizes PLAY in platformConfig.allowedModes, the server returns 400. With server deployed first, CLI sending PLAY works immediately.",
+      "evidence": [
+        "ticket-controller.ts lines 152-154: server validates mode against platformConfig.allowedModes",
+        "create.ts line 147: mode sent in POST body"
       ]
     }
   ],
-  "statement": "CLI needs 2-file change: replace EXECUTE with PLAY in VALID_MODES (create.ts) and docs (cli-content.ts). Smallest change of all repos. Deploy server first to avoid 400 rejections. No new subcommands needed for L1. L2/L3 may add play-specific CLI commands (hlx plays list/preview/run) but those are deferred.",
+  "statement": "CLI needs a 3-file change: replace EXECUTE with PLAY in VALID_MODES (create.ts), help text (create.ts, index.ts), and docs (cli-content.ts). This is the smallest change surface of all repos. Deploy server first to avoid 400 rejections. No play-specific subcommands needed at MVP-1. Future levels may add play-specific commands (hlx plays list/preview/run).",
   "followups": []
 }
