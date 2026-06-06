@@ -1,0 +1,26 @@
+{
+  "questions": [
+    "Q1: Should PLAY replace EXECUTE in VALID_MODES or should both be accepted?",
+    "Q2: Does the CLI need new Play-specific subcommands for MVP?"
+  ],
+  "answers": [
+    {
+      "answer": "Replace EXECUTE with PLAY. The server will reject EXECUTE after the API validation update. Zero EXECUTE tickets exist — no backward-compatibility concern for scripts. Keeping both values would allow users to specify a mode the server rejects, creating a confusing failure experience.",
+      "evidence": [
+        "create.ts line 13: VALID_MODES = ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE']",
+        "Production DB: 0 EXECUTE tickets across 846 total",
+        "Server ticketModeEnum will exclude EXECUTE after update"
+      ]
+    },
+    {
+      "answer": "No. The CLI's ticket creation with --mode PLAY is sufficient for MVP. Play-specific subcommands (preview, execute, rollback) are deferred to the governance/execution follow-up ticket. The ticket description says 'Use normal Helix ticket system to create a Play'.",
+      "evidence": [
+        "Ticket description item 1: 'Use normal Helix ticket system to create a Play'",
+        "MVP scope is mode scaffolding, not execution engine",
+        "continue.ts --dry-run is mode-agnostic client-side preview — no PLAY changes needed"
+      ]
+    }
+  ],
+  "statement": "The CLI needs a single-file change: replace EXECUTE with PLAY in the VALID_MODES tuple and update the help text in create.ts. No new subcommands or flags for MVP. The CLI is a thin client — server enforces platform restrictions. This is the smallest change surface of all repos.",
+  "followups": []
+}
