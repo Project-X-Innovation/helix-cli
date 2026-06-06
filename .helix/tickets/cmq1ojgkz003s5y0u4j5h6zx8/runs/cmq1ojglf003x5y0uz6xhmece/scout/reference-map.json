@@ -1,0 +1,29 @@
+{
+  "problem": "Implement MVP Play mode in the CLI: add PLAY to VALID_MODES array and update the --mode flag help text in ticket creation.",
+  "files": [
+    {
+      "path": "src/tickets/create.ts",
+      "why": "VALID_MODES const (line 13) defines ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE']. --mode flag (lines 79-88) validates against this array. Help text (line 17) documents available modes. All need PLAY added (or EXECUTE renamed)."
+    },
+    {
+      "path": "src/tickets/continue.ts",
+      "why": "--dry-run flag (line 30) provides payload preview for continuation. Research report references this as client-side preview only. May need Play mode awareness for preview semantics."
+    },
+    {
+      "path": "package.json",
+      "why": "Build: tsc. Test: tsc + node --test. Typecheck: tsc --noEmit. No ORM. These are the quality gates."
+    }
+  ],
+  "facts": [
+    "VALID_MODES (create.ts line 13) is ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE'] — string literal tuple.",
+    "CLI help text (create.ts line 17) documents mode options: [--mode <AUTO|BUILD|FIX|RESEARCH|EXECUTE>].",
+    "Mode is optional on ticket creation. If provided, sent in POST body (line 147). Normalized to uppercase before validation.",
+    "continue.ts --dry-run is client-side payload preview only — logs endpoint and JSON body without executing.",
+    "No ORM in CLI repo. Build: tsc. Test: tsc + node --test.",
+    "No existing PLAY or TOOL references in CLI source code."
+  ],
+  "unknowns": [
+    "Whether PLAY replaces EXECUTE in VALID_MODES or both values should be accepted (backward compatibility for scripts using --mode EXECUTE).",
+    "Whether the CLI needs new Play-specific subcommands beyond ticket creation (e.g., play preview, play execute, play rollback) — likely deferred from MVP."
+  ]
+}
