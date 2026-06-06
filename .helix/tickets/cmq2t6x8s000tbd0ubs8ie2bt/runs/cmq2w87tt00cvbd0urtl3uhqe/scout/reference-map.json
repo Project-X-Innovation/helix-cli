@@ -1,0 +1,32 @@
+{
+  "problem": "Replace EXECUTE with PLAY in CLI mode validation and documentation. VALID_MODES array, usage help strings, and CLI documentation content all reference EXECUTE and must be updated to PLAY.",
+  "files": [
+    {
+      "path": "src/tickets/create.ts",
+      "why": "VALID_MODES constant at line 13 includes 'EXECUTE'. Usage help text at line 17 shows EXECUTE in mode list. Both must replace EXECUTE with PLAY."
+    },
+    {
+      "path": "src/tickets/index.ts",
+      "why": "Two usage strings at lines 21 and 73 include EXECUTE in mode option list. Both must replace EXECUTE with PLAY."
+    },
+    {
+      "path": "src/docs/cli-content.ts",
+      "why": "Mode table at line 109 and example text at line 250 reference EXECUTE. Both must replace with PLAY."
+    },
+    {
+      "path": "skill-content/references/commands.md",
+      "why": "Command signature at line 119 and mode flag table at line 128 reference EXECUTE. Both must replace with PLAY."
+    }
+  ],
+  "facts": [
+    "Framework: TypeScript (Node.js ES modules, Node 18+). Published as @projectxinnovation/helix-cli. Binary: hlx.",
+    "Build: 'tsc'. Typecheck: 'tsc --noEmit'. Test: 'tsc && node --test dist/**/*.test.js'. Prepare hook runs build.",
+    "EXECUTE appears in exactly 4 source files and 1 markdown file (skill-content).",
+    "No test files reference EXECUTE — 6 test files exist but none test mode validation.",
+    "VALID_MODES is a simple string array, not typed against server-side TicketMode. Can be updated independently.",
+    "CLI documentation in cli-content.ts is exported as a structured object (cliDocsContent) used for skill content and external docs."
+  ],
+  "unknowns": [
+    "Should skill-content/references/commands.md be auto-generated or manually maintained? If auto-generated, changes may be overwritten."
+  ]
+}
