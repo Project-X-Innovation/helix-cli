@@ -1,0 +1,30 @@
+{
+  "problem": "Support Play mode in the Helix CLI. The CLI is a thin client that validates mode strings locally and delegates platform restrictions to the server API. Must add PLAY to VALID_MODES and update help text. Smallest change surface of all 4 repos.",
+  "files": [
+    {
+      "path": "src/tickets/create.ts",
+      "why": "VALID_MODES array (line 13) defines accepted mode strings: AUTO, BUILD, FIX, RESEARCH, EXECUTE. Must add PLAY. Help text (line 17) lists modes — must update. Mode validation (lines 79-87) normalizes and checks against VALID_MODES."
+    },
+    {
+      "path": "src/tickets/index.ts",
+      "why": "Ticket command router. Usage text (line 21) shows --mode options. Help text (line 73) shows mode list. Both must include PLAY."
+    },
+    {
+      "path": "src/docs/cli-content.ts",
+      "why": "CLI documentation content. Mode table (line 109) lists AUTO, BUILD, FIX, RESEARCH, EXECUTE. Example (line 247) shows --mode BUILD. Mode description (line 250) lists valid values. All must include PLAY."
+    }
+  ],
+  "facts": [
+    "VALID_MODES = ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE'] as const (create.ts line 13)",
+    "Mode is validated via string uppercase normalization + inclusion check in VALID_MODES (create.ts lines 79-87)",
+    "CLI sends mode to server API which performs platform-specific enforcement — CLI does not gate by platform",
+    "No runtime dependencies — pure Node.js TypeScript CLI (package.json)",
+    "Build: npm run build (tsc), Typecheck: npm run typecheck (tsc --noEmit), Test: npm test",
+    "No NetSuite-specific or play-specific subcommands exist yet",
+    "Help text appears in 3 locations: tickets/index.ts (lines 21, 73), tickets/create.ts (line 17), docs/cli-content.ts (lines 109, 247, 250)"
+  ],
+  "unknowns": [
+    "Whether EXECUTE should be removed from VALID_MODES or PLAY added alongside it",
+    "Whether play-specific CLI subcommands are needed at MVP (e.g., hlx play run, hlx play preview) or if play execution is ticket-only"
+  ]
+}

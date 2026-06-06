@@ -1,0 +1,35 @@
+{
+  "questions": [
+    "Q1: Should PLAY replace EXECUTE in VALID_MODES or should both be accepted?",
+    "Q2: Does the CLI need new Play-specific subcommands for L1?",
+    "Q3: What CLI changes are needed for L2 and L3?"
+  ],
+  "answers": [
+    {
+      "answer": "Replace EXECUTE with PLAY. The server will reject EXECUTE after the API validation update. Zero EXECUTE tickets exist — no backward-compatibility concern. Keeping both values would allow users to specify a mode the server rejects, creating a confusing failure experience.",
+      "evidence": [
+        "create.ts:13 — VALID_MODES = ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE']",
+        "Production DB (runtime-verified): 0 EXECUTE tickets across 852 total",
+        "Server ticketModeEnum will exclude EXECUTE after update"
+      ]
+    },
+    {
+      "answer": "No. The CLI's ticket creation with --mode PLAY is sufficient for L1. The ticket description says 'Use normal Helix ticket system to create a Play'. Play-specific subcommands are deferred to L2/L3.",
+      "evidence": [
+        "Ticket description item 1: 'Use normal Helix ticket system to create a Play'",
+        "Product spec: L1 scope is mode scaffolding, not execution",
+        "CLI is a thin client — server handles all mode-specific logic"
+      ]
+    },
+    {
+      "answer": "L2: New play subcommands for preview (hlx plays preview --ticket <id>) and step definition. L3: Execution trigger (hlx plays run --ticket <id>), status check (hlx plays status), and execution output streaming. These follow the existing src/tickets/ pattern in a new src/plays/ directory. All deferred to their respective levels.",
+      "evidence": [
+        "Product spec SCN-02: CLI creates PLAY ticket with --mode PLAY (L1 only)",
+        "src/tickets/ — existing pattern for ticket subcommands",
+        "L2/L3 CLI commands depend on server APIs that don't exist yet"
+      ]
+    }
+  ],
+  "statement": "CLI needs a 2-file change for L1: replace EXECUTE with PLAY in VALID_MODES (create.ts:13) and docs (cli-content.ts:109). Smallest change of all repos. Deploy server first to avoid 400 rejections. L2/L3 add play-specific subcommands (hlx plays preview/run/status/list) in a new src/plays/ directory, deferred to their respective levels.",
+  "followups": []
+}
