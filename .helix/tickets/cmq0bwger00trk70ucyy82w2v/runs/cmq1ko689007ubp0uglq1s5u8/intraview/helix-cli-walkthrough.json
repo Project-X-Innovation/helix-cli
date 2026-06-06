@@ -1,0 +1,61 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "Playbook Check CLI Commands (BLD-678)",
+  "description": "This tour walks through the addition of the `hlx playbook` command group to the helix-cli. The feature introduces two new subcommands: `hlx playbook check <rule-ref>` (POST-trigger + GET-poll to completion) and `hlx playbook checks <rule-ref>` (list check history). This is the first polling pattern in the CLI — all prior async operations were fire-and-forget. The implementation mirrors the existing `goals/` command group structure exactly, adding a new `src/playbook/` directory with an index router, a trigger+poll handler, and a history-list handler, plus a single new case in the top-level dispatcher.",
+  "steps": [
+    {
+      "file": "src/index.ts",
+      "line": 17,
+      "description": "The top-level CLI dispatcher (src/index.ts) is the entry point for all `hlx` commands. A new import for `runPlaybook` is added here, parallel to the existing `runGoals` import. This single import wires the entire new command group into the binary without changing any existing command routing.",
+      "title": "Step 1 — Dispatcher: import the new command group"
+    },
+    {
+      "file": "src/index.ts",
+      "line": 133,
+      "description": "The switch statement at the heart of the dispatcher gains a `playbook` case that calls `runPlaybook(args, config)` using the same `configOrHelp` guard pattern as `goals`. If no config is present the help text is shown instead. This is the only modification to an existing file — all other changes are purely additive new files.",
+      "title": "Step 2 — Dispatcher: register the `playbook` case"
+    },
+    {
+      "file": "src/playbook/index.ts",
+      "line": 1,
+      "description": "src/playbook/index.ts is the command-group router. It follows the goals/ pattern exactly: a switch on the first positional argument dispatches to `check` or `checks` subcommands, shows help text for unrecognised input, and wraps every subcommand call in a try-catch that pipes errors through `parseApiError` (imported from goals/utils.ts) for user-friendly messages. Rule-ref validation (non-empty string) is performed here before delegating.",
+      "title": "Step 3 — Playbook router: mirrors goals/index.ts"
+    },
+    {
+      "file": "src/playbook/index.ts",
+      "line": 5,
+      "description": "Rather than duplicating error-formatting logic, the playbook router imports `parseApiError` directly from `../goals/utils.js`. This keeps error messages consistent across command groups and avoids any new utility code. Data flow: hxFetch throws on HTTP error → catch block calls parseApiError → structured message printed to stderr.",
+      "title": "Step 4 — Reusing parseApiError from goals"
+    },
+    {
+      "file": "src/playbook/check.ts",
+      "line": 1,
+      "description": "This file implements the first polling loop in the CLI. The constants at the top of the file define the contract: POLL_INTERVAL_MS=5000 (5 s between polls), MAX_POLLS=120 (10-minute ceiling), and TERMINAL_STATUSES=Set(['PASS','FAIL','ERROR']). These values were chosen in the ticket spec to match the expected runtime of the Playbook agent pipeline.",
+      "title": "Step 5 — check.ts: new POST-trigger + GET-poll pattern"
+    },
+    {
+      "file": "src/playbook/check.ts",
+      "line": 60,
+      "description": "The command POSTs to `/playbook/rules/${ruleId}/check` with `basePath: '/api'` via hxFetch. This mirrors the server route registered under the /api prefix. The response body contains the newly-created CheckRecord including its `id`, which is immediately used as the polling key. If the check is already in a terminal state (e.g., org-level ERROR returned synchronously), the loop exits immediately without sleeping.",
+      "title": "Step 6 — Triggering the check via POST"
+    },
+    {
+      "file": "src/playbook/check.ts",
+      "line": 80,
+      "description": "After triggering, the command enters a for-loop bounded by MAX_POLLS. Each iteration sleeps POLL_INTERVAL_MS milliseconds then GETs `/playbook/rules/${ruleId}/checks/${checkId}`. When the returned status is in TERMINAL_STATUSES the loop breaks and results are printed. If MAX_POLLS is exhausted without a terminal state, a clear timeout message is shown. Exit code is 0 for PASS, 1 for FAIL or ERROR — enabling CI pipeline integration.",
+      "title": "Step 7 — Polling loop: GET until terminal state"
+    },
+    {
+      "file": "src/playbook/checks.ts",
+      "line": 1,
+      "description": "This file handles `hlx playbook checks <rule-ref>`. It GETs `/playbook/rules/${ruleId}/checks` (plural) and formats the response as a padEnd-aligned table with columns: ID, Status, Compliance, Checked At. Empty lists are handled gracefully with a 'No checks found' message. The `--json` flag bypasses formatting and prints raw JSON, matching the pattern established in goals/list.ts.",
+      "title": "Step 8 — checks.ts: list check history"
+    },
+    {
+      "file": "src/index.ts",
+      "line": 1,
+      "description": "The entire feature is delivered as three new files (src/playbook/index.ts, src/playbook/check.ts, src/playbook/checks.ts) plus two additive lines in src/index.ts (import + switch case). No existing command paths, utilities, or HTTP plumbing were modified. The polling loop is self-contained in check.ts. Error handling reuses goals/utils.ts. All hxFetch calls use basePath: '/api' consistent with every other command group. The build (tsc), typecheck, and test commands are unaffected.",
+      "title": "Step 9 — Summary: clean integration, no regressions"
+    }
+  ]
+}
