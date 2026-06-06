@@ -1,0 +1,26 @@
+{
+  "questions": [
+    "Q1: Do the CLI handlers correctly follow existing patterns and send requests to the right server endpoints?",
+    "Q2: Does the manifest default env reading work correctly for both handlers?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes. Both cmdNetsuite and cmdRun follow the resolveRepo -> hxFetch POST -> console.log JSON pattern from db.ts and logs.ts. cmdNetsuite POSTs to /{repoId}/netsuite with {type, query/scriptId, env}. cmdRun POSTs to /{repoId}/run with {code, modules?, env?}. Both use configOrHelp for auth loading and proper flag parsing via getFlag/getPositionalArgs.",
+      "evidence": [
+        "src/inspect/netsuite.ts:36 — hxFetch(config, '/${repoId}/netsuite', { method: 'POST', body })",
+        "src/run/index.ts:48 — hxFetch(config, '/${repoId}/run', { method: 'POST', body })",
+        "src/inspect/db.ts pattern comparison — identical resolveRepo -> hxFetch -> console.log flow"
+      ]
+    },
+    {
+      "answer": "Yes. Both handlers share the same readManifestDefaultEnv pattern: read /tmp/helix-inspect/manifest.json, parse JSON, check for nsDefaultEnv string field, map PRODUCTION to 'prod' and SANDBOX to 'sandbox'. The --env flag overrides the manifest default when provided. Falls back gracefully (returns undefined) when the manifest is unavailable.",
+      "evidence": [
+        "src/inspect/netsuite.ts:7-17 — readManifestDefaultEnv with PRODUCTION/SANDBOX mapping",
+        "src/run/index.ts:7-18 — identical readManifestDefaultEnv",
+        "Both use: envFlag ?? readManifestDefaultEnv() pattern"
+      ]
+    }
+  ],
+  "statement": "Code review completed for helix-cli. No issues found. All 4 files (2 new handlers, 2 modified routers) correctly implement the CLI surface for BLD-693. Both handlers follow existing patterns, send requests to correct server endpoints, and support --env with manifest default fallback. TypeScript typecheck passes.",
+  "followups": []
+}
