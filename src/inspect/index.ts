@@ -5,6 +5,7 @@ import { cmdRepos } from "./repos.js";
 import { cmdDb } from "./db.js";
 import { cmdLogs } from "./logs.js";
 import { cmdApi } from "./api.js";
+import { cmdNetsuite } from "./netsuite.js";
 
 function inspectUsage(exitCode: number = 1): never {
   const output = exitCode === 0 ? console.log : console.error;
@@ -15,6 +16,8 @@ function inspectUsage(exitCode: number = 1): never {
   hlx inspect db --repo <name> --query-file <path>
   hlx inspect logs --repo <name> "<query>" [--limit N]
   hlx inspect api --repo <name> <path>
+  hlx inspect netsuite --repo <name> --query "<suiteql>"
+  hlx inspect netsuite --repo <name> logs [--script-id <id>]
 
 The --query flag is the recommended form for inspect db.
 Use --query-file to read SQL from a file — this avoids all shell quoting issues.
@@ -116,6 +119,21 @@ Use --query-file to read SQL from a file — this avoids all shell quoting issue
       const path = positional[0];
       if (!repo || !path) { console.error("Error: --repo and a path are required."); inspectUsage(); }
       await cmdApi(config, repo, path);
+      break;
+    }
+
+    case "netsuite": {
+      if (isHelpRequested(rest)) {
+        console.log(`Usage: hlx inspect netsuite --repo <name> --query "<suiteql>"
+       hlx inspect netsuite --repo <name> logs [--script-id <id>]
+
+Options:
+  --env prod|sandbox    Override environment (default from step context)`);
+        process.exit(0);
+      }
+      const repo = getFlag(rest, "--repo");
+      if (!repo) { console.error("Error: --repo is required."); inspectUsage(); }
+      await cmdNetsuite(config, repo, rest);
       break;
     }
 

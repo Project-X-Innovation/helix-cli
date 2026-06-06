@@ -14,6 +14,7 @@ import { runUpdate, checkAutoUpdate } from "./update/index.js";
 import { runSkill } from "./skill/index.js";
 import { runLibrary } from "./library/index.js";
 import { runPreview } from "./preview/index.js";
+import { cmdRun } from "./run/index.js";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -52,6 +53,10 @@ Usage:
   hlx inspect db --repo <name> "<sql>"
   hlx inspect logs --repo <name> "<query>"
   hlx inspect api --repo <name> <path>
+  hlx inspect netsuite --repo <name> --query "<suiteql>"
+  hlx inspect netsuite --repo <name> logs [--script-id <id>]
+  hlx run --repo <name> <code>          Execute SuiteScript server-side
+  hlx run --repo <name> --code <code> [--modules m1,m2] [--env prod|sandbox]
   hlx comments list [--ticket <id>] [--helix-only] [--since <iso-date>]
   hlx comments post [--ticket <id>] <message>
   hlx preview db-url <ticket-ref>  Print Neon preview branch connection URI
@@ -90,6 +95,12 @@ try {
     case "inspect": {
       const config = configOrHelp(args.slice(1));
       await runInspect(config, args.slice(1));
+      break;
+    }
+
+    case "run": {
+      const config = configOrHelp(args.slice(1));
+      await cmdRun(config, args.slice(1));
       break;
     }
 
