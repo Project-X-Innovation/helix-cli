@@ -1,0 +1,49 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "BLD-684: CLI --json Flag for Machine-Parseable Comment Output",
+  "description": "This tour walks through the addition of a --json flag to the `hlx comments list` command in helix-cli. The change was motivated by the host agent runner (running inside a sprite) needing to pull unprocessed comments programmatically. The existing command output was human-readable text that omitted comment IDs, making it unsuitable for cursor-based deduplication. The fix adds a --json flag that outputs the full CommentResponse array (including IDs) while preserving the default human-readable output for operator use.",
+  "steps": [
+    {
+      "file": ".helix/tickets/cmq0dtiwl00v6k70u6wzjct6d/runs/cmq0dtiwx00vbk70ur3q1rgvn/diagnosis/diagnosis-statement.md",
+      "line": 1,
+      "description": "The diagnosis establishes the root cause: `hlx comments list` fetches comments and filters by `--since`, but outputs only human-readable text like `[timestamp] Author [markers]: content`. The runner inside the sprite calls `hlx` via execFile and needs structured JSON including comment IDs to advance the `lastProcessedCommentId` cursor. Without comment IDs in the output, the runner cannot perform cursor-based deduplication — it would have no way to mark which comments have been processed.",
+      "title": "Overview: Why This Change Was Needed"
+    },
+    {
+      "file": ".helix/tickets/cmq0dtiwl00v6k70u6wzjct6d/runs/cmq0dtiwx00vbk70ur3k1rgvn/diagnosis/apl.json",
+      "line": 1,
+      "description": "The APL analysis confirms the two-part answer: (1) `--since` filtering already works client-side, but output is human-readable and omits comment IDs; (2) a `--json` flag is the primary addition needed, outputting `id`, `content`, `createdAt`, and `isAgentAuthored` fields. The APL also notes that the `CommentResponse` type already includes the `id` field — meaning no type changes are required, only output formatting.",
+      "title": "APL: Diagnosis Q&A — What CLI Changes Are Needed"
+    },
+    {
+      "file": ".helix/tickets/cmq0dtiwl00v6k70u6wzjct6d/runs/cmq0dtiwx00vbk70ur3q1rgvn/code-review/code-review-actual.md",
+      "line": 1,
+      "description": "The code review confirms the implementation at `src/comments/list.ts` is correct. The `--json` flag is parsed at L18, the JSON output branch at L39-42 uses `JSON.stringify(comments)` which includes all CommentResponse fields (id, author, content, isHelixTagged, isAgentAuthored, createdAt), and the early return ensures the human-readable output loop at L49-58 is only reached when `--json` is not specified. All existing filters (`--helix-only`, `--since`) are applied before the JSON output, so the runner gets a pre-filtered array.",
+      "title": "Code Review: Implementation Verified Clean"
+    },
+    {
+      "file": ".helix/tickets/cmq0dtiwl00v6k70u6wzjct6d/runs/cmq0dtiwx00vbk70ur3q1rgvn/code-review/apl.json",
+      "line": 1,
+      "description": "The code review APL answers two key questions: (1) Yes, the JSON output includes comment IDs because `JSON.stringify(comments)` serializes the full `CommentResponse` type which has `id: string`; (2) Yes, the default human-readable output is fully preserved when `--json` is not passed. The APL concludes with no issues found and no followups — this is a complete, correct, non-breaking addition to the CLI's output modes.",
+      "title": "APL: Code Review — ID Inclusion and Default Behavior Confirmed"
+    },
+    {
+      "file": ".helix/tickets/cmq0dtiwl00v6k70u6wzjct6d/runs/cmq0dtiwx00vbk70ur3q1rgvn/diagnosis/diagnosis-statement.md",
+      "line": 17,
+      "description": "This section of the diagnosis describes the complete data flow the change enables: the runner calls `hlx comments list --since <marker> --json` via execFile, receives a JSON array of CommentResponse objects, parses the array programmatically, processes each comment, and advances the `lastProcessedCommentId` cursor on the server using the `id` field from each object. The `--since` flag provides coarse timestamp filtering while the `id` field enables precise idempotent deduplication. The host agent series (BLD-681 through BLD-684) together form the full always-available agent loop.",
+      "title": "Data Flow: Runner Pull Model End-to-End"
+    },
+    {
+      "file": ".helix/tickets/cmq0dsmf500ujk70uzjv7di78/runs/cmq0dsmfj00uok70uwz55c4mu/ticket.md",
+      "line": 1,
+      "description": "BLD-681 (Host Agent ①) fixed sprite provisioning by replacing shell-based exec calls with a no-shell I/O layer. This is the prerequisite: without working provisioning, the runner process never starts, so the pull-comment loop is moot. The CLI `--json` flag added in BLD-684 completes the input side of the runner loop — provisioning gets the runner running (①), session persistence keeps it alive across restarts (②), lifecycle management prevents premature teardown (③), and the CLI pull support (④/BLD-684) gives the runner a reliable way to receive new work.",
+      "title": "Context: BLD-681 — Foundation This Builds On"
+    },
+    {
+      "file": ".helix/tickets/cmq0dtiwl00v6k70u6wzjct6d/runs/cmq0dtiwx00vbk70ur3q1rgvn/code-review/code-review-actual.md",
+      "line": 28,
+      "description": "The code review's 'Changes Made by Code Review' and 'Remaining Risks' sections both confirm: no changes were needed beyond the original implementation, and no risks remain. The `--json` flag is additive — existing operator workflows using the human-readable output are unchanged. TypeScript types, build, and tests all pass. The CLI now supports both human operators (default) and machine consumers (--json), completing helix-cli's role in the BLD-684 host agent pull model.",
+      "title": "Summary: No Breaking Changes, All Code Paths Clean"
+    }
+  ]
+}
