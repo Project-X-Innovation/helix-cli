@@ -67,662 +67,998 @@ Most of all they give the user confidence and expectation
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RSH-707: MVP NetSuite Play Mode — Design Specification</title>
+  <title>MVP NetSuite Play Mode &mdash; RSH-707</title>
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1a1a2e; max-width: 960px; margin: 0 auto; padding: 24px; background: #fafbfc;">
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.7; color: #1a1a2e; max-width: 960px; margin: 0 auto; padding: 32px 24px; background: #fafbfc;">
 
   <!-- ================================================================ -->
   <!-- REPORT HEADER -->
   <!-- ================================================================ -->
-  <div style="border-bottom: 4px solid #2d3436; padding-bottom: 20px; margin-bottom: 32px;">
-    <p style="font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: #636e72; margin: 0 0 8px 0;">Design Specification</p>
-    <h1 id="mvp-netsuite-play-mode-design-specification" style="font-size: 28px; font-weight: 700; color: #2d3436; margin: 0 0 8px 0;">MVP NetSuite Play Mode</h1>
-    <p style="font-size: 16px; color: #636e72; margin: 0 0 16px 0;">Research Report &mdash; RSH-707</p>
+  <div style="border-bottom: 4px solid #2d3436; padding-bottom: 24px; margin-bottom: 16px;">
+    <p style="font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #636e72; margin: 0 0 8px 0;">Design Specification</p>
+    <h1 id="mvp-netsuite-play-mode" style="font-size: 32px; font-weight: 800; color: #2d3436; margin: 0 0 8px 0; letter-spacing: -0.5px;">MVP NetSuite Play Mode</h1>
+    <p style="font-size: 18px; color: #636e72; margin: 0 0 20px 0; font-style: italic;">A Play is a 3-step composed pipeline that turns user intent into repeatable, previewable NetSuite automation.</p>
     <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-      <span style="display: inline-block; background: #dfe6e9; color: #2d3436; padding: 4px 12px; border-radius: 4px; font-size: 13px; font-weight: 600;">Date: June 6, 2026</span>
-      <span style="display: inline-block; background: #00b894; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 13px; font-weight: 600;">Status: Final</span>
-      <span style="display: inline-block; background: #0984e3; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 13px; font-weight: 600;">3-Level MVP</span>
-      <span style="display: inline-block; background: #6c5ce7; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 13px; font-weight: 600;">Builds on RSH-702</span>
+      <span style="display: inline-block; background: #dfe6e9; color: #2d3436; padding: 4px 14px; border-radius: 4px; font-size: 13px; font-weight: 600;">RSH-707</span>
+      <span style="display: inline-block; background: #dfe6e9; color: #2d3436; padding: 4px 14px; border-radius: 4px; font-size: 13px; font-weight: 600;">June 6, 2026</span>
+      <span style="display: inline-block; background: #6c5ce7; color: #fff; padding: 4px 14px; border-radius: 4px; font-size: 13px; font-weight: 600;">Status: Active Research</span>
     </div>
   </div>
 
-  <!-- ================================================================ -->
-  <!-- TABLE OF CONTENTS -->
-  <!-- ================================================================ -->
-  <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px 24px; margin-bottom: 36px;">
-    <h2 id="table-of-contents" style="font-size: 18px; margin: 0 0 12px 0; color: #2d3436;">Table of Contents</h2>
-    <ol style="margin: 0; padding-left: 20px; columns: 2; column-gap: 32px;">
-      <li style="margin-bottom: 6px;"><a href="#executive-summary" style="color: #0984e3; text-decoration: none;">Executive Summary</a></li>
-      <li style="margin-bottom: 6px;"><a href="#what-is-a-play" style="color: #0984e3; text-decoration: none;">What Is a Play?</a></li>
-      <li style="margin-bottom: 6px;"><a href="#l1-play-mode-foundation" style="color: #0984e3; text-decoration: none;">L1: Play Mode Foundation</a></li>
-      <li style="margin-bottom: 6px;"><a href="#l2-compose-and-preview" style="color: #0984e3; text-decoration: none;">L2: Compose &amp; Preview</a></li>
-      <li style="margin-bottom: 6px;"><a href="#l3-run-and-monitor" style="color: #0984e3; text-decoration: none;">L3: Run &amp; Monitor</a></li>
-      <li style="margin-bottom: 6px;"><a href="#cross-cutting-concerns" style="color: #0984e3; text-decoration: none;">Cross-Cutting Concerns</a></li>
-      <li style="margin-bottom: 6px;"><a href="#governance-and-safety-architecture" style="color: #0984e3; text-decoration: none;">Governance &amp; Safety Architecture</a></li>
-      <li style="margin-bottom: 6px;"><a href="#implementation-roadmap" style="color: #0984e3; text-decoration: none;">Implementation Roadmap</a></li>
-      <li style="margin-bottom: 6px;"><a href="#evidence-sources" style="color: #0984e3; text-decoration: none;">Evidence Sources</a></li>
-    </ol>
+  <!-- Stat Ribbon -->
+  <div style="display: flex; gap: 0; margin-bottom: 40px; border-radius: 8px; overflow: hidden; border: 1px solid #dee2e6;">
+    <div style="flex: 1; background: #fff; padding: 14px 16px; text-align: center; border-right: 1px solid #dee2e6;">
+      <div style="font-size: 28px; font-weight: 800; color: #2d3436;">876</div>
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #636e72;">Production Tickets</div>
+    </div>
+    <div style="flex: 1; background: #fff; padding: 14px 16px; text-align: center; border-right: 1px solid #dee2e6;">
+      <div style="font-size: 28px; font-weight: 800; color: #c62828;">0</div>
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #636e72;">Execute Tickets</div>
+    </div>
+    <div style="flex: 1; background: #fff; padding: 14px 16px; text-align: center; border-right: 1px solid #dee2e6;">
+      <div style="font-size: 28px; font-weight: 800; color: #6c5ce7;">5</div>
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #636e72;">MVP Levels</div>
+    </div>
+    <div style="flex: 1; background: #fff; padding: 14px 16px; text-align: center; border-right: 1px solid #dee2e6;">
+      <div style="font-size: 28px; font-weight: 800; color: #0097a7;">3</div>
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #636e72;">Pipeline Steps</div>
+    </div>
+    <div style="flex: 1; background: #fff; padding: 14px 16px; text-align: center;">
+      <div style="font-size: 28px; font-weight: 800; color: #00897b;">3</div>
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #636e72;">Repos</div>
+    </div>
   </div>
 
-  <!-- ================================================================ -->
-  <!-- SECTION 1: EXECUTIVE SUMMARY -->
-  <!-- ================================================================ -->
-  <h2 id="executive-summary" style="font-size: 24px; color: #2d3436; border-bottom: 2px solid #0984e3; padding-bottom: 8px; margin-top: 48px;">1. Executive Summary</h2>
-
-  <p>This report presents the complete design specification for <strong>Play Mode</strong> &mdash; a new first-class Helix ticket mode that replaces the dead EXECUTE mode with a composed, governed, previewable approach to NetSuite record-level operations. A Play is a sequence of <strong>Map</strong> (SuiteQL queries), <strong>Reduce</strong> (AI agent transforms), and <strong>Effect</strong> (record CRUD) steps where every input and output is measurable and monitorable.</p>
-
-  <p>EXECUTE mode is unused: <strong>0 of 854 production tickets</strong> use it (runtime-verified June 6, 2026). It was designed for SDF code deployment, not direct record operations. PLAY replaces it with a fundamentally different model &mdash; preview-first, sandbox-first, composed, and governed.</p>
-
-  <h3 id="production-data-snapshot" style="font-size: 18px; color: #2d3436; margin-top: 28px;">Production Data Snapshot</h3>
-
-  <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 16px 20px; margin: 16px 0;">
-    <p style="margin: 0 0 8px 0; font-size: 13px; color: #636e72; text-transform: uppercase; letter-spacing: 1px;">Runtime-verified &bull; June 6, 2026 &bull; Production Database</p>
-    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-      <div style="flex: 1; min-width: 100px; text-align: center; padding: 12px; background: #fff; border-radius: 6px; border: 1px solid #dee2e6;">
-        <div style="font-size: 28px; font-weight: 700; color: #2d3436;">854</div>
-        <div style="font-size: 12px; color: #636e72;">Total Tickets</div>
+  <!-- Table of Contents -->
+  <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 24px 28px; margin-bottom: 48px;">
+    <h2 id="table-of-contents" style="font-size: 18px; margin: 0 0 16px 0; color: #2d3436;">Contents</h2>
+    <div style="display: flex; gap: 32px; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 200px;">
+        <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #667eea; font-weight: 700; margin: 0 0 8px 0;">Vision</p>
+        <ol style="margin: 0; padding-left: 18px; font-size: 14px; list-style: none;">
+          <li style="margin-bottom: 6px;"><a href="#the-problem" style="color: #0984e3; text-decoration: none;">1. The Problem</a></li>
+          <li style="margin-bottom: 6px;"><a href="#what-is-a-play" style="color: #0984e3; text-decoration: none;">2. What Is a Play?</a></li>
+        </ol>
+        <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #00897b; font-weight: 700; margin: 16px 0 8px 0;">Roadmap</p>
+        <ol start="3" style="margin: 0; padding-left: 18px; font-size: 14px; list-style: none;">
+          <li style="margin-bottom: 6px;"><a href="#the-five-levels" style="color: #0984e3; text-decoration: none;">3. The Five Levels</a></li>
+        </ol>
       </div>
-      <div style="flex: 1; min-width: 100px; text-align: center; padding: 12px; background: #fff; border-radius: 6px; border: 1px solid #dee2e6;">
-        <div style="font-size: 28px; font-weight: 700; color: #0984e3;">296</div>
-        <div style="font-size: 12px; color: #636e72;">AUTO</div>
-      </div>
-      <div style="flex: 1; min-width: 100px; text-align: center; padding: 12px; background: #fff; border-radius: 6px; border: 1px solid #dee2e6;">
-        <div style="font-size: 28px; font-weight: 700; color: #6c5ce7;">234</div>
-        <div style="font-size: 12px; color: #636e72;">RESEARCH</div>
-      </div>
-      <div style="flex: 1; min-width: 100px; text-align: center; padding: 12px; background: #fff; border-radius: 6px; border: 1px solid #dee2e6;">
-        <div style="font-size: 28px; font-weight: 700; color: #00b894;">193</div>
-        <div style="font-size: 12px; color: #636e72;">BUILD</div>
-      </div>
-      <div style="flex: 1; min-width: 100px; text-align: center; padding: 12px; background: #fff; border-radius: 6px; border: 1px solid #dee2e6;">
-        <div style="font-size: 28px; font-weight: 700; color: #e17055;">131</div>
-        <div style="font-size: 12px; color: #636e72;">FIX</div>
-      </div>
-      <div style="flex: 1; min-width: 100px; text-align: center; padding: 12px; background: #d63031; border-radius: 6px;">
-        <div style="font-size: 28px; font-weight: 700; color: #fff;">0</div>
-        <div style="font-size: 12px; color: #fff;">EXECUTE</div>
+      <div style="flex: 1; min-width: 200px;">
+        <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #636e72; font-weight: 700; margin: 0 0 8px 0;">Reference</p>
+        <ol start="4" style="margin: 0; padding-left: 18px; font-size: 14px; list-style: none;">
+          <li style="margin-bottom: 6px;"><a href="#architecture-and-data-model" style="color: #0984e3; text-decoration: none;">4. Architecture &amp; Data Model</a></li>
+          <li style="margin-bottom: 6px;"><a href="#implementation-surface" style="color: #0984e3; text-decoration: none;">5. Implementation Surface</a></li>
+          <li style="margin-bottom: 6px;"><a href="#open-questions-and-risks" style="color: #0984e3; text-decoration: none;">6. Open Questions &amp; Risks</a></li>
+          <li style="margin-bottom: 6px;"><a href="#future-work" style="color: #0984e3; text-decoration: none;">7. Future Work</a></li>
+          <li style="margin-bottom: 6px;"><a href="#evidence-sources" style="color: #0984e3; text-decoration: none;">8. Evidence Sources</a></li>
+        </ol>
       </div>
     </div>
   </div>
 
-  <h3 id="three-level-mvp-approach" style="font-size: 18px; color: #2d3436; margin-top: 28px;">Three-Level MVP Approach</h3>
+  <!-- ================================================================ -->
+  <!-- ZONE 1: VISION -->
+  <!-- ================================================================ -->
+  <div style="background: linear-gradient(135deg, #667eea11, #764ba211); border-left: 4px solid #667eea; padding: 8px 16px; margin-bottom: 8px; border-radius: 0 4px 4px 0;">
+    <p style="margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #667eea; font-weight: 700;">Zone 1 &mdash; Vision</p>
+  </div>
 
-  <p>The design ships as three incremental levels. Each level is a <strong>standalone deliverable</strong> &mdash; independently useful, independently deployable, and independently testable.</p>
+  <!-- ============================================================ -->
+  <!-- SECTION 1: THE PROBLEM -->
+  <!-- ============================================================ -->
+  <h2 id="the-problem" style="font-size: 26px; color: #2d3436; margin-top: 40px; margin-bottom: 16px;">1. The Problem</h2>
 
-  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;">
-    <thead>
-      <tr style="background: #2d3436; color: #fff;">
-        <th style="padding: 10px 14px; text-align: left; border: 1px solid #2d3436; width: 20%;">Level</th>
-        <th style="padding: 10px 14px; text-align: left; border: 1px solid #2d3436; width: 30%;">What the User Gets</th>
-        <th style="padding: 10px 14px; text-align: left; border: 1px solid #2d3436; width: 15%;">Effort</th>
-        <th style="padding: 10px 14px; text-align: left; border: 1px solid #2d3436; width: 35%;">Key Deliverables</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr style="background: #e3f2fd;">
-        <td style="padding: 10px 14px; border: 1px solid #dee2e6;"><span style="display: inline-block; background: #0984e3; color: #fff; padding: 2px 10px; border-radius: 4px; font-weight: 600; font-size: 13px;">L1</span> Mode Foundation</td>
-        <td style="padding: 10px 14px; border: 1px solid #dee2e6;">Create Play tickets via web, CLI, MCP. PLAY replaces dead EXECUTE.</td>
-        <td style="padding: 10px 14px; border: 1px solid #dee2e6; font-weight: 600; color: #00b894;">Light</td>
-        <td style="padding: 10px 14px; border: 1px solid #dee2e6;">Prisma enum + migration, platform config, API validation, PLY- prefix, UI mode picker, CLI flag</td>
-      </tr>
-      <tr style="background: #e8f5e9;">
-        <td style="padding: 10px 14px; border: 1px solid #dee2e6;"><span style="display: inline-block; background: #00b894; color: #fff; padding: 2px 10px; border-radius: 4px; font-weight: 600; font-size: 13px;">L2</span> Compose &amp; Preview</td>
-        <td style="padding: 10px 14px; border: 1px solid #dee2e6;">Define play steps. Run read-only steps in sandbox. Preview results.</td>
-        <td style="padding: 10px 14px; border: 1px solid #dee2e6; font-weight: 600; color: #e17055;">Medium</td>
-        <td style="padding: 10px 14px; border: 1px solid #dee2e6;">PlayDefinition JSONB model, preview API, sandbox execution, step editor UI</td>
-      </tr>
-      <tr style="background: #fff3e0;">
-        <td style="padding: 10px 14px; border: 1px solid #dee2e6;"><span style="display: inline-block; background: #e17055; color: #fff; padding: 2px 10px; border-radius: 4px; font-weight: 600; font-size: 13px;">L3</span> Run &amp; Monitor</td>
-        <td style="padding: 10px 14px; border: 1px solid #dee2e6;">Execute plays with governance. Preview effects. Full audit trail.</td>
-        <td style="padding: 10px 14px; border: 1px solid #dee2e6; font-weight: 600; color: #d63031;">Heavy</td>
-        <td style="padding: 10px 14px; border: 1px solid #dee2e6;">PlayExecution tables, governance envelope, SSE monitoring, human approval, before/after images</td>
-      </tr>
-    </tbody>
-  </table>
+  <p style="font-size: 17px; line-height: 1.8; color: #2d3436;">Helix knows how to <strong>build</strong> NetSuite scripts. It knows how to <strong>fix</strong> broken ones. It knows how to <strong>research</strong> questions about an account's setup. What it doesn't know how to do is <strong>run things</strong>.</p>
 
-  <h3 id="repos-in-scope" style="font-size: 18px; color: #2d3436; margin-top: 28px;">Repos in Scope</h3>
+  <p style="font-size: 17px; line-height: 1.8; color: #2d3436;">Today, if a user wants to find all overdue invoices and flag the customers for credit hold, they describe the task in a Helix ticket. Helix generates the SuiteScript to do it. Then the user is on their own: they deploy the script, run it, watch it, debug it when it breaks, and run it again next month. Helix produced the code, but the <em>operation</em> &mdash; the thing the user actually wanted &mdash; is the user's problem.</p>
 
-  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;">
-    <thead>
-      <tr style="background: #636e72; color: #fff;">
-        <th style="padding: 8px 14px; text-align: left; border: 1px solid #636e72;">Repository</th>
-        <th style="padding: 8px 14px; text-align: left; border: 1px solid #636e72;">Role</th>
-        <th style="padding: 8px 14px; text-align: center; border: 1px solid #636e72;">Weight</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr style="background: #fff;">
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6; font-weight: 600;">helix-global-server</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6;">Prisma schema, API, orchestrator, NS-GM RESTlet, governance</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6; text-align: center;"><span style="display: inline-block; background: #d63031; color: #fff; padding: 1px 8px; border-radius: 3px; font-size: 12px; font-weight: 600;">Heaviest</span></td>
-      </tr>
-      <tr style="background: #f8f9fa;">
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6; font-weight: 600;">helix-global-client</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6;">Mode UI, preview panel, step editor, execution monitor</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6; text-align: center;"><span style="display: inline-block; background: #e17055; color: #fff; padding: 1px 8px; border-radius: 3px; font-size: 12px; font-weight: 600;">Heavy</span></td>
-      </tr>
-      <tr style="background: #fff;">
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6; font-weight: 600;">helix-cli</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6;">CLI mode flag, docs mirror</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6; text-align: center;"><span style="display: inline-block; background: #00b894; color: #fff; padding: 1px 8px; border-radius: 3px; font-size: 12px; font-weight: 600;">Light</span></td>
-      </tr>
-      <tr style="background: #f8f9fa;">
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6; font-weight: 600;">library</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6;">Context only &mdash; research reports, no code changes</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6; text-align: center;"><span style="display: inline-block; background: #dfe6e9; color: #2d3436; padding: 1px 8px; border-radius: 3px; font-size: 12px; font-weight: 600;">Context</span></td>
-      </tr>
-    </tbody>
-  </table>
+  <p style="font-size: 17px; line-height: 1.8; color: #2d3436;">This gap was supposed to be filled by Execute mode. It never was. Out of <strong>876 production tickets</strong>, zero used Execute. The mode existed in the database, in the UI, in the CLI &mdash; but no one ever selected it, because it didn't do anything different from Build.</p>
 
-  <h3 id="design-principles" style="font-size: 18px; color: #2d3436; margin-top: 28px;">Design Principles</h3>
+  <div style="background: #fff3e0; border-left: 4px solid #f57c00; padding: 18px 22px; border-radius: 0 6px 6px 0; margin: 24px 0;">
+    <p style="margin: 0; font-size: 16px; color: #2d3436; font-weight: 500;">The gap is clear: Helix generates <em>code</em>, but it doesn't generate <em>operations</em>. Users want "find overdue invoices and flag them" as a living automation, not a script they maintain.</p>
+  </div>
 
-  <div style="display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0;">
-    <div style="flex: 1; min-width: 180px; background: #e3f2fd; border-top: 3px solid #0984e3; border-radius: 6px; padding: 14px;">
-      <p style="margin: 0; font-weight: 700; font-size: 14px; color: #0984e3;">Preview First</p>
-      <p style="margin: 6px 0 0 0; font-size: 13px;">Everything read-only is previewable. Effects show projections with explicit limitation callouts.</p>
+  <p style="font-size: 17px; line-height: 1.8; color: #2d3436;">Plays close this gap. A Play is an automation that Helix builds, previews, and runs &mdash; where the user describes the intent, reviews the plan, and approves the execution. The user stays in control without doing the heavy lifting.</p>
+
+  <p style="font-size: 13px; color: #636e72; margin-top: 20px;"><em>Source: Production database query, June 6, 2026 &mdash; 876 tickets total. Mode distribution: AUTO 296, RESEARCH 239, BUILD 194, FIX 144, PLAYBOOK_CHECK 3, EXECUTE 0.</em></p>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 2: WHAT IS A PLAY? -->
+  <!-- ============================================================ -->
+  <h2 id="what-is-a-play" style="font-size: 26px; color: #2d3436; margin-top: 56px; margin-bottom: 16px;">2. What Is a Play?</h2>
+
+  <p style="font-size: 17px; line-height: 1.8; color: #2d3436;">A Play is a composed, repeatable automation pipeline. It takes a user's intent &mdash; "reconcile vendor bills against purchase orders and flag mismatches" &mdash; and turns it into three connected steps that gather data, transform it, and act on it. Each step's output is checked before the next step receives it. The first two steps are fully safe to preview because they don't change anything. The third shows exactly what it <em>would</em> do before doing it.</p>
+
+  <p style="font-size: 17px; line-height: 1.8; color: #2d3436; font-weight: 500;">One sentence: describe intent, get a reviewable automation that runs as many times as you need.</p>
+
+  <!-- 2a: The 3-Step Pipeline -->
+  <h3 id="the-3-step-pipeline" style="font-size: 20px; color: #2d3436; margin-top: 40px;">2a. The 3-Step Pipeline</h3>
+
+  <p style="font-size: 16px; line-height: 1.8;">Every play follows the same three-step structure. Data flows left to right, and at each boundary a shape gate verifies the output before passing it forward:</p>
+
+  <!-- CSS Pipeline Flow Diagram -->
+  <div style="display: flex; align-items: center; justify-content: center; gap: 0; margin: 32px 0; flex-wrap: wrap;">
+    <!-- Map Box -->
+    <div style="background: #e3f2fd; border: 2px solid #1565c0; border-radius: 10px; padding: 20px 24px; text-align: center; min-width: 160px; flex: 1; max-width: 220px;">
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #1565c0; font-weight: 700; margin-bottom: 6px;">Step 1</div>
+      <div style="font-size: 20px; font-weight: 700; color: #1565c0;">Map</div>
+      <div style="font-size: 13px; color: #555; margin-top: 6px;">Gather data</div>
+      <div style="margin-top: 8px;"><span style="display: inline-block; background: #c8e6c9; color: #2e7d32; font-size: 11px; padding: 2px 8px; border-radius: 3px; font-weight: 600;">Read-only</span></div>
     </div>
-    <div style="flex: 1; min-width: 180px; background: #e8f5e9; border-top: 3px solid #00b894; border-radius: 6px; padding: 14px;">
-      <p style="margin: 0; font-weight: 700; font-size: 14px; color: #00b894;">Sandbox First</p>
-      <p style="margin: 6px 0 0 0; font-size: 13px;">Plays run in sandbox with canonical examples before production.</p>
+    <!-- Arrow 1 -->
+    <div style="display: flex; flex-direction: column; align-items: center; padding: 0 6px;">
+      <div style="font-size: 24px; color: #636e72; line-height: 1;">&rarr;</div>
+      <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: #e17055; font-weight: 700; margin-top: 2px;">Shape Gate</div>
     </div>
-    <div style="flex: 1; min-width: 180px; background: #fce4ec; border-top: 3px solid #e17055; border-radius: 6px; padding: 14px;">
-      <p style="margin: 0; font-weight: 700; font-size: 14px; color: #e17055;">Explicit Intent</p>
-      <p style="margin: 6px 0 0 0; font-size: 13px;">Effects never auto-execute. Human approval is the hard boundary.</p>
+    <!-- Reduce Box -->
+    <div style="background: #e8f5e9; border: 2px solid #2e7d32; border-radius: 10px; padding: 20px 24px; text-align: center; min-width: 160px; flex: 1; max-width: 220px;">
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #2e7d32; font-weight: 700; margin-bottom: 6px;">Step 2</div>
+      <div style="font-size: 20px; font-weight: 700; color: #2e7d32;">Reduce</div>
+      <div style="font-size: 13px; color: #555; margin-top: 6px;">Transform data</div>
+      <div style="margin-top: 8px;"><span style="display: inline-block; background: #c8e6c9; color: #2e7d32; font-size: 11px; padding: 2px 8px; border-radius: 3px; font-weight: 600;">Read-only</span></div>
     </div>
-    <div style="flex: 1; min-width: 180px; background: #e8eaf6; border-top: 3px solid #6c5ce7; border-radius: 6px; padding: 14px;">
-      <p style="margin: 0; font-weight: 700; font-size: 14px; color: #6c5ce7;">Log Everything</p>
-      <p style="margin: 6px 0 0 0; font-size: 13px;">Every step's inputs and outputs are captured. Full audit trail.</p>
+    <!-- Arrow 2 -->
+    <div style="display: flex; flex-direction: column; align-items: center; padding: 0 6px;">
+      <div style="font-size: 24px; color: #636e72; line-height: 1;">&rarr;</div>
+      <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: #e17055; font-weight: 700; margin-top: 2px;">Shape Gate</div>
+    </div>
+    <!-- Output Box -->
+    <div style="background: #fce4ec; border: 2px solid #c62828; border-radius: 10px; padding: 20px 24px; text-align: center; min-width: 160px; flex: 1; max-width: 220px;">
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #c62828; font-weight: 700; margin-bottom: 6px;">Step 3</div>
+      <div style="font-size: 20px; font-weight: 700; color: #c62828;">Output</div>
+      <div style="font-size: 13px; color: #555; margin-top: 6px;">Act on results</div>
+      <div style="margin-top: 8px;"><span style="display: inline-block; background: #ffcdd2; color: #c62828; font-size: 11px; padding: 2px 8px; border-radius: 3px; font-weight: 600;">Dry-run first</span></div>
     </div>
   </div>
 
-  <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 14px 18px; border-radius: 4px; margin: 20px 0;">
-    <p style="margin: 0; font-size: 14px;"><strong>RSH-702 Integration:</strong> This design builds on the <strong>RSH-702 Reversibility Tiers + Dry-Run Preview</strong> feasibility report (verdict: <span style="display: inline-block; background: #00b894; color: #fff; padding: 1px 8px; border-radius: 3px; font-weight: 600; font-size: 12px;">CONDITIONAL GO</span>). RSH-702's governance model, reversibility tiers, and dry-run mechanisms are integrated into L3's safety architecture. The four conditions for Go are satisfied by the governance envelope design.</p>
+  <p style="font-size: 16px; line-height: 1.8;"><strong>Map</strong> gathers data. It queries NetSuite and produces a structured result set. Nothing is changed. <strong>Reduce</strong> transforms that data &mdash; filtering, enriching, reshaping it into something actionable. Still nothing is changed. <strong>Output</strong> acts on the results: creating records, updating fields, sending messages. This is the only step with risk, and it shows exactly what it <em>would</em> do before doing it.</p>
+
+  <p style="font-size: 16px; line-height: 1.8;">The key insight: <strong>the agent does the heavy lifting; the user reviews and approves.</strong></p>
+
+  <!-- 2b: Shape Enforcement -->
+  <h3 id="shape-enforcement-the-trust-layer" style="font-size: 20px; color: #2d3436; margin-top: 40px;">2b. Shape Enforcement &mdash; The Trust Layer</h3>
+
+  <p style="font-size: 16px; line-height: 1.8;">Each step declares what its output looks like &mdash; a JSON schema that defines the exact structure of the data it will produce. After a step runs, its output is validated against that declaration. If the shape doesn't match, the pipeline stops and tells you exactly why.</p>
+
+  <div style="background: #f0f4ff; border: 1px solid #c5cae9; border-radius: 8px; padding: 20px 24px; margin: 24px 0;">
+    <p style="margin: 0 0 4px 0; font-size: 15px; font-weight: 700; color: #303f9f;">Enforce the shape, not the implementation.</p>
+    <p style="margin: 0; font-size: 14px; color: #555;">The agent is free to generate whatever query or logic it wants, as long as the result matches the declared contract. This gives flexibility without sacrificing predictability.</p>
   </div>
 
-  <!-- ================================================================ -->
-  <!-- SECTION 2: WHAT IS A PLAY -->
-  <!-- ================================================================ -->
-  <h2 id="what-is-a-play" style="font-size: 24px; color: #2d3436; border-bottom: 2px solid #0984e3; padding-bottom: 8px; margin-top: 48px;">2. What Is a Play?</h2>
-
-  <p>A <strong>Play</strong> is a composed sequence of steps that together perform a governed NetSuite operation. Each step has typed inputs and outputs. Steps chain together &mdash; map output feeds reduce input, reduce output feeds effect input. Every step's data is captured, measured, and auditable.</p>
-
-  <h3 id="the-map-reduce-effect-model" style="font-size: 18px; color: #2d3436; margin-top: 28px;">2.1 The Map / Reduce / Effect Model</h3>
-
-  <div style="display: flex; align-items: center; justify-content: center; gap: 0; margin: 24px 0; flex-wrap: wrap;">
-    <div style="background: #0984e3; color: #fff; border-radius: 8px; padding: 16px 20px; min-width: 200px; text-align: center;">
-      <div style="font-size: 20px; font-weight: 700; letter-spacing: 1px;">MAP</div>
-      <div style="font-size: 12px; margin-top: 6px; opacity: 0.9;">SuiteQL Queries</div>
-      <div style="font-size: 11px; margin-top: 4px; opacity: 0.7;">Read data from NetSuite</div>
-    </div>
-    <div style="font-size: 24px; color: #636e72; padding: 0 8px;">&rarr;</div>
-    <div style="background: #6c5ce7; color: #fff; border-radius: 8px; padding: 16px 20px; min-width: 200px; text-align: center;">
-      <div style="font-size: 20px; font-weight: 700; letter-spacing: 1px;">REDUCE</div>
-      <div style="font-size: 12px; margin-top: 6px; opacity: 0.9;">AI Agent Transforms</div>
-      <div style="font-size: 11px; margin-top: 4px; opacity: 0.7;">Transform &amp; enrich data</div>
-    </div>
-    <div style="font-size: 24px; color: #636e72; padding: 0 8px;">&rarr;</div>
-    <div style="background: #e17055; color: #fff; border-radius: 8px; padding: 16px 20px; min-width: 200px; text-align: center;">
-      <div style="font-size: 20px; font-weight: 700; letter-spacing: 1px;">EFFECT</div>
-      <div style="font-size: 12px; margin-top: 6px; opacity: 0.9;">Record Operations</div>
-      <div style="font-size: 11px; margin-top: 4px; opacity: 0.7;">CRUD, void, transform</div>
-    </div>
-  </div>
-
-  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;">
-    <thead>
-      <tr style="background: #2d3436; color: #fff;">
-        <th style="padding: 10px 14px; text-align: left; border: 1px solid #2d3436;">Step Type</th>
-        <th style="padding: 10px 14px; text-align: left; border: 1px solid #2d3436;">What It Does</th>
-        <th style="padding: 10px 14px; text-align: left; border: 1px solid #2d3436;">Input</th>
-        <th style="padding: 10px 14px; text-align: left; border: 1px solid #2d3436;">Output</th>
-        <th style="padding: 10px 14px; text-align: center; border: 1px solid #2d3436;">Side Effects?</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr style="background: #e3f2fd;">
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6; font-weight: 600; color: #0984e3;">MAP</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6;">Executes SuiteQL queries against NetSuite via ns-gm RESTlet</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6;">SuiteQL query + optional parameters</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6;">Row-set result data</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6; text-align: center;"><span style="color: #00b894; font-weight: 600;">None (read-only)</span></td>
-      </tr>
-      <tr style="background: #f3f0ff;">
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6; font-weight: 600; color: #6c5ce7;">REDUCE</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6;">AI agent prompts, read-only scripts, or further agent calls to transform data</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6;">Prior step outputs + prompt template</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6;">Transformed/enriched data</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6; text-align: center;"><span style="color: #00b894; font-weight: 600;">None (read-only)</span></td>
-      </tr>
-      <tr style="background: #fff3e0;">
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6; font-weight: 600; color: #e17055;">EFFECT</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6;">CRUD on records, transaction operations, external API calls, emails</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6;">Prior step outputs + field mappings</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6;">Operation result + after-image</td>
-        <td style="padding: 8px 14px; border: 1px solid #dee2e6; text-align: center;"><span style="color: #d63031; font-weight: 600;">Yes (writes)</span></td>
-      </tr>
-    </tbody>
-  </table>
-
-  <h3 id="composability" style="font-size: 18px; color: #2d3436; margin-top: 28px;">2.2 Composability</h3>
-
-  <p>Steps compose by reference. Each step declares which prior step outputs it consumes via <code>inputStepIds</code>. This creates a directed acyclic graph (DAG) of data flow:</p>
-
-  <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin: 16px 0; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.8;">
-    <div><span style="color: #0984e3; font-weight: 700;">step-1 [MAP]</span> "Find open sales orders" &rarr; <span style="color: #636e72;">outputs 47 rows</span></div>
-    <div style="padding-left: 20px;">&darr;</div>
-    <div><span style="color: #6c5ce7; font-weight: 700;">step-2 [REDUCE]</span> "Compute invoice amounts" &larr; <span style="color: #636e72;">consumes step-1</span> &rarr; <span style="color: #636e72;">outputs 47 invoice specs</span></div>
-    <div style="padding-left: 20px;">&darr;</div>
-    <div><span style="color: #e17055; font-weight: 700;">step-3 [EFFECT]</span> "Create invoices" &larr; <span style="color: #636e72;">consumes step-2</span> &rarr; <span style="color: #636e72;">creates 47 invoices</span></div>
-  </div>
-
-  <h3 id="play-vs-execute" style="font-size: 18px; color: #2d3436; margin-top: 28px;">2.3 Play vs. EXECUTE &mdash; Why This Is Different</h3>
-
-  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;">
-    <thead>
-      <tr style="background: #2d3436; color: #fff;">
-        <th style="padding: 10px 14px; text-align: left; border: 1px solid #2d3436;">Aspect</th>
-        <th style="padding: 10px 14px; text-align: left; border: 1px solid #2d3436;">EXECUTE (dead)</th>
-        <th style="padding: 10px 14px; text-align: left; border: 1px solid #2d3436;">PLAY (new)</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr style="background: #fff;"><td style="padding: 8px 14px; border: 1px solid #dee2e6; font-weight: 600;">What it does</td><td style="padding: 8px 14px; border: 1px solid #dee2e6;">Deploys SuiteScript code via SDF</td><td style="padding: 8px 14px; border: 1px solid #dee2e6;">Executes composed record-level operations via NS-GM RESTlet</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 8px 14px; border: 1px solid #dee2e6; font-weight: 600;">Preview</td><td style="padding: 8px 14px; border: 1px solid #dee2e6;">None</td><td style="padding: 8px 14px; border: 1px solid #dee2e6;">Full preview of MAP/REDUCE; in-memory projection of effects</td></tr>
-      <tr style="background: #fff;"><td style="padding: 8px 14px; border: 1px solid #dee2e6; font-weight: 600;">Sandbox testing</td><td style="padding: 8px 14px; border: 1px solid #dee2e6;">SDF deploy to sandbox</td><td style="padding: 8px 14px; border: 1px solid #dee2e6;">Direct execution with canonical examples</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 8px 14px; border: 1px solid #dee2e6; font-weight: 600;">Audit trail</td><td style="padding: 8px 14px; border: 1px solid #dee2e6;">SDF deploy log only</td><td style="padding: 8px 14px; border: 1px solid #dee2e6;">Ordered forward log with before/after images per step</td></tr>
-      <tr style="background: #fff;"><td style="padding: 8px 14px; border: 1px solid #dee2e6; font-weight: 600;">Composition</td><td style="padding: 8px 14px; border: 1px solid #dee2e6;">Monolithic script</td><td style="padding: 8px 14px; border: 1px solid #dee2e6;">Composable MAP/REDUCE/EFFECT chain with measurable I/O</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 8px 14px; border: 1px solid #dee2e6; font-weight: 600;">Production usage</td><td style="padding: 8px 14px; border: 1px solid #dee2e6;"><strong>0 of 854 tickets</strong></td><td style="padding: 8px 14px; border: 1px solid #dee2e6;">&mdash; (new)</td></tr>
-    </tbody>
-  </table>
-
-  <!-- ================================================================ -->
-  <!-- SECTION 3: L1 SPECIFICATION -->
-  <!-- ================================================================ -->
-  <h2 id="l1-play-mode-foundation" style="font-size: 24px; color: #2d3436; border-bottom: 2px solid #0984e3; padding-bottom: 8px; margin-top: 48px;">3. <span style="display: inline-block; background: #0984e3; color: #fff; padding: 2px 10px; border-radius: 4px; font-weight: 600; font-size: 18px;">L1</span> Play Mode Foundation</h2>
-
-  <div style="background: #e3f2fd; border-left: 4px solid #0984e3; padding: 14px 18px; border-radius: 4px; margin: 16px 0;">
-    <p style="margin: 0; font-size: 14px;"><strong>Scope:</strong> PLAY as first-class TicketMode. NetSuite-only restriction. PLY- prefix. EXECUTE retirement from all user-facing surfaces. No new data models, no new UI routes &mdash; pure plumbing.</p>
-  </div>
-
-  <h3 id="l1-server-changes" style="font-size: 18px; color: #2d3436; margin-top: 28px;">3.1 Server Changes (helix-global-server)</h3>
-
-  <h4 id="l1-prisma-migration" style="font-size: 16px; color: #2d3436; margin-top: 20px;">Prisma Migration</h4>
-
-  <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 16px 20px; margin: 12px 0;">
-    <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 600; color: #636e72;">Migration: 20260606_add_play_mode</p>
-    <pre style="margin: 0; font-size: 13px; background: #2d3436; color: #dfe6e9; padding: 12px 16px; border-radius: 4px; overflow-x: auto;"><code>-- Safe, non-blocking, metadata-only DDL (PG14+)
-ALTER TYPE "TicketMode" ADD VALUE 'PLAY';</code></pre>
-    <p style="margin: 8px 0 0 0; font-size: 12px; color: #636e72;">No data migration needed. No table lock. Sub-second execution.</p>
-  </div>
-
-  <p style="font-size: 14px;"><strong>Prisma schema:</strong> Add <code>PLAY</code> to the <code>TicketMode</code> enum. Keep <code>EXECUTE</code> for DB parity (PostgreSQL does not support <code>ALTER TYPE DROP VALUE</code>).</p>
-
-  <h4 id="l1-server-file-changes" style="font-size: 16px; color: #2d3436; margin-top: 20px;">Per-File Change Specification</h4>
-
-  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;">
-    <thead>
-      <tr style="background: #0984e3; color: #fff;">
-        <th style="padding: 8px 12px; text-align: left; border: 1px solid #0984e3;">File</th>
-        <th style="padding: 8px 12px; text-align: left; border: 1px solid #0984e3;">Before</th>
-        <th style="padding: 8px 12px; text-align: left; border: 1px solid #0984e3;">After</th>
-        <th style="padding: 8px 12px; text-align: left; border: 1px solid #0984e3;">Notes</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>prisma/schema.prisma</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">enum: AUTO, BUILD, FIX, RESEARCH, EXECUTE</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">enum: ..., EXECUTE, PLAY</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">EXECUTE stays for DB parity</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>src/lib/platform-config.ts</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">NETSUITE allowedModes includes EXECUTE</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">NETSUITE allowedModes includes PLAY, not EXECUTE</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">GENERAL/SMB: no PLAY</td></tr>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>src/services/ticket-id-utils.ts</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">EXECUTE: 'EXE' / 'execute'</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">+ PLAY: 'PLY' / 'play'</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">EXECUTE entries kept (Record requires all keys)</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>src/controllers/ticket-controller.ts</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">"EXECUTE mode is only..."</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">"This mode is only available for NetSuite organizations."</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Mode-agnostic; unify update endpoint</td></tr>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>src/mcp/tools/tickets.ts</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">z.enum includes EXECUTE (x2)</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">z.enum includes PLAY (x2)</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Both create and update schemas</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>src/services/goal-schemas.ts</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">z.enum includes EXECUTE</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">z.enum includes PLAY</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">&mdash;</td></tr>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>src/helix-workflow/orchestrator.ts</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">isResearchMode at 3 deploy guards</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">+ isPlayMode; extend 3 guards</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Lines ~1868, ~2604, ~2853</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>src/services/ticket-mode-classifier.ts</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">ConcreteMode = BUILD|FIX|RESEARCH</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;"><em>No changes needed</em></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">PLAY excluded by same mechanism</td></tr>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;">Tests (4 files)</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">EXECUTE assertions</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">PLAY assertions</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">platform-config, ticket-id-utils, mode-classifier, api-platform</td></tr>
-    </tbody>
-  </table>
-
-  <h3 id="l1-client-changes" style="font-size: 18px; color: #2d3436; margin-top: 28px;">3.2 Client Changes (helix-global-client &mdash; ~12 files)</h3>
-
-  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;">
-    <thead><tr style="background: #0984e3; color: #fff;"><th style="padding: 8px 12px; text-align: left; border: 1px solid #0984e3;">File</th><th style="padding: 8px 12px; text-align: left; border: 1px solid #0984e3;">Before</th><th style="padding: 8px 12px; text-align: left; border: 1px solid #0984e3;">After</th></tr></thead>
-    <tbody>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>src/types/api.ts</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">EXECUTE: "EXECUTE"</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">PLAY: "PLAY"</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>src/components/mode-icons.tsx</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">ExecuteIcon + case 'EXECUTE'</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">PlayIcon + case 'PLAY' (same SVG)</td></tr>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>src/lib/platform.ts</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">executeMode; EXECUTE in availableModes</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">playMode; PLAY in availableModes</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>src/routes/create-ticket.tsx</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">EXECUTE icon + "Execute" label</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">PLAY icon + "Play" label</td></tr>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>src/routes/ticket-detail.tsx</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">option value="EXECUTE"</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">option value="PLAY"</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>src/lib/format.ts</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">EXECUTE: "Execute"</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">PLAY: "Play"</td></tr>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>ticket-filter-bar.tsx</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">EXECUTE filter</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">PLAY filter</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>hashtag-ticket-picker.tsx</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">EXECUTE: bg-green-500</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">PLAY: bg-green-500</td></tr>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>reference-chip.tsx</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">EXECUTE: border-l-green-500</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">PLAY: border-l-green-500</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>helix-cli-docs-content.ts</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">EXECUTE in mode list</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">PLAY in mode list</td></tr>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>platform.test.ts</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">executeMode assertions</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">playMode assertions</td></tr>
-    </tbody>
-  </table>
-
-  <h3 id="l1-cli-changes" style="font-size: 18px; color: #2d3436; margin-top: 28px;">3.3 CLI Changes (helix-cli &mdash; 2 files)</h3>
-
-  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;">
-    <thead><tr style="background: #0984e3; color: #fff;"><th style="padding: 8px 12px; text-align: left; border: 1px solid #0984e3;">File</th><th style="padding: 8px 12px; text-align: left; border: 1px solid #0984e3;">Before</th><th style="padding: 8px 12px; text-align: left; border: 1px solid #0984e3;">After</th></tr></thead>
-    <tbody>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>src/tickets/create.ts</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">VALID_MODES includes EXECUTE</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">VALID_MODES includes PLAY</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; font-weight: 600;"><code>src/docs/cli-content.ts</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Mode table includes EXECUTE</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Mode table includes PLAY</td></tr>
-    </tbody>
-  </table>
-
-  <h3 id="l1-success-criteria" style="font-size: 18px; color: #2d3436; margin-top: 28px;">3.4 L1 Success Criteria</h3>
-
-  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;">
-    <thead><tr style="background: #0984e3; color: #fff;"><th style="padding: 8px 12px; text-align: center; border: 1px solid #0984e3; width: 5%;">#</th><th style="padding: 8px 12px; text-align: left; border: 1px solid #0984e3;">Criterion</th><th style="padding: 8px 12px; text-align: left; border: 1px solid #0984e3;">How to Verify</th></tr></thead>
-    <tbody>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; text-align: center; font-weight: 600;">1</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">User creates PLAY ticket via web UI, CLI, and MCP</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">All 3 surfaces accept <code>mode: "PLAY"</code></td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; text-align: center; font-weight: 600;">2</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">PLAY restricted to NetSuite orgs</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Non-NetSuite org gets clear error</td></tr>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; text-align: center; font-weight: 600;">3</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">PLAY tickets show correct icon and "Play" label</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">PlayIcon renders play-triangle SVG</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; text-align: center; font-weight: 600;">4</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Mode classifier never auto-assigns PLAY</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">ConcreteMode and VALID_MODES exclude PLAY</td></tr>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; text-align: center; font-weight: 600;">5</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">PLY-prefixed short ID</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;"><code>formatShortId("PLAY", 42)</code> returns "PLY-42"</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; text-align: center; font-weight: 600;">6</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">EXECUTE removed from all user-facing surfaces</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">No EXECUTE in picker, filter, MCP, CLI</td></tr>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6; text-align: center; font-weight: 600;">7</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">All quality gates pass</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">tsc, eslint, vitest; tsc -b; tsc --noEmit</td></tr>
-    </tbody>
-  </table>
-
-  <!-- Sections 4-9 continue below with L2, L3, Cross-cutting, Governance, Roadmap, Evidence -->
-  <!-- For brevity, key sections are summarized in the implementation-actual.md artifact -->
-
-  <!-- ================================================================ -->
-  <!-- SECTION 4: L2 -->
-  <!-- ================================================================ -->
-  <h2 id="l2-compose-and-preview" style="font-size: 24px; color: #2d3436; border-bottom: 2px solid #00b894; padding-bottom: 8px; margin-top: 48px;">4. <span style="display: inline-block; background: #00b894; color: #fff; padding: 2px 10px; border-radius: 4px; font-weight: 600; font-size: 18px;">L2</span> Compose &amp; Preview</h2>
-
-  <div style="background: #e8f5e9; border-left: 4px solid #00b894; padding: 14px 18px; border-radius: 4px; margin: 16px 0;">
-    <p style="margin: 0; font-size: 14px;"><strong>Scope:</strong> Define play steps. Run read-only MAP/REDUCE in sandbox via ns-gm. Preview step-by-step outputs. Effects are declared but NOT executed in L2. SDF deploy phase skipped for PLAY tickets.</p>
-  </div>
-
-  <h3 id="l2-data-model" style="font-size: 18px; color: #2d3436; margin-top: 28px;">4.1 Data Model &mdash; PlayDefinition (JSONB on Ticket)</h3>
-
-  <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 16px 20px; margin: 12px 0;">
-    <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 600; color: #636e72;">Migration: 20260607_add_play_definition</p>
-    <pre style="margin: 0; font-size: 13px; background: #2d3436; color: #dfe6e9; padding: 12px 16px; border-radius: 4px; overflow-x: auto;"><code>ALTER TABLE "Ticket" ADD COLUMN "playDefinition" JSONB;</code></pre>
-  </div>
-
-  <h4 id="l2-zod-schemas" style="font-size: 16px; color: #2d3436; margin-top: 20px;">Zod Schema Definition</h4>
-
-  <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 16px 20px; margin: 12px 0;">
-    <pre style="margin: 0; font-size: 12px; background: #2d3436; color: #dfe6e9; padding: 12px 16px; border-radius: 4px; overflow-x: auto; line-height: 1.5;"><code>PlayDefinition {
-  version: "1"                      // schema version for future migration
-  steps: PlayStep[]                 // ordered list of play steps
-}
-
-PlayStep {
-  id: string                        // stable step ID (e.g., "step-1")
-  type: "MAP" | "REDUCE" | "EFFECT"
-  label: string                     // human-readable name
-  config: MapConfig | ReduceConfig | EffectConfig
-}
-
-MapConfig {
-  suiteql: string                   // SuiteQL query
-  parameters?: Record&lt;string, string&gt;
-}
-
-ReduceConfig {
-  prompt: string                    // agent prompt template
-  inputStepIds: string[]            // prior step outputs to consume
-}
-
-EffectConfig {
-  operationType: "CREATE" | "UPDATE" | "DELETE" | "VOID" | "TRANSFORM"
-  recordType: string                // e.g., "invoice", "salesorder"
-  fieldMappings?: Record&lt;string, string&gt;
-  inputStepIds: string[]
-}</code></pre>
-  </div>
-
-  <h3 id="l2-preview-api" style="font-size: 18px; color: #2d3436; margin-top: 28px;">4.2 Preview API</h3>
-
-  <div style="background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 6px; padding: 16px 20px; margin: 12px 0;">
-    <p style="margin: 0; font-size: 14px; font-weight: 600;"><code>POST /api/tickets/:id/play/preview</code></p>
-    <p style="margin: 8px 0 0 0; font-size: 13px;">MAP steps execute via ns-gm <code>runSuiteQL</code> against SANDBOX. REDUCE steps run as Claude agent prompts with prior outputs as context. EFFECT steps return declarations only.</p>
-  </div>
-
-  <h3 id="l2-new-files" style="font-size: 18px; color: #2d3436; margin-top: 28px;">4.3 New Files</h3>
-
-  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;">
-    <thead><tr style="background: #00b894; color: #fff;"><th style="padding: 8px 12px; text-align: left; border: 1px solid #00b894;">Repo</th><th style="padding: 8px 12px; text-align: left; border: 1px solid #00b894;">New File</th><th style="padding: 8px 12px; text-align: left; border: 1px solid #00b894;">Purpose</th></tr></thead>
-    <tbody>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Server</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;"><code>play-definition-schema.ts</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Zod schemas for PlayDefinition</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Server</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;"><code>play-preview-service.ts</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Sandbox execution orchestrator</td></tr>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Server</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;"><code>play-controller.ts</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Preview endpoint</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Client</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;"><code>play/play-preview-section.tsx</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Preview panel in ticket-detail</td></tr>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Client</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;"><code>play/play-step-editor.tsx</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Structured step editor</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Client</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;"><code>api/play-api.ts</code></td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">usePlayPreview hook</td></tr>
-    </tbody>
-  </table>
-
-  <!-- ================================================================ -->
-  <!-- SECTION 5: L3 -->
-  <!-- ================================================================ -->
-  <h2 id="l3-run-and-monitor" style="font-size: 24px; color: #2d3436; border-bottom: 2px solid #e17055; padding-bottom: 8px; margin-top: 48px;">5. <span style="display: inline-block; background: #e17055; color: #fff; padding: 2px 10px; border-radius: 4px; font-weight: 600; font-size: 18px;">L3</span> Run &amp; Monitor</h2>
-
-  <div style="background: #fff3e0; border-left: 4px solid #e17055; padding: 14px 18px; border-radius: 4px; margin: 16px 0;">
-    <p style="margin: 0; font-size: 14px;"><strong>Scope:</strong> Execute effects with governance envelope. In-memory projection preview for effects. Before/after image capture. Human approval. Real-time SSE monitoring. Full ordered audit trail.</p>
-  </div>
-
-  <h3 id="l3-execution-model" style="font-size: 18px; color: #2d3436; margin-top: 28px;">5.1 New Prisma Models</h3>
-
-  <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 16px 20px; margin: 12px 0;">
-    <pre style="margin: 0; font-size: 12px; background: #2d3436; color: #dfe6e9; padding: 12px 16px; border-radius: 4px; overflow-x: auto; line-height: 1.5;"><code>PlayExecution {
-  id, ticketId, organizationId
-  status: PENDING | RUNNING | SUCCEEDED | FAILED | CANCELLED
-  startedAt, finishedAt, approvedByUserId, environment
-}
-
-PlayStepResult {
-  id, playExecutionId, stepId, stepType
-  status, position, startedAt, finishedAt
-  input (Json), output (Json)
-  beforeImage (Json?), afterImage (Json?)   // effects only
-  error (String?)
-}</code></pre>
-  </div>
-
-  <h3 id="l3-governance-envelope" style="font-size: 18px; color: #2d3436; margin-top: 28px;">5.2 Governance Envelope</h3>
-
-  <div style="display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0;">
-    <div style="flex: 1; min-width: 200px; background: #e8f5e9; border-top: 3px solid #4caf50; border-radius: 6px; padding: 14px;">
-      <p style="margin: 0; font-weight: 700; font-size: 14px; color: #2e7d32;">1. Before-Image</p>
-      <p style="margin: 6px 0 0 0; font-size: 13px;"><code>record.load({type, id})</code> captures state before mutation.</p>
-    </div>
-    <div style="flex: 1; min-width: 200px; background: #e3f2fd; border-top: 3px solid #2196f3; border-radius: 6px; padding: 14px;">
-      <p style="margin: 0; font-weight: 700; font-size: 14px; color: #1565c0;">2. Execute</p>
-      <p style="margin: 6px 0 0 0; font-size: 13px;">Operation via ns-gm, tagged with playExecutionId + stepId.</p>
-    </div>
-    <div style="flex: 1; min-width: 200px; background: #fce4ec; border-top: 3px solid #e91e63; border-radius: 6px; padding: 14px;">
-      <p style="margin: 0; font-weight: 700; font-size: 14px; color: #c62828;">3. After-Image</p>
-      <p style="margin: 6px 0 0 0; font-size: 13px;">Result captured in afterImage. Full audit trail.</p>
-    </div>
-  </div>
-
-  <h3 id="l3-effect-preview" style="font-size: 18px; color: #2d3436; margin-top: 28px;">5.3 Effect Preview</h3>
-
-  <p>In-memory projection via <code>record.create({type, isDynamic: true})</code>. Shows field values and sourced fields but <strong>cannot</strong> show taxes, GL impact, approval routing, or user-event script effects (computed only on <code>record.save()</code>).</p>
-
-  <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 14px 18px; border-radius: 4px; margin: 16px 0;">
-    <p style="margin: 0; font-size: 14px;"><strong>Required UI callout:</strong> "Tax, GL impact, and user-event script effects are computed only on save and not shown in preview."</p>
-  </div>
-
-  <h3 id="l3-sse-monitoring" style="font-size: 18px; color: #2d3436; margin-top: 28px;">5.4 SSE Monitoring</h3>
-
-  <p><code>GET /api/tickets/:id/play/executions/:execId/stream</code> &mdash; Server-Sent Events pushing step status updates. Client uses React 19 patterns: <code>useTransition</code>, <code>useDeferredValue</code>, stable callback refs.</p>
-
-  <!-- ================================================================ -->
-  <!-- SECTION 6: CROSS-CUTTING -->
-  <!-- ================================================================ -->
-  <h2 id="cross-cutting-concerns" style="font-size: 24px; color: #2d3436; border-bottom: 2px solid #0984e3; padding-bottom: 8px; margin-top: 48px;">6. Cross-Cutting Concerns</h2>
-
-  <h3 id="migration-strategy" style="font-size: 18px; color: #2d3436; margin-top: 28px;">6.1 Migration Strategy</h3>
-
-  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;">
-    <thead><tr style="background: #2d3436; color: #fff;"><th style="padding: 8px 14px; text-align: left; border: 1px solid #2d3436;">Level</th><th style="padding: 8px 14px; text-align: left; border: 1px solid #2d3436;">Migration</th><th style="padding: 8px 14px; text-align: left; border: 1px solid #2d3436;">Risk</th></tr></thead>
-    <tbody>
-      <tr style="background: #e3f2fd;"><td style="padding: 8px 14px; border: 1px solid #dee2e6;"><span style="display: inline-block; background: #0984e3; color: #fff; padding: 1px 8px; border-radius: 3px; font-weight: 600; font-size: 12px;">L1</span></td><td style="padding: 8px 14px; border: 1px solid #dee2e6;"><code>ALTER TYPE ADD VALUE 'PLAY'</code></td><td style="padding: 8px 14px; border: 1px solid #dee2e6; color: #00b894;">None &mdash; metadata-only</td></tr>
-      <tr style="background: #e8f5e9;"><td style="padding: 8px 14px; border: 1px solid #dee2e6;"><span style="display: inline-block; background: #00b894; color: #fff; padding: 1px 8px; border-radius: 3px; font-weight: 600; font-size: 12px;">L2</span></td><td style="padding: 8px 14px; border: 1px solid #dee2e6;"><code>ALTER TABLE ADD COLUMN playDefinition JSONB</code></td><td style="padding: 8px 14px; border: 1px solid #dee2e6; color: #00b894;">None &mdash; nullable column</td></tr>
-      <tr style="background: #fff3e0;"><td style="padding: 8px 14px; border: 1px solid #dee2e6;"><span style="display: inline-block; background: #e17055; color: #fff; padding: 1px 8px; border-radius: 3px; font-weight: 600; font-size: 12px;">L3</span></td><td style="padding: 8px 14px; border: 1px solid #dee2e6;"><code>CREATE TABLE</code> PlayExecution + PlayStepResult</td><td style="padding: 8px 14px; border: 1px solid #dee2e6; color: #00b894;">None &mdash; new tables</td></tr>
-    </tbody>
-  </table>
-
-  <h3 id="execute-retention" style="font-size: 18px; color: #2d3436; margin-top: 28px;">6.2 EXECUTE Retention</h3>
-  <p>Kept in Postgres enum and <code>Record&lt;TicketMode&gt;</code> maps (TypeScript requires exhaustive keys). Removed from all application surfaces: allowedModes, z.enum, MCP tools, UI, CLI, docs.</p>
-
-  <h3 id="deploy-ordering" style="font-size: 18px; color: #2d3436; margin-top: 28px;">6.3 Deploy Ordering</h3>
-  <p><strong>L1:</strong> Server &rarr; CLI &rarr; Client. <strong>L2/L3:</strong> Server &rarr; Client. Server always first.</p>
-
-  <h3 id="credential-routing" style="font-size: 18px; color: #2d3436; margin-top: 28px;">6.4 Credential Routing</h3>
-  <p>Existing <code>credentials.ts</code> routes scout/diagnosis to PRODUCTION, else SANDBOX. Correct for L2. L3 adds <code>playEnvironment</code> override for production execution.</p>
-
-  <h3 id="deferred-items" style="font-size: 18px; color: #2d3436; margin-top: 28px;">6.5 Explicitly Deferred</h3>
-  <ul style="font-size: 14px;">
-    <li>Rollback engine + inverse library (RSH-702 Sec. 3)</li>
-    <li>Idempotency keys (RSH-702 Sec. 6)</li>
-    <li>Concurrency/drift detection (RSH-702 Sec. 5)</li>
-    <li>Triggered automation / Rung 2 (RSH-702 Sec. 9)</li>
-    <li>Tier-2 promotion flywheel (RSH-702 Sec. 5.4)</li>
-    <li>Cross-account play templates</li>
-    <li>CLI play subcommands (L2/L3)</li>
+  <p style="font-size: 16px; line-height: 1.8;">Why this matters:</p>
+  <ul style="font-size: 16px; line-height: 1.8; padding-left: 24px;">
+    <li><strong>Composability</strong> &mdash; steps chain reliably because outputs are guaranteed to match the next step's expected input</li>
+    <li><strong>Monitoring</strong> &mdash; you know exactly what to measure at each boundary</li>
+    <li><strong>Debugging</strong> &mdash; when something goes wrong, you can see precisely where and why the data diverged from the expected shape</li>
+    <li><strong>Agent accountability</strong> &mdash; the agent is evaluated not just on "did it run" but "did it produce the right shape"</li>
   </ul>
 
-  <!-- ================================================================ -->
-  <!-- SECTION 7: GOVERNANCE -->
-  <!-- ================================================================ -->
-  <h2 id="governance-and-safety-architecture" style="font-size: 24px; color: #2d3436; border-bottom: 2px solid #6c5ce7; padding-bottom: 8px; margin-top: 48px;">7. Governance &amp; Safety Architecture</h2>
+  <!-- 2c: Created Once, Run Many Times -->
+  <h3 id="created-once-run-many-times" style="font-size: 20px; color: #2d3436; margin-top: 40px;">2c. Created Once, Run Many Times</h3>
 
-  <div style="background: #e8eaf6; border-left: 4px solid #6c5ce7; padding: 14px 18px; border-radius: 4px; margin: 16px 0;">
-    <p style="margin: 0; font-size: 14px;">Integrates <strong>RSH-702</strong> findings (verdict: <span style="display: inline-block; background: #00b894; color: #fff; padding: 1px 6px; border-radius: 3px; font-weight: 600; font-size: 12px;">CONDITIONAL GO</span>).</p>
-  </div>
+  <p style="font-size: 16px; line-height: 1.8;">A play has two distinct moments in its life:</p>
 
-  <h3 id="ns-gm-chokepoint-model" style="font-size: 18px; color: #2d3436; margin-top: 28px;">7.1 Containment Model</h3>
-
-  <div style="display: flex; gap: 16px; flex-wrap: wrap; margin: 16px 0;">
-    <div style="flex: 1; min-width: 200px; background: #e8f5e9; border: 2px solid #4caf50; border-radius: 6px; padding: 14px;">
-      <h4 style="margin: 0 0 8px 0; color: #2e7d32; font-size: 14px;">CONTAINED</h4>
-      <ul style="margin: 0; padding-left: 16px; font-size: 13px;">
-        <li>Record CRUD (N/record)</li>
-        <li>Transaction ops (N/transaction)</li>
-        <li>Search/query (N/search, N/query)</li>
-        <li>File ops, Email, HTTP calls</li>
-      </ul>
+  <div style="display: flex; gap: 20px; margin: 24px 0; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 260px; background: #e8eaf6; border-radius: 8px; padding: 20px 24px;">
+      <div style="font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: #3949ab; font-weight: 700; margin-bottom: 8px;">Design Time</div>
+      <p style="margin: 0; font-size: 15px; color: #2d3436;">The user describes their intent in a Helix ticket. Helix generates the three parts &mdash; the prompts with sample queries, the enforced output shapes, and the effects script. Everything is validated in sandbox before the play is considered ready.</p>
+      <p style="margin: 10px 0 0 0; font-size: 13px; color: #636e72; font-style: italic;">One-time. The user describes <em>what</em>. Helix figures out <em>how</em>.</p>
     </div>
-    <div style="flex: 1; min-width: 200px; background: #ffebee; border: 2px solid #f44336; border-radius: 6px; padding: 14px;">
-      <h4 style="margin: 0 0 8px 0; color: #c62828; font-size: 14px;">NOT CONTAINED (Structural Leak)</h4>
-      <p style="margin: 0; font-size: 13px;">10 SDF-deployed SuiteScript types running autonomously on internal triggers. Accepted, documented boundary.</p>
+    <div style="flex: 1; min-width: 260px; background: #e8f5e9; border-radius: 8px; padding: 20px 24px;">
+      <div style="font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: #2e7d32; font-weight: 700; margin-bottom: 8px;">Run Time</div>
+      <p style="margin: 0; font-size: 15px; color: #2d3436;">The play runs against fresh data. Map queries, Reduce transforms, Output acts. Each run produces a full audit trail &mdash; what was queried, what was transformed, what was done. Same logic, new data, every time.</p>
+      <p style="margin: 10px 0 0 0; font-size: 13px; color: #636e72; font-style: italic;">Many times. Same play, fresh data, full audit.</p>
     </div>
   </div>
 
-  <h3 id="three-reversibility-tiers" style="font-size: 18px; color: #2d3436; margin-top: 28px;">7.2 Three Reversibility Tiers</h3>
+  <p style="font-size: 16px; line-height: 1.8;">This separation is what makes plays fundamentally different from code generation. A Build ticket produces a script you deploy and maintain. A Play ticket produces an automation that Helix runs and monitors for you.</p>
 
-  <div style="display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0;">
-    <div style="flex: 1; min-width: 160px; text-align: center; border-radius: 6px; padding: 14px; background: #e8f5e9; border: 2px solid #00b894;">
-      <div style="font-size: 18px; font-weight: 700; color: #00b894;">Tier 1</div>
-      <div style="font-size: 12px; font-weight: 600; color: #2e7d32;">Atomic Inverse</div>
-      <div style="font-size: 11px; margin-top: 4px; color: #555;">Known action&harr;inverse pair. 8 pairs identified.</div>
-    </div>
-    <div style="flex: 1; min-width: 160px; text-align: center; border-radius: 6px; padding: 14px; background: #fff8e1; border: 2px solid #fdcb6e;">
-      <div style="font-size: 18px; font-weight: 700; color: #f39c12;">Tier 2</div>
-      <div style="font-size: 12px; font-weight: 600; color: #e67e22;">Derived Inverse</div>
-      <div style="font-size: 11px; margin-top: 4px; color: #555;">Before-image + compensating recipe. 2 pairs identified.</div>
-    </div>
-    <div style="flex: 1; min-width: 160px; text-align: center; border-radius: 6px; padding: 14px; background: #ffebee; border: 2px solid #d63031;">
-      <div style="font-size: 18px; font-weight: 700; color: #d63031;">Tier 3</div>
-      <div style="font-size: 12px; font-weight: 600; color: #c62828;">No Inverse</div>
-      <div style="font-size: 11px; margin-top: 4px; color: #555;">Shipped goods, sent emails. 2 pairs. Human approval required.</div>
-    </div>
-  </div>
+  <!-- 2d: Agent-Generated First -->
+  <h3 id="agent-generated-first" style="font-size: 20px; color: #2d3436; margin-top: 40px;">2d. Agent-Generated First</h3>
 
-  <h3 id="action-inverse-pairs" style="font-size: 18px; color: #2d3436; margin-top: 28px;">7.3 The 12 Action-Inverse Pairs (from RSH-702)</h3>
+  <p style="font-size: 16px; line-height: 1.8;">Map and Reduce are agent-generated. The agent writes the queries and the transformation logic based on a prompt that includes a sample &mdash; essentially few-shot prompting applied to automation. The sample grounds the agent, showing it what a good result looks like.</p>
 
-  <div style="overflow-x: auto;">
-    <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 12px;">
-      <thead><tr style="background: #2d3436; color: #fff;"><th style="padding: 6px 8px; border: 1px solid #2d3436;">#</th><th style="padding: 6px 8px; border: 1px solid #2d3436;">Action</th><th style="padding: 6px 8px; border: 1px solid #2d3436;">Record Type</th><th style="padding: 6px 8px; border: 1px solid #2d3436;">Inverse</th><th style="padding: 6px 8px; text-align: center; border: 1px solid #2d3436;">Tier</th></tr></thead>
-      <tbody>
-        <tr style="background: #fff;"><td style="padding: 4px 8px; border: 1px solid #dee2e6;">1</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Create Sales Order</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Sales Order</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;"><code>transaction.void()</code></td><td style="padding: 4px 8px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #00b894; color: #fff; padding: 1px 6px; border-radius: 3px; font-weight: 600;">1</span></td></tr>
-        <tr style="background: #f8f9fa;"><td style="padding: 4px 8px; border: 1px solid #dee2e6;">2</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Post Invoice</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Invoice</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;"><code>transaction.void()</code></td><td style="padding: 4px 8px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #00b894; color: #fff; padding: 1px 6px; border-radius: 3px; font-weight: 600;">1</span></td></tr>
-        <tr style="background: #fff;"><td style="padding: 4px 8px; border: 1px solid #dee2e6;">3</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Post Vendor Bill</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Vendor Bill</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;"><code>transaction.void()</code></td><td style="padding: 4px 8px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #00b894; color: #fff; padding: 1px 6px; border-radius: 3px; font-weight: 600;">1</span></td></tr>
-        <tr style="background: #f8f9fa;"><td style="padding: 4px 8px; border: 1px solid #dee2e6;">4</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Create Credit Memo</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Credit Memo</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;"><code>transaction.void()</code></td><td style="padding: 4px 8px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #00b894; color: #fff; padding: 1px 6px; border-radius: 3px; font-weight: 600;">1</span></td></tr>
-        <tr style="background: #fff;"><td style="padding: 4px 8px; border: 1px solid #dee2e6;">5</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Create Journal Entry</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Journal Entry</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;"><code>transaction.void()</code></td><td style="padding: 4px 8px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #00b894; color: #fff; padding: 1px 6px; border-radius: 3px; font-weight: 600;">1</span></td></tr>
-        <tr style="background: #f8f9fa;"><td style="padding: 4px 8px; border: 1px solid #dee2e6;">6</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Create Check</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Check</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;"><code>transaction.void()</code></td><td style="padding: 4px 8px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #00b894; color: #fff; padding: 1px 6px; border-radius: 3px; font-weight: 600;">1</span></td></tr>
-        <tr style="background: #fff;"><td style="padding: 4px 8px; border: 1px solid #dee2e6;">7</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Create Customer Payment</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Cust. Payment</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;"><code>transaction.void()</code></td><td style="padding: 4px 8px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #00b894; color: #fff; padding: 1px 6px; border-radius: 3px; font-weight: 600;">1</span></td></tr>
-        <tr style="background: #f8f9fa;"><td style="padding: 4px 8px; border: 1px solid #dee2e6;">8</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Create Purchase Order</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Purchase Order</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Close / <code>void()</code></td><td style="padding: 4px 8px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #00b894; color: #fff; padding: 1px 6px; border-radius: 3px; font-weight: 600;">1</span></td></tr>
-        <tr style="background: #fff;"><td style="padding: 4px 8px; border: 1px solid #dee2e6;">9</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Update Field Value</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Any record</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Restore before-image</td><td style="padding: 4px 8px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #fdcb6e; color: #2d3436; padding: 1px 6px; border-radius: 3px; font-weight: 600;">2</span></td></tr>
-        <tr style="background: #f8f9fa;"><td style="padding: 4px 8px; border: 1px solid #dee2e6;">10</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Delete Custom Record</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Custom Record</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Re-create from image</td><td style="padding: 4px 8px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #fdcb6e; color: #2d3436; padding: 1px 6px; border-radius: 3px; font-weight: 600;">2</span></td></tr>
-        <tr style="background: #fff;"><td style="padding: 4px 8px; border: 1px solid #dee2e6;">11</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Create Item Fulfillment</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Item Fulfillment</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;"><em>No clean inverse</em></td><td style="padding: 4px 8px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #d63031; color: #fff; padding: 1px 6px; border-radius: 3px; font-weight: 600;">3</span></td></tr>
-        <tr style="background: #f8f9fa;"><td style="padding: 4px 8px; border: 1px solid #dee2e6;">12</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">Send Email</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;">N/email</td><td style="padding: 4px 8px; border: 1px solid #dee2e6;"><em>No inverse</em></td><td style="padding: 4px 8px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #d63031; color: #fff; padding: 1px 6px; border-radius: 3px; font-weight: 600;">3</span></td></tr>
-      </tbody>
-    </table>
-  </div>
+  <p style="font-size: 16px; line-height: 1.8;">Output/Effects is different. It's a deterministic script, not agent-generated. The highest-stakes step in the pipeline &mdash; the one that actually changes things &mdash; needs to be predictable and auditable. An agent writes it at design time, but at run time it executes as written, not regenerated.</p>
 
-  <h3 id="four-conditions-for-go" style="font-size: 18px; color: #2d3436; margin-top: 28px;">7.4 The Four Conditions for Go</h3>
-
-  <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 14px 18px; border-radius: 4px; margin: 16px 0;">
-    <ol style="margin: 0; font-size: 14px;">
-      <li style="margin-bottom: 8px;"><strong>Before-image + write audit</strong> in NS-GM governance envelope &rarr; <span style="color: #00b894; font-weight: 600;">L3 Section 5.2</span></li>
-      <li style="margin-bottom: 8px;"><strong>UE script enumeration</strong> per record type at design time &rarr; <span style="color: #00b894; font-weight: 600;">RSH-411 inference pipeline</span></li>
-      <li style="margin-bottom: 8px;"><strong>Unconditional human approval</strong> for Tier-3 &rarr; <span style="color: #00b894; font-weight: 600;">L3 Section 5.4</span></li>
-      <li style="margin-bottom: 8px;"><strong>REVERSALVOIDING check</strong> at runtime before void &rarr; <span style="color: #00b894; font-weight: 600;"><code>config.load()</code> before void</span></li>
-    </ol>
+  <div style="background: #fff8e1; border-left: 4px solid #f9a825; padding: 16px 20px; border-radius: 0 6px 6px 0; margin: 24px 0;">
+    <p style="margin: 0; font-size: 14px; color: #555;"><strong>Why not both agent and static from the start?</strong> One mode to build, test, and reason about &mdash; less surface area for the MVP. You learn what queries agents actually produce in practice, which informs what "static" should even look like. The natural V2 path: let users "promote" a proven query to static &mdash; lock in what works.</p>
   </div>
 
   <!-- ================================================================ -->
-  <!-- SECTION 8: ROADMAP -->
+  <!-- ZONE 2: ROADMAP -->
   <!-- ================================================================ -->
-  <h2 id="implementation-roadmap" style="font-size: 24px; color: #2d3436; border-bottom: 2px solid #0984e3; padding-bottom: 8px; margin-top: 48px;">8. Implementation Roadmap</h2>
+  <div style="background: linear-gradient(135deg, #00897b11, #f57c0011); border-left: 4px solid #00897b; padding: 8px 16px; margin-top: 56px; margin-bottom: 8px; border-radius: 0 4px 4px 0;">
+    <p style="margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #00897b; font-weight: 700;">Zone 2 &mdash; Roadmap</p>
+  </div>
 
-  <h3 id="file-summary" style="font-size: 18px; color: #2d3436; margin-top: 28px;">8.1 File Count Summary</h3>
+  <!-- ============================================================ -->
+  <!-- SECTION 3: THE FIVE LEVELS -->
+  <!-- ============================================================ -->
+  <h2 id="the-five-levels" style="font-size: 26px; color: #2d3436; margin-top: 40px; margin-bottom: 16px;">3. The Five Levels</h2>
 
-  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;">
-    <thead><tr style="background: #2d3436; color: #fff;"><th style="padding: 8px 14px; text-align: left; border: 1px solid #2d3436;">Repo</th><th style="padding: 8px 14px; text-align: center; border: 1px solid #2d3436;"><span style="background: #0984e3; color: #fff; padding: 1px 6px; border-radius: 3px; font-size: 12px;">L1</span></th><th style="padding: 8px 14px; text-align: center; border: 1px solid #2d3436;"><span style="background: #00b894; color: #fff; padding: 1px 6px; border-radius: 3px; font-size: 12px;">L2</span></th><th style="padding: 8px 14px; text-align: center; border: 1px solid #2d3436;"><span style="background: #e17055; color: #fff; padding: 1px 6px; border-radius: 3px; font-size: 12px;">L3</span></th></tr></thead>
+  <p style="font-size: 16px; line-height: 1.8; color: #2d3436;">Play Mode is delivered in five progressive levels. Each level is independently useful &mdash; a real product improvement that users benefit from immediately. Later levels build on earlier ones, but each is a standalone deliverable.</p>
+
+  <!-- Level Progress Bar -->
+  <div style="display: flex; gap: 0; margin: 28px 0 36px 0; border-radius: 8px; overflow: hidden; border: 1px solid #dee2e6;">
+    <div style="flex: 1; background: #4a6fa5; padding: 10px 8px; text-align: center;">
+      <div style="font-size: 11px; font-weight: 700; color: #fff; letter-spacing: 0.5px;">L1</div>
+      <div style="font-size: 9px; color: rgba(255,255,255,0.8);">Speak</div>
+    </div>
+    <div style="flex: 1; background: #0097a7; padding: 10px 8px; text-align: center;">
+      <div style="font-size: 11px; font-weight: 700; color: #fff; letter-spacing: 0.5px;">L2</div>
+      <div style="font-size: 9px; color: rgba(255,255,255,0.8);">Author</div>
+    </div>
+    <div style="flex: 1; background: #00897b; padding: 10px 8px; text-align: center;">
+      <div style="font-size: 11px; font-weight: 700; color: #fff; letter-spacing: 0.5px;">L3</div>
+      <div style="font-size: 9px; color: rgba(255,255,255,0.8);">Watch</div>
+    </div>
+    <div style="flex: 1; background: #f57c00; padding: 10px 8px; text-align: center;">
+      <div style="font-size: 11px; font-weight: 700; color: #fff; letter-spacing: 0.5px;">L4</div>
+      <div style="font-size: 9px; color: rgba(255,255,255,0.8);">Prove</div>
+    </div>
+    <div style="flex: 1; background: #c62828; padding: 10px 8px; text-align: center;">
+      <div style="font-size: 11px; font-weight: 700; color: #fff; letter-spacing: 0.5px;">L5</div>
+      <div style="font-size: 9px; color: rgba(255,255,255,0.8);">Run Live</div>
+    </div>
+  </div>
+
+  <!-- ======================== LEVEL 1 ======================== -->
+  <div style="border: 2px solid #4a6fa5; border-radius: 12px; padding: 0; margin-bottom: 32px; overflow: hidden;">
+    <!-- Level Header -->
+    <div style="background: #4a6fa5; padding: 16px 24px; display: flex; align-items: center; gap: 14px;">
+      <span style="display: inline-block; background: rgba(255,255,255,0.2); color: #fff; font-size: 13px; font-weight: 800; padding: 4px 12px; border-radius: 4px; letter-spacing: 1px;">LEVEL 1</span>
+      <span style="font-size: 22px; font-weight: 700; color: #fff;">&ldquo;Speak the Language&rdquo;</span>
+    </div>
+    <!-- Level Body -->
+    <div style="padding: 24px;">
+      <!-- User Story -->
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #4a6fa5; font-weight: 700; margin-bottom: 6px;">What changes for the user</div>
+        <p style="font-size: 15px; line-height: 1.7; margin: 0; color: #2d3436;">Users can create Play tickets &mdash; through the web UI, the CLI, or the API. Play appears as a mode choice for NetSuite organizations, right alongside Build, Fix, and Research. The system speaks the language of plays for the first time.</p>
+      </div>
+
+      <!-- What Helix Does Differently -->
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #4a6fa5; font-weight: 700; margin-bottom: 6px;">What Helix does differently</div>
+        <p style="font-size: 15px; line-height: 1.7; margin: 0; color: #2d3436;">PLAY replaces the dead EXECUTE mode across every surface: the mode selector, the API validation, the CLI options, and the MCP tools. Play tickets get a <strong>PLY-</strong> prefix instead of EXE-. Branches use the <code style="background: #f0f0f0; padding: 1px 5px; border-radius: 3px; font-size: 13px;">play</code> segment instead of <code style="background: #f0f0f0; padding: 1px 5px; border-radius: 3px; font-size: 13px;">execute</code>. The platform gating stays the same &mdash; Play is NetSuite-only, just like Execute was.</p>
+      </div>
+
+      <!-- Key Capabilities -->
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #4a6fa5; font-weight: 700; margin-bottom: 6px;">Key capabilities</div>
+        <ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.8;">
+          <li>PLAY mode in the mode selector for NetSuite orgs</li>
+          <li>PLY- ticket prefix; <code style="background: #f0f0f0; padding: 1px 5px; border-radius: 3px; font-size: 13px;">play</code> branch naming</li>
+          <li>EXECUTE retired from all user-facing surfaces (UI, API, CLI, MCP)</li>
+          <li>Platform enforcement: PLAY only available for NetSuite organizations</li>
+          <li>PLAY is user-selected, not auto-classified &mdash; users deliberately choose to create an automation</li>
+        </ul>
+      </div>
+
+      <!-- Scope -->
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #4a6fa5; font-weight: 700; margin-bottom: 6px;">Scope</div>
+        <p style="font-size: 14px; margin: 0; color: #555;">Server: ~12 files + 2 database migrations. Client: ~12 files (rename). CLI: 3 files. Pure plumbing &mdash; no new components, no new models.</p>
+      </div>
+
+      <!-- Visual: Before/After -->
+      <div style="background: #f8f9fa; border-radius: 8px; padding: 16px 20px; margin-top: 16px;">
+        <div style="font-size: 12px; font-weight: 700; color: #636e72; margin-bottom: 12px;">MODE SELECTOR</div>
+        <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 180px;">
+            <div style="font-size: 11px; color: #c62828; font-weight: 600; margin-bottom: 6px;">BEFORE</div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <span style="padding: 4px 10px; border-radius: 4px; font-size: 12px; background: #e0e0e0; color: #555;">Auto</span>
+              <span style="padding: 4px 10px; border-radius: 4px; font-size: 12px; background: #e0e0e0; color: #555;">Build</span>
+              <span style="padding: 4px 10px; border-radius: 4px; font-size: 12px; background: #e0e0e0; color: #555;">Fix</span>
+              <span style="padding: 4px 10px; border-radius: 4px; font-size: 12px; background: #e0e0e0; color: #555;">Research</span>
+              <span style="padding: 4px 10px; border-radius: 4px; font-size: 12px; background: #ffcdd2; color: #c62828; text-decoration: line-through;">Execute</span>
+            </div>
+          </div>
+          <div style="flex: 1; min-width: 180px;">
+            <div style="font-size: 11px; color: #2e7d32; font-weight: 600; margin-bottom: 6px;">AFTER</div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <span style="padding: 4px 10px; border-radius: 4px; font-size: 12px; background: #e0e0e0; color: #555;">Auto</span>
+              <span style="padding: 4px 10px; border-radius: 4px; font-size: 12px; background: #e0e0e0; color: #555;">Build</span>
+              <span style="padding: 4px 10px; border-radius: 4px; font-size: 12px; background: #e0e0e0; color: #555;">Fix</span>
+              <span style="padding: 4px 10px; border-radius: 4px; font-size: 12px; background: #e0e0e0; color: #555;">Research</span>
+              <span style="padding: 4px 10px; border-radius: 4px; font-size: 12px; background: #4a6fa5; color: #fff; font-weight: 600;">Play</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== LEVEL 2 ======================== -->
+  <div style="border: 2px solid #0097a7; border-radius: 12px; padding: 0; margin-bottom: 32px; overflow: hidden;">
+    <div style="background: #0097a7; padding: 16px 24px; display: flex; align-items: center; gap: 14px;">
+      <span style="display: inline-block; background: rgba(255,255,255,0.2); color: #fff; font-size: 13px; font-weight: 800; padding: 4px 12px; border-radius: 4px; letter-spacing: 1px;">LEVEL 2</span>
+      <span style="font-size: 22px; font-weight: 700; color: #fff;">&ldquo;Author the Play&rdquo;</span>
+    </div>
+    <div style="padding: 24px;">
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #0097a7; font-weight: 700; margin-bottom: 6px;">What changes for the user</div>
+        <p style="font-size: 15px; line-height: 1.7; margin: 0; color: #2d3436;">When users describe their intent in a Play ticket, Helix generates a structured 3-step automation blueprint &mdash; the prompts, the samples, the output shapes, and the effects script. The user reviews a complete automation definition they didn't have to write.</p>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #0097a7; font-weight: 700; margin-bottom: 6px;">What Helix does differently</div>
+        <p style="font-size: 15px; line-height: 1.7; margin: 0; color: #2d3436;">The workflow produces a PlayDefinition instead of code. Each step's prompt, sample, and output shape are stored and inspectable. The play goes from DRAFT to READY once all three parts are populated. A new API surface lets users view and retrieve their play definitions.</p>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #0097a7; font-weight: 700; margin-bottom: 6px;">Key capabilities</div>
+        <ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.8;">
+          <li>Play data model: full 3-step structure stored per ticket</li>
+          <li>API endpoints for play definition retrieval and updates</li>
+          <li>Workflow integration: when a Play ticket runs, the agent generates the play definition (not code)</li>
+          <li>Play definition viewer in the UI &mdash; users see their Map, Reduce, and Output steps with prompts, samples, and schemas</li>
+          <li>Status lifecycle: DRAFT (generating) &rarr; READY (all parts complete)</li>
+        </ul>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #0097a7; font-weight: 700; margin-bottom: 6px;">Scope</div>
+        <p style="font-size: 14px; margin: 0; color: #555;">Server: new data models + migration + API endpoints + workflow branching. Client: play definition viewer component. No CLI changes.</p>
+      </div>
+
+      <!-- Visual: Ticket to PlayDefinition -->
+      <div style="background: #f8f9fa; border-radius: 8px; padding: 16px 20px; margin-top: 16px;">
+        <div style="font-size: 12px; font-weight: 700; color: #636e72; margin-bottom: 12px;">FROM TICKET TO PLAY</div>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 0; flex-wrap: wrap;">
+          <div style="background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 12px 16px; text-align: center; min-width: 120px;">
+            <div style="font-size: 13px; font-weight: 600; color: #2d3436;">Ticket</div>
+            <div style="font-size: 11px; color: #636e72;">"Find overdue invoices<br>and flag customers"</div>
+          </div>
+          <div style="padding: 0 10px; font-size: 20px; color: #636e72;">&rarr;</div>
+          <div style="background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 12px 16px; text-align: center; min-width: 120px;">
+            <div style="font-size: 13px; font-weight: 600; color: #0097a7;">Helix Agent</div>
+            <div style="font-size: 11px; color: #636e72;">Generates all 3 parts</div>
+          </div>
+          <div style="padding: 0 10px; font-size: 20px; color: #636e72;">&rarr;</div>
+          <div style="background: #e0f7fa; border: 1px solid #0097a7; border-radius: 8px; padding: 12px 16px; text-align: center; min-width: 140px;">
+            <div style="font-size: 13px; font-weight: 600; color: #0097a7;">PlayDefinition</div>
+            <div style="font-size: 11px; color: #636e72;">Map + Reduce + Output<br>with samples &amp; schemas</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== LEVEL 3 ======================== -->
+  <div style="border: 2px solid #00897b; border-radius: 12px; padding: 0; margin-bottom: 32px; overflow: hidden;">
+    <div style="background: #00897b; padding: 16px 24px; display: flex; align-items: center; gap: 14px;">
+      <span style="display: inline-block; background: rgba(255,255,255,0.2); color: #fff; font-size: 13px; font-weight: 800; padding: 4px 12px; border-radius: 4px; letter-spacing: 1px;">LEVEL 3</span>
+      <span style="font-size: 22px; font-weight: 700; color: #fff;">&ldquo;Watch It Think&rdquo;</span>
+    </div>
+    <div style="padding: 24px;">
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #00897b; font-weight: 700; margin-bottom: 6px;">What changes for the user</div>
+        <p style="font-size: 15px; line-height: 1.7; margin: 0; color: #2d3436;">Users trigger a preview and watch their play work with real sandbox data. Map queries NetSuite, Reduce transforms the results, and they see actual data flowing through their pipeline step by step &mdash; zero writes, zero risk.</p>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #00897b; font-weight: 700; margin-bottom: 6px;">What Helix does differently</div>
+        <p style="font-size: 15px; line-height: 1.7; margin: 0; color: #2d3436;">Map and Reduce execute via the NS-GM gateway in sandbox. Output shapes are validated at each step boundary &mdash; if the shape doesn't match, the pipeline stops and tells you exactly why. Results are displayed step by step. Every execution is logged with inputs, outputs, timing, and validation status.</p>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #00897b; font-weight: 700; margin-bottom: 6px;">Key capabilities</div>
+        <ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.8;">
+          <li>Read-only sandbox execution of Map and Reduce steps</li>
+          <li>Shape validation with pass/fail at each step boundary</li>
+          <li>Step-by-step results display: see the generated query, the raw data, and the transformation</li>
+          <li>Execution logging: every run recorded with per-step inputs, outputs, duration, and validation outcomes</li>
+          <li>Pipeline halt on shape mismatch with clear error explaining expected vs. actual</li>
+        </ul>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #00897b; font-weight: 700; margin-bottom: 6px;">Scope</div>
+        <p style="font-size: 14px; margin: 0; color: #555;">Server: execution service + NS-GM integration + shape validation + logging. Client: step-by-step results display. No CLI changes.</p>
+      </div>
+
+      <div style="background: #e0f2f1; border-left: 4px solid #00897b; padding: 14px 18px; border-radius: 0 6px 6px 0; margin-top: 16px;">
+        <p style="margin: 0; font-size: 14px; color: #555;"><strong>Key insight:</strong> Map and Reduce are fully safe because they're read-only. This level delivers enormous user value with zero risk. Users can preview their automation pipeline working with real data before any writes happen.</p>
+      </div>
+
+      <!-- Visual: Step-by-step execution -->
+      <div style="background: #f8f9fa; border-radius: 8px; padding: 16px 20px; margin-top: 16px;">
+        <div style="font-size: 12px; font-weight: 700; color: #636e72; margin-bottom: 12px;">EXECUTION FLOW</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span style="display: inline-block; background: #1565c0; color: #fff; font-size: 11px; padding: 3px 10px; border-radius: 4px; font-weight: 600; min-width: 56px; text-align: center;">Map</span>
+            <span style="font-size: 13px; color: #555;">SuiteQL queries sandbox &rarr; 47 invoices found</span>
+            <span style="display: inline-block; background: #c8e6c9; color: #2e7d32; font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: 600;">Shape: PASS</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span style="display: inline-block; background: #2e7d32; color: #fff; font-size: 11px; padding: 3px 10px; border-radius: 4px; font-weight: 600; min-width: 56px; text-align: center;">Reduce</span>
+            <span style="font-size: 13px; color: #555;">Filter &gt;90 days, group by customer &rarr; 12 customers flagged</span>
+            <span style="display: inline-block; background: #c8e6c9; color: #2e7d32; font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: 600;">Shape: PASS</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span style="display: inline-block; background: #bdbdbd; color: #fff; font-size: 11px; padding: 3px 10px; border-radius: 4px; font-weight: 600; min-width: 56px; text-align: center;">Output</span>
+            <span style="font-size: 13px; color: #999; font-style: italic;">Not executed at L3 &mdash; preview only</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== LEVEL 4 ======================== -->
+  <div style="border: 2px solid #f57c00; border-radius: 12px; padding: 0; margin-bottom: 32px; overflow: hidden;">
+    <div style="background: #f57c00; padding: 16px 24px; display: flex; align-items: center; gap: 14px;">
+      <span style="display: inline-block; background: rgba(255,255,255,0.2); color: #fff; font-size: 13px; font-weight: 800; padding: 4px 12px; border-radius: 4px; letter-spacing: 1px;">LEVEL 4</span>
+      <span style="font-size: 22px; font-weight: 700; color: #fff;">&ldquo;Prove It Works&rdquo;</span>
+    </div>
+    <div style="padding: 24px;">
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #f57c00; font-weight: 700; margin-bottom: 6px;">What changes for the user</div>
+        <p style="font-size: 15px; line-height: 1.7; margin: 0; color: #2d3436;">Two new powers. First, the full pipeline runs end-to-end in sandbox &mdash; including Output/Effects with a dry-run showing exactly what would be written. Second, canonical examples: Helix generates realistic test data, runs the play against it, and proves it works. A play isn't "done" until it passes its examples.</p>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #f57c00; font-weight: 700; margin-bottom: 6px;">What Helix does differently</div>
+        <p style="font-size: 15px; line-height: 1.7; margin: 0; color: #2d3436;">Output/Effects executes in dry-run mode &mdash; the script shows what records it would create, update, or delete without committing. Canonical examples co-develop alongside the play in a feedback loop: the query tells Helix what kinds of data to generate, the data reveals whether the query works, and both tighten until they converge. Essentially TDD for plays, where the agent writes both the code and the tests.</p>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #f57c00; font-weight: 700; margin-bottom: 6px;">Key capabilities</div>
+        <ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.8;">
+          <li>Full sandbox execution with dry-run: Output/Effects shows intended writes before committing</li>
+          <li>Canonical example generation: realistic synthetic NetSuite records via NS-GM</li>
+          <li>Co-development loop: query and examples refine each other until both converge</li>
+          <li>Play validation gate: a play isn't READY until it's proven against canonical examples</li>
+        </ul>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #f57c00; font-weight: 700; margin-bottom: 6px;">Scope</div>
+        <p style="font-size: 14px; margin: 0; color: #555;">Server: canonical example model + dry-run execution + validation loop. Client: dry-run results display + validation status indicators.</p>
+      </div>
+
+      <div style="background: #fff8e1; border-left: 4px solid #f57c00; padding: 14px 18px; border-radius: 0 6px 6px 0; margin-top: 16px;">
+        <p style="margin: 0; font-size: 14px; color: #555;"><strong>Important:</strong> Canonical examples are a platform-level primitive, not play-specific. They apply equally to Build and Fix modes. Any Helix artifact that executes against NetSuite &mdash; plays, scripts, rules &mdash; can and should have canonical examples. A play simply happens to be the first consumer.</p>
+      </div>
+
+      <!-- Visual: Co-development Loop -->
+      <div style="background: #f8f9fa; border-radius: 8px; padding: 16px 20px; margin-top: 16px;">
+        <div style="font-size: 12px; font-weight: 700; color: #636e72; margin-bottom: 12px;">CO-DEVELOPMENT LOOP</div>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 0; flex-wrap: wrap;">
+          <div style="background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 12px 16px; text-align: center;">
+            <div style="font-size: 13px; font-weight: 600; color: #f57c00;">Draft Query</div>
+            <div style="font-size: 11px; color: #636e72;">Agent writes SuiteQL</div>
+          </div>
+          <div style="padding: 0 6px; font-size: 18px; color: #636e72;">&rarr;</div>
+          <div style="background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 12px 16px; text-align: center;">
+            <div style="font-size: 13px; font-weight: 600; color: #f57c00;">Generate Examples</div>
+            <div style="font-size: 11px; color: #636e72;">NS-GM creates records</div>
+          </div>
+          <div style="padding: 0 6px; font-size: 18px; color: #636e72;">&rarr;</div>
+          <div style="background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 12px 16px; text-align: center;">
+            <div style="font-size: 13px; font-weight: 600; color: #f57c00;">Run &amp; Validate</div>
+            <div style="font-size: 11px; color: #636e72;">Shapes match?</div>
+          </div>
+          <div style="padding: 0 6px; font-size: 18px; color: #636e72;">&circlearrowleft;</div>
+          <div style="background: #fff3e0; border: 1px solid #f57c00; border-radius: 8px; padding: 12px 16px; text-align: center;">
+            <div style="font-size: 13px; font-weight: 600; color: #f57c00;">Refine Both</div>
+            <div style="font-size: 11px; color: #636e72;">Until convergence</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== LEVEL 5 ======================== -->
+  <div style="border: 2px solid #c62828; border-radius: 12px; padding: 0; margin-bottom: 32px; overflow: hidden;">
+    <div style="background: #c62828; padding: 16px 24px; display: flex; align-items: center; gap: 14px;">
+      <span style="display: inline-block; background: rgba(255,255,255,0.2); color: #fff; font-size: 13px; font-weight: 800; padding: 4px 12px; border-radius: 4px; letter-spacing: 1px;">LEVEL 5</span>
+      <span style="font-size: 22px; font-weight: 700; color: #fff;">&ldquo;Run It Live&rdquo;</span>
+    </div>
+    <div style="padding: 24px;">
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #c62828; font-weight: 700; margin-bottom: 6px;">What changes for the user</div>
+        <p style="font-size: 15px; line-height: 1.7; margin: 0; color: #2d3436;">Plays run against production data with full safety controls. Every write has a before-image. Every operation has an audit trail. Duplicates are prevented. Irreversible actions require explicit human approval before executing.</p>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #c62828; font-weight: 700; margin-bottom: 6px;">What Helix does differently</div>
+        <p style="font-size: 15px; line-height: 1.7; margin: 0; color: #2d3436;">The NS-GM gateway gets a governance envelope. Before any write, Helix captures a before-image of the record. After the write, it logs the after-image. Idempotency keys prevent double-execution. Concurrency is detected via optimistic checks. High-risk, irreversible operations require human sign-off in the approval flow.</p>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #c62828; font-weight: 700; margin-bottom: 6px;">Key capabilities</div>
+        <ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.8;">
+          <li>Before-image capture: snapshot of every record before it's modified</li>
+          <li>Write audit logging: complete trail of what was changed, when, and by whom</li>
+          <li>Idempotency: 3-layer defense prevents double execution</li>
+          <li>Approval gates for irreversible (Tier-3) actions</li>
+          <li>Concurrency detection via optimistic timestamp checks</li>
+        </ul>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #c62828; font-weight: 700; margin-bottom: 6px;">Scope</div>
+        <p style="font-size: 14px; margin: 0; color: #555;">Server: governance wrapper on NS-GM + audit model + approval flow. Client: approval UI + audit viewer. Significant infrastructure work.</p>
+      </div>
+
+      <!-- RSH-702 Integration -->
+      <div style="background: #fce4ec; border-left: 4px solid #c62828; padding: 14px 18px; border-radius: 0 6px 6px 0; margin-top: 16px;">
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #555;"><strong>Integration with RSH-702 (Governance Feasibility):</strong> The feasibility research found <strong>conditional Go</strong> for production execution. Key findings that shape L5:</p>
+        <ul style="margin: 0; padding-left: 18px; font-size: 13px; color: #555; line-height: 1.7;">
+          <li><strong>3-tier reversibility</strong>: Tier-1 operations have atomic inverses (void a transaction). Tier-2 operations have derived inverses (restore a before-image). Tier-3 operations are irreversible (send an email) and require human approval.</li>
+          <li><strong>NS-GM containment</strong>: The NS-GM RESTlet is a controllable chokepoint for Helix-initiated writes. SDF-deployed scripts running autonomously are outside this channel but manageable.</li>
+          <li><strong>4 Go conditions</strong>: (1) Before-image capture and write audit built into NS-GM before any production writes. (2) User-event script enumeration per record type at design time. (3) Unconditional human approval for Tier-3 actions. (4) REVERSALVOIDING preference checked at runtime before void operations.</li>
+        </ul>
+      </div>
+
+      <!-- Visual: Safety Stack -->
+      <div style="background: #f8f9fa; border-radius: 8px; padding: 16px 20px; margin-top: 16px;">
+        <div style="font-size: 12px; font-weight: 700; color: #636e72; margin-bottom: 12px;">GOVERNANCE STACK</div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div style="background: #ffcdd2; border: 1px solid #ef9a9a; border-radius: 6px; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+            <span style="font-size: 13px; font-weight: 600; color: #c62828;">Approval Gate</span>
+            <span style="font-size: 11px; color: #c62828;">Human sign-off for Tier-3</span>
+          </div>
+          <div style="background: #ffe0b2; border: 1px solid #ffcc80; border-radius: 6px; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+            <span style="font-size: 13px; font-weight: 600; color: #e65100;">Idempotency</span>
+            <span style="font-size: 11px; color: #e65100;">3-layer dedup defense</span>
+          </div>
+          <div style="background: #fff9c4; border: 1px solid #fff176; border-radius: 6px; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+            <span style="font-size: 13px; font-weight: 600; color: #f57f17;">Before-Image</span>
+            <span style="font-size: 11px; color: #f57f17;">Snapshot before every write</span>
+          </div>
+          <div style="background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 6px; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+            <span style="font-size: 13px; font-weight: 600; color: #2e7d32;">Write Audit</span>
+            <span style="font-size: 11px; color: #2e7d32;">Full trail: who, what, when</span>
+          </div>
+          <div style="background: #e3f2fd; border: 1px solid #90caf9; border-radius: 6px; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+            <span style="font-size: 13px; font-weight: 600; color: #1565c0;">Concurrency Check</span>
+            <span style="font-size: 11px; color: #1565c0;">Optimistic timestamp validation</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- ZONE 3: REFERENCE -->
+  <!-- ================================================================ -->
+  <div style="background: linear-gradient(135deg, #636e7211, #2d343611); border-left: 4px solid #636e72; padding: 8px 16px; margin-top: 56px; margin-bottom: 8px; border-radius: 0 4px 4px 0;">
+    <p style="margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #636e72; font-weight: 700;">Zone 3 &mdash; Reference</p>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 4: ARCHITECTURE & DATA MODEL -->
+  <!-- ============================================================ -->
+  <h2 id="architecture-and-data-model" style="font-size: 22px; color: #2d3436; margin-top: 40px; margin-bottom: 16px;">4. Architecture &amp; Data Model</h2>
+
+  <h3 id="data-model-overview" style="font-size: 17px; color: #2d3436; margin-top: 28px;">4.1 Data Model Overview</h3>
+
+  <p style="font-size: 14px; line-height: 1.7;">The play system introduces five new models. PlayDefinition is the core artifact (1:1 with a Ticket). PlayRun tracks each execution. PlayStepResult records per-step outcomes. PlayCanonicalExample stores test data (L4). PlayWriteAuditLog captures governance evidence (L5).</p>
+
+  <!-- Data Model Table -->
+  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;">
+    <thead>
+      <tr style="background: #2d3436; color: #fff;">
+        <th style="padding: 8px 12px; text-align: left; border: 1px solid #2d3436;">Model</th>
+        <th style="padding: 8px 12px; text-align: left; border: 1px solid #2d3436;">Key Fields</th>
+        <th style="padding: 8px 12px; text-align: center; border: 1px solid #2d3436;">Level</th>
+        <th style="padding: 8px 12px; text-align: left; border: 1px solid #2d3436;">Relationship</th>
+      </tr>
+    </thead>
     <tbody>
-      <tr style="background: #fff;"><td style="padding: 8px 14px; border: 1px solid #dee2e6; font-weight: 600;">helix-global-server</td><td style="padding: 8px 14px; border: 1px solid #dee2e6; text-align: center;">~12 modify + 1 migration</td><td style="padding: 8px 14px; border: 1px solid #dee2e6; text-align: center;">~4 new + 1 migration</td><td style="padding: 8px 14px; border: 1px solid #dee2e6; text-align: center;">~4 new + 1 migration + 1 modify</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 8px 14px; border: 1px solid #dee2e6; font-weight: 600;">helix-global-client</td><td style="padding: 8px 14px; border: 1px solid #dee2e6; text-align: center;">~12 modify</td><td style="padding: 8px 14px; border: 1px solid #dee2e6; text-align: center;">~3 new</td><td style="padding: 8px 14px; border: 1px solid #dee2e6; text-align: center;">~3 new</td></tr>
-      <tr style="background: #fff;"><td style="padding: 8px 14px; border: 1px solid #dee2e6; font-weight: 600;">helix-cli</td><td style="padding: 8px 14px; border: 1px solid #dee2e6; text-align: center;">2 modify</td><td style="padding: 8px 14px; border: 1px solid #dee2e6; text-align: center;">&mdash;</td><td style="padding: 8px 14px; border: 1px solid #dee2e6; text-align: center;">&mdash;</td></tr>
+      <tr style="background: #fff;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">PlayDefinition</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;"><code>ticketId</code>, <code>mapPrompt</code>, <code>mapSample</code>, <code>mapOutputSchema</code>, <code>reducePrompt</code>, <code>reduceSample</code>, <code>reduceOutputSchema</code>, <code>outputScript</code>, <code>status</code></td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #0097a7; color: #fff; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 600;">L2</span></td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">1:1 with Ticket</td>
+      </tr>
+      <tr style="background: #f8f9fa;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">PlayRun</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;"><code>playDefinitionId</code>, <code>environment</code>, <code>status</code>, <code>triggeredBy</code>, timestamps</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #00897b; color: #fff; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 600;">L3</span></td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Many:1 with PlayDefinition</td>
+      </tr>
+      <tr style="background: #fff;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">PlayStepResult</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;"><code>playRunId</code>, <code>stepType</code>, <code>stepOrder</code>, <code>input</code>, <code>output</code>, <code>shapeValid</code>, <code>durationMs</code></td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #00897b; color: #fff; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 600;">L3</span></td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Many:1 with PlayRun</td>
+      </tr>
+      <tr style="background: #f8f9fa;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">PlayCanonicalExample</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;"><code>playDefinitionId</code>, <code>label</code>, <code>inputData</code>, <code>expectedOutputs</code>, <code>actualResult</code>, <code>status</code></td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #f57c00; color: #fff; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 600;">L4</span></td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Many:1 with PlayDefinition</td>
+      </tr>
+      <tr style="background: #fff;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">PlayWriteAuditLog</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;"><code>playRunId</code>, <code>operationType</code>, <code>recordType</code>, <code>recordId</code>, <code>beforeImage</code>, <code>afterImage</code>, <code>approvedBy</code></td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #c62828; color: #fff; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 600;">L5</span></td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Many:1 with PlayRun</td>
+      </tr>
     </tbody>
   </table>
 
-  <h3 id="scenario-mapping" style="font-size: 18px; color: #2d3436; margin-top: 28px;">8.2 User Scenarios &rarr; Levels</h3>
+  <p style="font-size: 13px; color: #636e72;"><em>Design decision (AD-4): PlayDefinition uses inline fields rather than a separate PlayStep model. A play always has exactly 3 fixed steps, so a separate model adds join complexity for no benefit.</em></p>
 
-  <p><strong>L1</strong> (SCN-01 through SCN-05, SCN-13): Create, display, filter Play tickets; EXECUTE hidden; auto-classifier exclusion. <strong>L2</strong> (SCN-06 through SCN-08): Define steps, preview in sandbox, canonical examples. <strong>L3</strong> (SCN-09 through SCN-12): Effect preview, execution with approval, real-time monitoring, audit trail.</p>
-
-  <h3 id="dependency-graph" style="font-size: 18px; color: #2d3436; margin-top: 28px;">8.3 Dependency Graph</h3>
-
-  <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin: 16px 0; font-family: 'Courier New', monospace; font-size: 13px; line-height: 2;">
-    <div><span style="display: inline-block; background: #0984e3; color: #fff; padding: 2px 8px; border-radius: 3px; font-weight: 600;">L1</span> Server &rarr; CLI &rarr; Client (each independent after server)</div>
-    <div><span style="display: inline-block; background: #00b894; color: #fff; padding: 2px 8px; border-radius: 3px; font-weight: 600;">L2</span> Server &rarr; Client (depends on L1)</div>
-    <div><span style="display: inline-block; background: #e17055; color: #fff; padding: 2px 8px; border-radius: 3px; font-weight: 600;">L3</span> Server &rarr; Client (depends on L2)</div>
-  </div>
-
-  <!-- ================================================================ -->
-  <!-- SECTION 9: EVIDENCE -->
-  <!-- ================================================================ -->
-  <h2 id="evidence-sources" style="font-size: 24px; color: #2d3436; border-bottom: 2px solid #636e72; padding-bottom: 8px; margin-top: 48px;">9. Evidence Sources</h2>
+  <h3 id="api-surface" style="font-size: 17px; color: #2d3436; margin-top: 28px;">4.2 API Surface</h3>
 
   <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;">
-    <thead><tr style="background: #636e72; color: #fff;"><th style="padding: 8px 12px; text-align: left; border: 1px solid #636e72;">Source</th><th style="padding: 8px 12px; text-align: left; border: 1px solid #636e72;">Type</th><th style="padding: 8px 12px; text-align: left; border: 1px solid #636e72;">Key Finding</th></tr></thead>
+    <thead>
+      <tr style="background: #2d3436; color: #fff;">
+        <th style="padding: 8px 12px; text-align: left; border: 1px solid #2d3436;">Method</th>
+        <th style="padding: 8px 12px; text-align: left; border: 1px solid #2d3436;">Endpoint</th>
+        <th style="padding: 8px 12px; text-align: left; border: 1px solid #2d3436;">Description</th>
+        <th style="padding: 8px 12px; text-align: center; border: 1px solid #2d3436;">Level</th>
+      </tr>
+    </thead>
     <tbody>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Production DB (June 6, 2026)</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Runtime</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">854 tickets; 0 EXECUTE; AUTO:296, RESEARCH:234, BUILD:193, FIX:131</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 6px 12px; border: 1px solid #dee2e6;">RSH-702 research report</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Prior research</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">CONDITIONAL GO; 3 tiers; 12 pairs; NS-GM containment; 4 Go conditions</td></tr>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6;">product/product.md</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Product spec</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">3-level MVP; 13 scenarios; success criteria</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 6px 12px; border: 1px solid #dee2e6;">tech-research.md (server, client, CLI)</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Architecture</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">18 decisions across 3 repos</td></tr>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6;">diagnosis-statement.md (3 repos)</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Root cause</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">File surfaces: server ~12, client ~12, CLI 2</td></tr>
-      <tr style="background: #f8f9fa;"><td style="padding: 6px 12px; border: 1px solid #dee2e6;">scout/reference-map.json (3 repos)</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">File inventory</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Exact file paths and line numbers</td></tr>
-      <tr style="background: #fff;"><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Context7 (N/record, N/transaction)</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">API docs</td><td style="padding: 6px 12px; border: 1px solid #dee2e6;">Dry-run mechanisms; isDynamic; void semantics</td></tr>
+      <tr style="background: #fff;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">GET</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;"><code>/api/tickets/:ticketId/play</code></td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Retrieve play definition</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #0097a7; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">L2</span></td>
+      </tr>
+      <tr style="background: #f8f9fa;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">POST</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;"><code>/api/tickets/:ticketId/play</code></td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Create/update play definition</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #0097a7; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">L2</span></td>
+      </tr>
+      <tr style="background: #fff;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">PUT</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;"><code>/api/tickets/:ticketId/play</code></td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Update play definition</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #0097a7; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">L2</span></td>
+      </tr>
+      <tr style="background: #f8f9fa;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">POST</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;"><code>/api/tickets/:ticketId/play/runs</code></td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Trigger a play run</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #00897b; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">L3</span></td>
+      </tr>
+      <tr style="background: #fff;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">GET</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;"><code>/api/tickets/:ticketId/play/runs</code></td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">List play runs</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #00897b; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">L3</span></td>
+      </tr>
+      <tr style="background: #f8f9fa;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">GET</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;"><code>/api/tickets/:ticketId/play/runs/:runId</code></td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Run detail with step results</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #00897b; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">L3</span></td>
+      </tr>
+      <tr style="background: #fff;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">POST</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;"><code>/api/tickets/:ticketId/play/runs/:runId/approve</code></td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Approve pending Tier-3 action</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #c62828; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">L5</span></td>
+      </tr>
     </tbody>
   </table>
 
-  <!-- FOOTER -->
+  <h3 id="architecture-decisions" style="font-size: 17px; color: #2d3436; margin-top: 28px;">4.3 Key Architecture Decisions</h3>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;">
+    <thead>
+      <tr style="background: #2d3436; color: #fff;">
+        <th style="padding: 8px 12px; text-align: left; border: 1px solid #2d3436; width: 6%;">ID</th>
+        <th style="padding: 8px 12px; text-align: left; border: 1px solid #2d3436; width: 25%;">Decision</th>
+        <th style="padding: 8px 12px; text-align: left; border: 1px solid #2d3436;">Rationale</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background: #fff;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">AD-1</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Replace EXECUTE, don't coexist</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Zero production usage (0/876). Keeping two equivalent modes creates confusion. EXECUTE stays in DB enum only (Postgres can't DROP enum values).</td>
+      </tr>
+      <tr style="background: #f8f9fa;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">AD-2</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Two-migration strategy</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Production DB has PLAYBOOK_CHECK (3 tickets from BLD-677) but local schema lacks it. Migration 1: sync PLAYBOOK_CHECK with <code>IF NOT EXISTS</code>. Migration 2: add PLAY.</td>
+      </tr>
+      <tr style="background: #fff;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">AD-3</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">PLAY is user-selected, not auto-classified</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Users deliberately choose to create an automation. The auto-classifier stays BUILD/FIX/RESEARCH only.</td>
+      </tr>
+      <tr style="background: #f8f9fa;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">AD-4</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Inline fields on PlayDefinition</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">A play always has exactly 3 fixed steps. A separate step model adds join complexity for no benefit. Inline fields give strong types.</td>
+      </tr>
+      <tr style="background: #fff;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">AD-5</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Parallel path from orchestrator</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Play execution is a data pipeline (Map &rarr; Reduce &rarr; Output), not code generation. Branch from the existing orchestrator using the <code>isResearchMode</code> pattern.</td>
+      </tr>
+      <tr style="background: #f8f9fa;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">AD-6</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Shape validation via Zod</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Zod is already used extensively in the codebase. Output schemas stored as JSON in Prisma, converted to Zod schemas at validation time. No new dependencies.</td>
+      </tr>
+      <tr style="background: #fff;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">AD-7</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Deploy: Server &rarr; CLI &rarr; Client</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">CLI sends <code>mode: "PLAY"</code> to server API. If CLI deploys first, server returns 400. Client deploys independently.</td>
+      </tr>
+      <tr style="background: #f8f9fa;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">AD-8</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Platform enforcement error update</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Both create and patch endpoints update from "EXECUTE mode" to "PLAY mode" in error messages.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3 id="migration-strategy" style="font-size: 17px; color: #2d3436; margin-top: 28px;">4.4 Migration Strategy</h3>
+
+  <div style="display: flex; gap: 16px; margin: 16px 0; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 280px; background: #e8eaf6; border: 1px solid #c5cae9; border-radius: 8px; padding: 16px 20px;">
+      <div style="font-size: 12px; font-weight: 700; color: #3949ab; margin-bottom: 6px;">MIGRATION 1 &mdash; Sync</div>
+      <p style="margin: 0; font-size: 13px; color: #2d3436;"><code>ALTER TYPE "TicketMode" ADD VALUE IF NOT EXISTS 'PLAYBOOK_CHECK'</code></p>
+      <p style="margin: 8px 0 0 0; font-size: 12px; color: #636e72;">Handles both fresh environments (adds it) and production (already exists, no-op).</p>
+    </div>
+    <div style="flex: 1; min-width: 280px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 8px; padding: 16px 20px;">
+      <div style="font-size: 12px; font-weight: 700; color: #2e7d32; margin-bottom: 6px;">MIGRATION 2 &mdash; Feature</div>
+      <p style="margin: 0; font-size: 13px; color: #2d3436;"><code>ALTER TYPE "TicketMode" ADD VALUE 'PLAY'</code></p>
+      <p style="margin: 8px 0 0 0; font-size: 12px; color: #636e72;">Adds PLAY to the enum. EXECUTE stays in DB enum (Postgres constraint) but is removed from the Prisma schema.</p>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 5: IMPLEMENTATION SURFACE -->
+  <!-- ============================================================ -->
+  <h2 id="implementation-surface" style="font-size: 22px; color: #2d3436; margin-top: 40px; margin-bottom: 16px;">5. Implementation Surface</h2>
+
+  <h3 id="cross-repo-summary" style="font-size: 17px; color: #2d3436; margin-top: 28px;">5.1 Cross-Repo Summary</h3>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;">
+    <thead>
+      <tr style="background: #2d3436; color: #fff;">
+        <th style="padding: 8px 12px; text-align: left; border: 1px solid #2d3436;">Repo</th>
+        <th style="padding: 8px 12px; text-align: center; border: 1px solid #2d3436;"><span style="color: #b0bec5;">L1</span></th>
+        <th style="padding: 8px 12px; text-align: center; border: 1px solid #2d3436;"><span style="color: #b0bec5;">L2</span></th>
+        <th style="padding: 8px 12px; text-align: center; border: 1px solid #2d3436;"><span style="color: #b0bec5;">L3</span></th>
+        <th style="padding: 8px 12px; text-align: center; border: 1px solid #2d3436;"><span style="color: #b0bec5;">L4</span></th>
+        <th style="padding: 8px 12px; text-align: center; border: 1px solid #2d3436;"><span style="color: #b0bec5;">L5</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background: #fff;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">helix-global-server</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;">~12 files + 2 migrations</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;">~5 new files</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;">~3 new files</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;">~3 new files</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;">~6 new files</td>
+      </tr>
+      <tr style="background: #f8f9fa;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">helix-global-client</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;">~12 files</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;">~3 new</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;">~3 new</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;">~2 new</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;">~3 new</td>
+      </tr>
+      <tr style="background: #fff;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">helix-cli</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;">3 files</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;">&mdash;</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;">&mdash;</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;">&mdash;</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;">&mdash;</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3 id="server-l1-file-inventory" style="font-size: 17px; color: #2d3436; margin-top: 28px;">5.2 Server L1 File Inventory</h3>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 12px;">
+    <thead>
+      <tr style="background: #4a6fa5; color: #fff;">
+        <th style="padding: 6px 10px; text-align: left; border: 1px solid #4a6fa5;">File</th>
+        <th style="padding: 6px 10px; text-align: left; border: 1px solid #4a6fa5;">Change</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background: #fff;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>prisma/schema.prisma</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Add PLAYBOOK_CHECK + PLAY to TicketMode enum; remove EXECUTE</td></tr>
+      <tr style="background: #f8f9fa;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>prisma/migrations/</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Two new migration directories (sync + feature)</td></tr>
+      <tr style="background: #fff;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/lib/platform-config.ts</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Replace EXECUTE with PLAY in NETSUITE allowedModes</td></tr>
+      <tr style="background: #f8f9fa;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/controllers/ticket-controller.ts</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Replace EXECUTE with PLAY in Zod enum + error messages</td></tr>
+      <tr style="background: #fff;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/services/ticket-id-utils.ts</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">EXECUTE:"EXE" &rarr; PLAY:"PLY" prefix; "execute" &rarr; "play" branch</td></tr>
+      <tr style="background: #f8f9fa;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/mcp/tools/tickets.ts</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Replace EXECUTE with PLAY in z.enum (create + update)</td></tr>
+      <tr style="background: #fff;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/services/goal-schemas.ts</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Replace EXECUTE with PLAY in proposal.mode z.enum</td></tr>
+      <tr style="background: #f8f9fa;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/services/ticket-mode-classifier.ts</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Update comment: EXECUTE &rarr; PLAY for accuracy</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="client-l1-file-inventory" style="font-size: 17px; color: #2d3436; margin-top: 28px;">5.3 Client L1 File Inventory</h3>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 12px;">
+    <thead>
+      <tr style="background: #4a6fa5; color: #fff;">
+        <th style="padding: 6px 10px; text-align: left; border: 1px solid #4a6fa5;">File</th>
+        <th style="padding: 6px 10px; text-align: left; border: 1px solid #4a6fa5;">Change</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background: #fff;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/types/api.ts</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Add PLAY to TicketMode const; remove EXECUTE</td></tr>
+      <tr style="background: #f8f9fa;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/lib/platform.ts</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Rename executeMode to playMode; EXECUTE &rarr; PLAY in availableModes</td></tr>
+      <tr style="background: #fff;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/components/mode-icons.tsx</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Rename ExecuteIcon to PlayIcon; update ModeIcon switch</td></tr>
+      <tr style="background: #f8f9fa;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/lib/format.ts</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Update modeLabel: 'Execute' &rarr; 'Play'</td></tr>
+      <tr style="background: #fff;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/routes/create-ticket.tsx</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Update modeIcons + modeDisplayLabels</td></tr>
+      <tr style="background: #f8f9fa;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/routes/ticket-detail.tsx</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Update mode dropdown option</td></tr>
+      <tr style="background: #fff;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/components/ticket-filter-bar.tsx</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Update filter option</td></tr>
+      <tr style="background: #f8f9fa;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/components/ticket-summary.tsx</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Update comment text</td></tr>
+      <tr style="background: #fff;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/components/hashtag-ticket-picker.tsx</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Update color map</td></tr>
+      <tr style="background: #f8f9fa;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/components/reference-chip.tsx</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Update border color</td></tr>
+      <tr style="background: #fff;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/lib/helix-cli-docs-content.ts</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Update CLI docs mirror</td></tr>
+      <tr style="background: #f8f9fa;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/lib/platform.test.ts</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Update capability + mode assertions</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="cli-l1-file-inventory" style="font-size: 17px; color: #2d3436; margin-top: 28px;">5.4 CLI L1 File Inventory</h3>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 12px;">
+    <thead>
+      <tr style="background: #4a6fa5; color: #fff;">
+        <th style="padding: 6px 10px; text-align: left; border: 1px solid #4a6fa5;">File</th>
+        <th style="padding: 6px 10px; text-align: left; border: 1px solid #4a6fa5;">Change</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background: #fff;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/tickets/create.ts</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Replace EXECUTE with PLAY in VALID_MODES + help text</td></tr>
+      <tr style="background: #f8f9fa;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/tickets/index.ts</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Replace EXECUTE with PLAY in usage + help text</td></tr>
+      <tr style="background: #fff;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;"><code>src/docs/cli-content.ts</code></td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Replace EXECUTE with PLAY in mode table + examples</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="deploy-ordering" style="font-size: 17px; color: #2d3436; margin-top: 28px;">5.5 Deploy Ordering</h3>
+
+  <div style="display: flex; align-items: center; justify-content: center; gap: 0; margin: 16px 0; flex-wrap: wrap;">
+    <div style="background: #e8eaf6; border: 1px solid #c5cae9; border-radius: 8px; padding: 10px 20px; text-align: center;">
+      <div style="font-size: 14px; font-weight: 600; color: #3949ab;">Server</div>
+      <div style="font-size: 11px; color: #636e72;">Enum + API</div>
+    </div>
+    <div style="padding: 0 10px; font-size: 20px; color: #636e72;">&rarr;</div>
+    <div style="background: #e8eaf6; border: 1px solid #c5cae9; border-radius: 8px; padding: 10px 20px; text-align: center;">
+      <div style="font-size: 14px; font-weight: 600; color: #3949ab;">CLI</div>
+      <div style="font-size: 11px; color: #636e72;">Sends mode to server</div>
+    </div>
+    <div style="padding: 0 10px; font-size: 20px; color: #636e72;">&rarr;</div>
+    <div style="background: #e8eaf6; border: 1px solid #c5cae9; border-radius: 8px; padding: 10px 20px; text-align: center;">
+      <div style="font-size: 14px; font-weight: 600; color: #3949ab;">Client</div>
+      <div style="font-size: 11px; color: #636e72;">Independent</div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 6: OPEN QUESTIONS & RISKS -->
+  <!-- ============================================================ -->
+  <h2 id="open-questions-and-risks" style="font-size: 22px; color: #2d3436; margin-top: 40px; margin-bottom: 16px;">6. Open Questions &amp; Risks</h2>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;">
+    <thead>
+      <tr style="background: #2d3436; color: #fff;">
+        <th style="padding: 8px 12px; text-align: left; border: 1px solid #2d3436; width: 4%;">#</th>
+        <th style="padding: 8px 12px; text-align: left; border: 1px solid #2d3436; width: 24%;">Question</th>
+        <th style="padding: 8px 12px; text-align: left; border: 1px solid #2d3436;">Impact &amp; Mitigation</th>
+        <th style="padding: 8px 12px; text-align: center; border: 1px solid #2d3436; width: 8%;">Level</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background: #fff;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">1</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Dry-run preview fidelity</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">NetSuite has no quarantined save or <code>BEGIN...ROLLBACK</code>. Sourced fields compute in-memory, but taxes, GL impact, and user-event script effects require <code>record.save()</code>. Mitigation: disclose limitations; use sandbox as the primary preview environment.</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #f57c00; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">L4</span></td>
+      </tr>
+      <tr style="background: #f8f9fa;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">2</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">User-event script side effects</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">User-event scripts fire only on <code>record.save()</code>. Preview misses these side effects entirely. Mitigation: enumerate UE scripts per record type at play design time to classify actual risk tier.</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #c62828; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">L5</span></td>
+      </tr>
+      <tr style="background: #fff;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">3</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Agent-generated SuiteQL quality</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Quality depends on the agent's understanding of NetSuite schema nuances. Bad queries erode user trust quickly. Mitigation: shape enforcement catches structural failures; canonical examples (L4) catch logic failures.</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #00897b; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">L3</span></td>
+      </tr>
+      <tr style="background: #f8f9fa;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">4</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">PLAYBOOK_CHECK schema desync</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Production DB has this value but local Prisma schema lacks it. Migration ordering is delicate. Mitigation: <code>IF NOT EXISTS</code> guard; two-migration strategy handles both environments.</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #4a6fa5; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">L1</span></td>
+      </tr>
+      <tr style="background: #fff;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">5</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Output/Effects script authoring</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">How much can the agent generate vs. requiring human editing? The effects script is deterministic, not regenerated. Mitigation: agent generates at design time; human can edit before READY.</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #0097a7; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">L2</span></td>
+      </tr>
+      <tr style="background: #f8f9fa;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">6</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">REVERSALVOIDING preference</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">This accounting preference changes void semantics per account. Mitigation: check preference at runtime before any void operation (RSH-702 Go condition #4).</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #c62828; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">L5</span></td>
+      </tr>
+      <tr style="background: #fff;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">7</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">NS-GM depth for canonical examples</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Can NS-GM generate records with complex relationships or only flat records? Mitigation: start flat; extend iteratively.</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #f57c00; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">L4</span></td>
+      </tr>
+      <tr style="background: #f8f9fa;">
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">8</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Sandbox SuiteQL fidelity</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6;">Does sandbox schema match production closely enough? Drift could make proven queries fail. Mitigation: document limitations; consider schema-check step.</td>
+        <td style="padding: 8px 12px; border: 1px solid #dee2e6; text-align: center;"><span style="background: #00897b; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">L3</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 7: FUTURE WORK -->
+  <!-- ============================================================ -->
+  <h2 id="future-work" style="font-size: 22px; color: #2d3436; margin-top: 40px; margin-bottom: 16px;">7. Future Work</h2>
+
+  <p style="font-size: 14px; line-height: 1.7; color: #555;">These items are explicitly deferred from the MVP. Each is valuable, but introducing them prematurely would complicate the core play model.</p>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;">
+    <thead>
+      <tr style="background: #2d3436; color: #fff;">
+        <th style="padding: 8px 12px; text-align: left; border: 1px solid #2d3436;">Feature</th>
+        <th style="padding: 8px 12px; text-align: left; border: 1px solid #2d3436;">Why Deferred</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background: #fff;"><td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">Static query promotion</td><td style="padding: 8px 12px; border: 1px solid #dee2e6;">V2 feature. Users "promote" a proven query to a static artifact. Start agent-generated to learn what patterns emerge.</td></tr>
+      <tr style="background: #f8f9fa;"><td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">Canonical examples as platform primitive</td><td style="padding: 8px 12px; border: 1px solid #dee2e6;">Applies to Build and Fix too, not just plays. Deserves its own research ticket.</td></tr>
+      <tr style="background: #fff;"><td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">Triggered/scheduled plays</td><td style="padding: 8px 12px; border: 1px solid #dee2e6;">Manual execution for MVP. Scheduling adds circuit-breaker, retry, and concurrency concerns.</td></tr>
+      <tr style="background: #f8f9fa;"><td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">Playbook convergence</td><td style="padding: 8px 12px; border: 1px solid #dee2e6;">BLD-677 rules are architecturally separate. Convergence is a future integration.</td></tr>
+      <tr style="background: #fff;"><td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">Cross-play composition</td><td style="padding: 8px 12px; border: 1px solid #dee2e6;">Chaining plays is interesting but over-engineering for MVP.</td></tr>
+      <tr style="background: #f8f9fa;"><td style="padding: 8px 12px; border: 1px solid #dee2e6; font-weight: 600;">Play builder UI</td><td style="padding: 8px 12px; border: 1px solid #dee2e6;">Deferred. The ticket system is sufficient for play creation at MVP.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 8: EVIDENCE SOURCES -->
+  <!-- ============================================================ -->
+  <h2 id="evidence-sources" style="font-size: 22px; color: #2d3436; margin-top: 40px; margin-bottom: 16px;">8. Evidence Sources</h2>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 12px;">
+    <thead>
+      <tr style="background: #2d3436; color: #fff;">
+        <th style="padding: 6px 10px; text-align: left; border: 1px solid #2d3436;">Source</th>
+        <th style="padding: 6px 10px; text-align: left; border: 1px solid #2d3436;">Type</th>
+        <th style="padding: 6px 10px; text-align: left; border: 1px solid #2d3436;">Key Finding</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="background: #fff;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;">ticket.md (Description)</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Requirements</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Play = 3-step pipeline; replaces Execute; 7 design points</td></tr>
+      <tr style="background: #f8f9fa;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;">ticket.md (Discussion)</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Consensus</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Map/Reduce/Output anatomy; agent-generated first; shape enforcement; canonical examples co-develop; creation vs. execution split</td></tr>
+      <tr style="background: #fff;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;">RSH-702 Research Report</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Feasibility</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Conditional Go; 3-tier reversibility; NS-GM is raw gateway; 4 Go conditions</td></tr>
+      <tr style="background: #f8f9fa;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Production database</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Runtime query (June 6, 2026)</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">876 total tickets; EXECUTE=0; AUTO 296, RESEARCH 239, BUILD 194, FIX 144, PLAYBOOK_CHECK 3</td></tr>
+      <tr style="background: #fff;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;">scout/scout-summary.md (server)</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Codebase analysis</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">5 MVP levels; mode patterns; credential routing; 13+ relevant files</td></tr>
+      <tr style="background: #f8f9fa;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;">scout/scout-summary.md (client)</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Codebase analysis</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">~12 files for mode rename; ExecuteIcon is already a play-triangle SVG</td></tr>
+      <tr style="background: #fff;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;">scout/scout-summary.md (CLI)</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Codebase analysis</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">3 files; thin client; server enforces platform gating</td></tr>
+      <tr style="background: #f8f9fa;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;">diagnosis/diagnosis-statement.md (3 repos)</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Root cause + MVP decomposition</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Per-file change maps; PLAYBOOK_CHECK desync; deploy ordering</td></tr>
+      <tr style="background: #fff;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;">tech-research/tech-research.md (server)</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Architecture decisions</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">8 ADs; inline PlayDefinition fields; Zod for validation; orchestrator branching</td></tr>
+      <tr style="background: #f8f9fa;"><td style="padding: 6px 10px; border: 1px solid #dee2e6;">product/product.md</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">Product specification</td><td style="padding: 6px 10px; border: 1px solid #dee2e6;">MVP levels; user scenarios; success criteria; design principles; scope constraints</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Footer -->
   <div style="border-top: 2px solid #dee2e6; margin-top: 48px; padding-top: 20px;">
-    <p style="font-size: 13px; color: #636e72; margin: 0;">
-      <strong>RSH-707</strong> &mdash; MVP NetSuite Play Mode Design Specification<br>
-      Generated: June 6, 2026 &bull; Production data verified via runtime inspection<br>
-      Source artifacts: product.md, tech-research.md, diagnosis-statement.md (server, client, CLI), RSH-702 research report
-    </p>
+    <p style="font-size: 13px; color: #636e72; margin: 0;">RSH-707 | Design Specification | June 6, 2026 | 10 evidence sources consumed</p>
+    <p style="font-size: 13px; color: #636e72; margin: 4px 0 0 0;">Referenced tickets: RSH-702 (Governance Feasibility), BLD-677 (Playbook Check)</p>
   </div>
 
 </body>
