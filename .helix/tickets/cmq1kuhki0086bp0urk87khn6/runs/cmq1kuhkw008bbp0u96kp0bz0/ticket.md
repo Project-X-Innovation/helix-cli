@@ -26,7 +26,7 @@ Feel free to look at recent reports and all the recent tickets.
 2 ticket(s) referenced. Full artifacts materialized at `.helix-refs/`:
 
 ### BLD-680: Egress Lockdown ⑥ — Account-scoped NetSuite egress
-- Mode: BUILD | Status: DEPLOYING
+- Mode: BUILD | Status: PREVIEW_READY
 - Completed runs: 1 (run-1)
 - Materialized files: 2 artifacts
 - Path: `.helix-refs/BLD-680/`
@@ -45,3 +45,7 @@ Read the manifest file for a complete file listing, or browse the directory dire
 
 ## Attachments
 - (none)
+
+## Discussion
+- **Usher** (2026-06-06T00:05:06.146Z) [Helix]: @Helix #RSH-667 and #RSH-692
+- **Helix** (2026-06-06T00:05:16.483Z) [Agent]: Got it! I'll make sure the research factors in **#RSH-667** and **#RSH-692** as additional references alongside the already-linked tickets. The run is currently in progress — the code analysis step has completed and the work is continuing. I'll keep you posted as things move along!
