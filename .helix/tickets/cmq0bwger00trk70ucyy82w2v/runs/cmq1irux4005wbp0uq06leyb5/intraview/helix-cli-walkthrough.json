@@ -1,0 +1,73 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "Playbook Check CLI Commands (BLD-676)",
+  "description": "This tour walks through the addition of the `hlx playbook` command group to the helix-cli. The feature introduces two subcommands: `hlx playbook check <rule-ref>` (trigger a playbook rule check via POST, then poll GET until PASS/FAIL/ERROR) and `hlx playbook checks <rule-ref>` (list check history). The implementation mirrors the existing `goals/` command group pattern and introduces the first async polling loop in the CLI. All changes are additive — three new files plus one new switch case in the main dispatcher.",
+  "steps": [
+    {
+      "file": "src/index.ts",
+      "line": 17,
+      "description": "The main CLI dispatcher (src/index.ts) is the single entry point for all `hlx` subcommands. A new import for the playbook command group router is added here, and a `playbook` case is wired into the switch statement at L133–136 using the same `configOrHelp` pattern as the existing `goals` case. This is the only existing file changed — all other additions are in a new `src/playbook/` directory. Starting here orients you to how the new command group slots into the existing architecture without touching any other command paths.",
+      "title": "Overview: dispatcher entry point"
+    },
+    {
+      "file": "src/index.ts",
+      "line": 133,
+      "description": "The `playbook` case delegates to the new `runPlaybook` router, following the identical pattern used by `goals` and `tickets`. The `configOrHelp` wrapper ensures that if no config is found (user not authenticated) or `--help` is passed, the appropriate message is shown before any network call is made. This keeps error-surface handling consistent across all command groups.",
+      "title": "Dispatcher: playbook case registration"
+    },
+    {
+      "file": "src/playbook/index.ts",
+      "line": 1,
+      "description": "This file is the router for the `playbook` command group, mirroring `src/goals/index.ts` exactly. It reads the first positional argument to determine which subcommand to invoke (`check` or `checks`), displays help text when no subcommand is given or `--help` is passed, and wraps all subcommand calls in a try/catch that routes errors through `parseApiError` (imported from `goals/utils.ts`) for user-friendly HTTP error messages. The router also validates that a `ruleId` argument is present before delegating, preventing confusing downstream errors.",
+      "title": "Command group router"
+    },
+    {
+      "file": "src/playbook/index.ts",
+      "line": 5,
+      "description": "`parseApiError` is imported from `goals/utils.ts` rather than duplicated. This utility converts raw `hxFetch` HTTP errors into readable CLI messages (e.g., '404 Not Found: rule not found'). Reusing it keeps error messaging consistent across command groups and avoids divergence in error formatting — a deliberate decision noted in the diagnosis to follow established patterns.",
+      "title": "Shared error utility reuse"
+    },
+    {
+      "file": "src/playbook/check.ts",
+      "line": 1,
+      "description": "This is the most significant new file and introduces the first async polling pattern in the CLI. The command flow is: (1) POST to `/api/playbook/rules/${ruleId}/check` to trigger the check and receive a `CheckRecord` with an initial status; (2) if already terminal (PASS/FAIL/ERROR), print result immediately; (3) otherwise enter a polling loop — GET `/api/playbook/rules/${ruleId}/checks/${check.id}` every `POLL_INTERVAL_MS` (5 seconds) for up to `MAX_POLLS` (120 iterations = 10 minutes); (4) on terminal state, print structured result. This pattern was designed fresh since no existing CLI command polls for async completion.",
+      "title": "Check command: trigger + poll loop"
+    },
+    {
+      "file": "src/playbook/check.ts",
+      "line": 5,
+      "description": "`POLL_INTERVAL_MS = 5_000` and `MAX_POLLS = 120` are defined as named constants at the top of the file (not magic numbers inline). Together they give a 10-minute maximum wait time, chosen to cover long-running NetSuite SuiteQL iterations by the agent pipeline. `TERMINAL_STATUSES = new Set(['PASS', 'FAIL', 'ERROR'])` is used for O(1) membership checks on each poll response, keeping the loop condition readable and easy to extend if new terminal states are added later.",
+      "title": "Polling constants: interval and timeout"
+    },
+    {
+      "file": "src/playbook/check.ts",
+      "line": 60,
+      "description": "The check is triggered via `hxFetch` with `basePath: '/api'`, which maps to the server's `/api` router prefix — consistent with every other hxFetch call in the codebase. The POST returns the newly created `CheckRecord` (id, status, and initial fields). If the server immediately returns a terminal status (e.g., org configuration error producing `ERROR`), the polling loop is skipped entirely and the result is printed. This early-exit path was explicitly included in the code review as correct handling of 'immediately-terminal checks'.",
+      "title": "POST trigger with basePath"
+    },
+    {
+      "file": "src/playbook/check.ts",
+      "line": 80,
+      "description": "The polling loop GETs the check record, sleeps `POLL_INTERVAL_MS`, and repeats until a terminal status is detected or `MAX_POLLS` is exhausted. On timeout, a clear human-readable message is printed explaining the 10-minute limit. On success, interpretation text, compliance counts (compliant/violating/total), compliance rate, and example records are printed to stdout. When `--json` is passed, the raw `CheckRecord` is printed instead. The process exits with code `0` for PASS and `1` for all other outcomes (FAIL, ERROR, timeout), enabling CI/CD pipeline integration.",
+      "title": "GET polling loop and exit codes"
+    },
+    {
+      "file": "src/playbook/checks.ts",
+      "line": 1,
+      "description": "This file implements `hlx playbook checks <rule-ref>`, which GETs `/api/playbook/rules/${ruleId}/checks` and renders a formatted table of past check results. Columns are ID (truncated prefix), Status, Compliance rate, and Checked At timestamp, aligned with `padEnd` — the same technique used in `src/goals/list.ts`. An empty list is handled gracefully with a 'No checks found' message rather than an empty table or crash. The `--json` flag emits the raw array for scripting use.",
+      "title": "Checks history list command"
+    },
+    {
+      "file": "src/playbook/checks.ts",
+      "line": 1,
+      "description": "Data flows: CLI args → ruleId extracted by `getPositionalArgs` → `hxFetch` GET `/api/playbook/rules/${ruleId}/checks` → array of `CheckRecord` objects → formatted table rows printed with `console.log`. The `CheckRecord` type defined locally in `check.ts` is imported here to keep the shape consistent between the trigger/poll command and the history list command, ensuring both commands display the same fields from the same underlying data structure.",
+      "title": "Data flow: checks list to display"
+    },
+    {
+      "file": "src/playbook/index.ts",
+      "line": 1,
+      "description": "All changes are purely additive: three new files (`src/playbook/index.ts`, `src/playbook/check.ts`, `src/playbook/checks.ts`) and one new `case` block in `src/index.ts`. No existing command paths are modified. The new command group reuses `hxFetch`, `parseApiError`, `hasFlag`, `isHelpRequested`, and `getPositionalArgs` from existing shared libraries — no new utilities were introduced. The code review confirmed zero requirement gaps, zero correctness issues, and zero regression risks. The polling pattern is new to the CLI but self-contained within `check.ts` and does not affect any other command's execution path.",
+      "title": "Summary: clean integration, no regressions"
+    }
+  ]
+}

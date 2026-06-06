@@ -1,0 +1,43 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "Goals Feature Flag: Friendly Error Handling in helix-cli",
+  "description": "This tour walks through the CLI-side implementation of the Goals feature flag (ticket cmpyhct2t009qae0uvkyadbhr). The change adds reactive error handling so that when the server returns a 404 because Goals is disabled (GOALS_ENABLED=false), the CLI displays a friendly message like 'Error: Goals feature is not available.' instead of a raw HTTP error string. The approach is purely reactive — no CLI-side feature flag state, no pre-flight checks. One file changed, no new dependencies.",
+  "steps": [
+    {
+      "file": "src/goals/index.ts",
+      "line": 1,
+      "description": "This is the entry point for all 'hlx goals' subcommands. Before this change, the switch statement dispatched create, list, get, terminate, and resume unconditionally with no wrapper error handling. If the server returned a 404 because Goals was disabled, list.ts and get.ts (which lack their own try/catch blocks) would surface raw HTTP error strings to the user. The fix wraps the entire switch statement in a try/catch to catch those errors gracefully.",
+      "title": "Overview: Goals Command Dispatcher"
+    },
+    {
+      "file": "src/goals/index.ts",
+      "line": 8,
+      "description": "parseApiError is imported from ./utils.js. This utility knows how to parse the 'HTTP <status> — <JSON body>' format emitted by hxFetch, extracting the .error field from the JSON body. For a 404 response with body {\"error\":\"Goals feature is not available.\"}, parseApiError returns 'Goals feature is not available.' — the clean message shown to the user. No new dependencies were added; parseApiError already existed in utils.ts.",
+      "title": "Import parseApiError"
+    },
+    {
+      "file": "src/goals/index.ts",
+      "line": 29,
+      "description": "The entire switch statement (dispatching all 5 goals subcommands) is now wrapped in a try block starting here. This ensures any unhandled error thrown by any subcommand — including server 404s from a disabled Goals feature — is caught by the outer catch. Commands with their own local try/catch (create.ts, terminate.ts, resume.ts) call process.exit(1) in their catch blocks, which terminates before the outer catch fires, so they are unaffected. Only list.ts and get.ts, which lack local error handling, now benefit from this wrapper.",
+      "title": "try block wraps the switch statement"
+    },
+    {
+      "file": "src/goals/index.ts",
+      "line": 93,
+      "description": "The catch block calls parseApiError(error) to extract a clean message from the thrown error, logs it as 'Error: <message>' via console.error, then calls process.exit(1). Data flow: server returns HTTP 404 with JSON body {\"error\":\"Goals feature is not available.\"} → hxFetch throws an error string in 'HTTP 404 — {\"error\":...}' format → catch receives it → parseApiError extracts 'Goals feature is not available.' → console.error prints 'Error: Goals feature is not available.' → process exits with code 1. This is the core of SCN-06 from the product spec.",
+      "title": "catch block: friendly error message and exit"
+    },
+    {
+      "file": "src/goals/utils.ts",
+      "line": 10,
+      "description": "parseApiError parses the error format produced by hxFetch. It reads the JSON body portion of the error string and extracts the .error field. For the Goals feature-disabled case, the server returns {\"error\":\"Goals feature is not available.\"}, so parseApiError returns that string directly. If parsing fails for any reason, it falls back gracefully so the catch block always has a usable message. No changes were made to this file — it already supported this use case.",
+      "title": "parseApiError: extracts .error from JSON body"
+    },
+    {
+      "file": "src/goals/index.ts",
+      "line": 93,
+      "description": "The implementation is complete and all major code paths remain clean. (1) Goals commands with local error handling (create, terminate, resume) are unaffected — their process.exit(1) calls fire before the outer catch. (2) Goals commands without local error handling (list, get) now display friendly errors instead of raw HTTP strings. (3) All 63 existing tests pass, TypeScript compiles with 0 errors. (4) CHK-03 (end-to-end verification that the server returns 404 when disabled) remains blocked pending server-side deployment, but code inspection confirms the logic is correct.",
+      "title": "Summary: Clean code paths confirmed"
+    }
+  ]
+}

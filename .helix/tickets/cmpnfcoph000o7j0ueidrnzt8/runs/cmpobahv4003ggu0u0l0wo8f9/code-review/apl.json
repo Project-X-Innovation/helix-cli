@@ -1,0 +1,28 @@
+{
+  "questions": [
+    "Does resume.ts correctly follow the terminate.ts command pattern?",
+    "Is the switch case in index.ts properly wired with argument validation?",
+    "Are the CLI docs complete and consistent with existing entries?",
+    "Does the hxFetch call match the server's expected request format?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes. resume.ts follows terminate.ts: imports HxConfig/hxFetch/parseApiError, async function with try/catch, POST via hxFetch, console output on success, process.exit(1) on error. Simplified (no flags, no response destructuring).",
+      "evidence": ["src/goals/resume.ts:1-19", "src/goals/terminate.ts:1-41"]
+    },
+    {
+      "answer": "Yes. Switch case at index.ts:73-85 follows terminate pattern exactly: isHelpRequested check, goalId extraction from rest[0], null/flag validation, cmdGoalsResume call.",
+      "evidence": ["src/goals/index.ts:73-85", "src/goals/index.ts:59-70"]
+    },
+    {
+      "answer": "Yes. Three additions in cli-content.ts: command table row (line 141), flags section 'No flags required' (line 174-176), and example with bash code block (lines 327-331). Format matches surrounding entries.",
+      "evidence": ["src/docs/cli-content.ts:141", "src/docs/cli-content.ts:174-176", "src/docs/cli-content.ts:327-331"]
+    },
+    {
+      "answer": "Yes. POST to `/goals/${goalId}/resume` with `body: {}` and `basePath: '/api'`. Server postResume handler reads no body, only path param and auth. Empty body is serialized by hxFetch and harmlessly ignored.",
+      "evidence": ["src/goals/resume.ts:7-11", "helix-global-server/src/controllers/goal-controller.ts:145-149"]
+    }
+  ],
+  "statement": "CLI code review complete. All 3 changed files reviewed against product spec and implementation plan. No issues found; no code changes made. Quality gates pass: typecheck, build.",
+  "followups": []
+}

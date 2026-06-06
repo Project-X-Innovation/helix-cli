@@ -1,0 +1,42 @@
+{
+  "questions": [
+    "Q1: Does the CLI playbook command group follow the existing goals/ pattern?",
+    "Q2: Does the check command implement POST trigger + GET polling with correct intervals?",
+    "Q3: Does the checks command list history with formatted output and --json support?",
+    "Q4: Is the playbook case correctly registered in the main dispatcher?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes. src/playbook/index.ts follows the goals/index.ts pattern exactly: switch-based subcommand dispatch, help text, parseApiError error handling, isHelpRequested checks.",
+      "evidence": [
+        "src/playbook/index.ts uses same structure as src/goals/index.ts",
+        "Imports parseApiError from goals/utils.js"
+      ]
+    },
+    {
+      "answer": "Yes. cmdPlaybookCheck in check.ts: POST to /playbook/rules/${ruleId}/check with basePath: '/api', then polls GET every 5 seconds (POLL_INTERVAL_MS=5000) for up to 120 iterations (MAX_POLLS=120, 10 minutes). Terminal states: PASS, FAIL, ERROR. Supports --json. Exit code 0 for PASS, 1 otherwise.",
+      "evidence": [
+        "check.ts lines 9-10: POLL_INTERVAL_MS=5000, MAX_POLLS=120",
+        "check.ts line 8: TERMINAL_STATUSES = Set(['PASS', 'FAIL', 'ERROR'])",
+        "check.ts uses hxFetch with basePath: '/api'"
+      ]
+    },
+    {
+      "answer": "Yes. cmdPlaybookChecks in checks.ts: GET /playbook/rules/${ruleId}/checks with basePath: '/api'. Displays formatted table with ID, Status, Compliance Rate, Checked At. Handles empty list. Supports --json.",
+      "evidence": [
+        "checks.ts formats output with padEnd alignment",
+        "checks.ts handles empty checks array with 'No checks found' message"
+      ]
+    },
+    {
+      "answer": "Yes. src/index.ts has import for runPlaybook and a 'playbook' case in the switch statement using configOrHelp pattern. Usage text updated with playbook commands.",
+      "evidence": [
+        "src/index.ts line 16: import { runPlaybook }",
+        "src/index.ts lines 130-134: playbook case",
+        "Usage text includes hlx playbook check and hlx playbook checks"
+      ]
+    }
+  ],
+  "statement": "CLI implementation complete. 4 files changed (3 new, 1 modified). Playbook command group with check (trigger+poll) and checks (history list) subcommands. TypeScript compiles clean. CHK-03 and CHK-04 blocked by staging server not having new endpoints deployed.",
+  "followups": []
+}

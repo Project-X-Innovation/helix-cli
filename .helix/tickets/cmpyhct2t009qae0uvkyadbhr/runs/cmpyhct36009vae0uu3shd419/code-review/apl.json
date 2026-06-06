@@ -1,0 +1,24 @@
+{
+  "questions": [
+    "Does the CLI display a friendly error message when the server returns 404 for disabled Goals?",
+    "Does the outer try/catch interfere with commands that have their own error handling?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes. The outer try/catch in runGoals catches the error, and parseApiError extracts the .error field from the JSON body (\"Goals feature is not available.\"), displaying it as \"Error: Goals feature is not available.\"",
+      "evidence": [
+        "src/goals/index.ts:93-96 (catch block)",
+        "src/goals/utils.ts:10-25 (parseApiError extracts .error from JSON body)"
+      ]
+    },
+    {
+      "answer": "No. Commands with their own error handling (create.ts, terminate.ts, resume.ts) call process.exit(1) in their catch blocks, which terminates immediately before the outer catch fires. The outer catch only handles commands without local error handling (list.ts, get.ts).",
+      "evidence": [
+        "src/goals/index.ts:29-96 (outer try/catch wraps switch statement)",
+        "src/goals/create.ts, terminate.ts, resume.ts (have local try/catch with process.exit)"
+      ]
+    }
+  ],
+  "statement": "CLI code review found no issues. Implementation is correct and follows the plan.",
+  "followups": []
+}
