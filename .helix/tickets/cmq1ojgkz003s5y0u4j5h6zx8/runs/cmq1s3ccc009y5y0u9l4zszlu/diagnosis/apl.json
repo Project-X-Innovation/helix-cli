@@ -1,26 +1,25 @@
 {
   "questions": [
-    "Q1: Should PLAY replace EXECUTE in VALID_MODES or should both values be accepted?",
-    "Q2: Does the CLI need new Play-specific subcommands for MVP?"
+    "Q1: What CLI files reference EXECUTE and need PLAY updates?",
+    "Q2: Is the CLI change safe to deploy independently?"
   ],
   "answers": [
     {
-      "answer": "Replace EXECUTE with PLAY in VALID_MODES. The CLI is a thin client — the server enforces platform restrictions. Since EXECUTE is being retired (zero usage), there's no backward-compatibility concern for scripts using --mode EXECUTE. Update VALID_MODES to ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'PLAY'] and help text accordingly.",
+      "answer": "Two files: (1) create.ts line 13 — VALID_MODES array, line 17 — help text. (2) cli-content.ts line 109 — mode documentation table. The mode validation logic (lines 79-88) normalizes to uppercase and checks includes() — no structural change, just swap EXECUTE for PLAY in the array and text.",
       "evidence": [
-        "create.ts line 13: VALID_MODES = ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE']",
-        "create.ts line 17: help text documents --mode options inline",
-        "Zero EXECUTE tickets in production — no scripts rely on --mode EXECUTE"
+        "src/tickets/create.ts:13 — VALID_MODES = ['AUTO','BUILD','FIX','RESEARCH','EXECUTE'] as const",
+        "src/tickets/create.ts:17 — help text shows --mode <AUTO|BUILD|FIX|RESEARCH|EXECUTE>",
+        "src/docs/cli-content.ts:109 — mode list in docs table"
       ]
     },
     {
-      "answer": "No new subcommands for MVP. The CLI's ticket creation flow with --mode PLAY is sufficient. Play-specific subcommands (play preview, play execute, play rollback) are deferred to the governance/execution follow-up.",
+      "answer": "Deploy server first. The CLI sends mode to POST /api/tickets — if PLAY is sent before the server knows PLAY, the server rejects with 400 (mode not in platformConfig.allowedModes). With server deployed first, CLI sending PLAY works immediately.",
       "evidence": [
-        "Ticket description item 1: 'Use normal Helix ticket system to create a Play'",
-        "continue.ts --dry-run is client-side payload preview only — not Play-specific",
-        "MVP scope is mode scaffolding, not execution engine"
+        "create.ts:147 — mode sent in POST body",
+        "ticket-controller.ts:152-154 — server validates mode against allowedModes"
       ]
     }
   ],
-  "statement": "The CLI needs a single-file change: replace EXECUTE with PLAY in the VALID_MODES array and update the help text. This is the smallest change surface of all four repos. No new subcommands or flags are needed for MVP.",
+  "statement": "CLI needs 2-file change: replace EXECUTE with PLAY in VALID_MODES (create.ts) and docs (cli-content.ts). Smallest change of all repos. Deploy server first to avoid 400 rejections. No new subcommands needed for L1. L2/L3 may add play-specific CLI commands (hlx plays list/preview/run) but those are deferred.",
   "followups": []
 }
