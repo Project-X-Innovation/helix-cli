@@ -1,0 +1,43 @@
+{
+  "problem": "Post-egress-lockdown analysis: verify CLI network access patterns. The CLI runs outside sandboxes (on user machines or inside sandboxes as a tool) and communicates with the Helix server and GitHub for updates.",
+  "files": [
+    {
+      "path": "src/lib/http.ts",
+      "why": "Centralized hxFetch() wrapper. All API requests routed through this with retry logic (3 attempts, exponential backoff), 30sec timeout, Bearer/X-API-Key auth. No domain allowlisting at CLI level."
+    },
+    {
+      "path": "src/lib/config.ts",
+      "why": "Config: HELIX_API_KEY/HELIX_INSPECT_TOKEN/HELIX_INSPECT_API_KEY for auth, HELIX_URL/HELIX_INSPECT_BASE_URL for server endpoint. Stored in ~/.hlx/config.json."
+    },
+    {
+      "path": "src/update/check.ts",
+      "why": "GitHub API access: fetches https://api.github.com/repos/Project-X-Innovation/helix-cli/releases/tags/latest for update checks. Authenticated with optional GITHUB_TOKEN."
+    },
+    {
+      "path": "src/update/perform.ts",
+      "why": "Downloads update tarballs from GitHub release assets. Validates integrity (checksum, path traversal checks, no symlink extraction)."
+    },
+    {
+      "path": "src/update/extract.ts",
+      "why": "Path traversal protection: rejects entries with '..' components, validates paths stay within destination."
+    },
+    {
+      "path": "package.json",
+      "why": "Zero runtime dependencies (only @types/node, typescript as dev deps). CI: build-release on push to main, npm publish with OIDC provenance on version tags."
+    }
+  ],
+  "facts": [
+    "CLI routes all API calls through single hxFetch() wrapper — no domain allowlisting at CLI level",
+    "CLI makes outbound requests to exactly 2 destinations: user-configured Helix server URL and GitHub API (for updates)",
+    "Token format validated: must start with hxi_ prefix (token/add.ts line 17)",
+    "Zero runtime dependencies — only native Node.js APIs used for HTTP",
+    "Update mechanism validates: checksum integrity, path traversal, no symlinks",
+    "Auto-update controlled by config flag, never blocks command execution on failure",
+    "HLX_SKIP_UPDATE_CHECK env var suppresses update checks",
+    "npm publishing uses OIDC Trusted Publishing with provenance"
+  ],
+  "unknowns": [
+    "Whether CLI should have its own domain allowlist or whether trust-by-configuration (user sets HELIX_URL) is the intended design",
+    "When CLI runs inside a sandbox, egress is controlled by the sandbox network policy — the CLI itself doesn't need its own controls in that context"
+  ]
+}
