@@ -1,0 +1,33 @@
+{
+  "questions": [
+    "Q1: Should PLAY replace EXECUTE in VALID_MODES or should both be accepted?",
+    "Q2: Does the CLI need new play-specific subcommands for MVP-1?",
+    "Q3: What is the deploy ordering requirement?"
+  ],
+  "answers": [
+    {
+      "answer": "Replace EXECUTE with PLAY in VALID_MODES. EXECUTE has zero production usage (0/852 tickets), so there are no existing scripts to break. The server also removes EXECUTE from its Zod enums and platform config. Clean replacement is simpler than mapping EXECUTE -> PLAY.",
+      "evidence": [
+        "create.ts line 13: VALID_MODES = ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE'] as const",
+        "Production DB: 0/852 tickets with EXECUTE mode",
+        "Server removes EXECUTE from ticket-controller Zod enum and platform-config allowedModes"
+      ]
+    },
+    {
+      "answer": "No. MVP-1 is mode scaffolding only. The CLI just needs to accept --mode PLAY and display it in help text. Play-specific subcommands (hlx plays list/preview/run) are deferred to MVP-2+ when the server has play API endpoints.",
+      "evidence": [
+        "product/product.md MVP-1: 'CLI accepts hlx tickets create --mode PLAY'",
+        "No play CRUD or execution API endpoints exist at MVP-1"
+      ]
+    },
+    {
+      "answer": "Server must deploy first. The CLI sends mode in the POST body to /api/tickets. The server validates against platformConfig.allowedModes. If PLAY is sent before the server recognizes it, the server returns 400.",
+      "evidence": [
+        "create.ts line 147: mode sent in POST body",
+        "ticket-controller.ts line 152: server validates mode against platformConfig.allowedModes"
+      ]
+    }
+  ],
+  "statement": "CLI needs a 3-file change: replace EXECUTE with PLAY in VALID_MODES (create.ts), help text (create.ts, index.ts), and docs (cli-content.ts). This is the smallest change surface. Deploy server first. No play-specific subcommands at MVP-1.",
+  "followups": []
+}
