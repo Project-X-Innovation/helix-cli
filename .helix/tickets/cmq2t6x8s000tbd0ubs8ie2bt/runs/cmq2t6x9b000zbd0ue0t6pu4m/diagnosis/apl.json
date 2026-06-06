@@ -1,0 +1,24 @@
+{
+  "questions": [
+    "What CLI files reference EXECUTE and need PLAY replacement?",
+    "Are there any CLI tests that need updating?"
+  ],
+  "answers": [
+    {
+      "answer": "4 source files + 1 markdown: create.ts (VALID_MODES const + usage help), index.ts (2 usage strings), cli-content.ts (mode table + example text), commands.md (command signature + mode flag table). All are simple string replacements of EXECUTE with PLAY.",
+      "evidence": [
+        "scout/reference-map.json — 4 source files + 1 markdown with line numbers",
+        "Verification: create.ts:13 — VALID_MODES = ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE']",
+        "Verification: index.ts:21,73 — usage strings show EXECUTE in mode option list"
+      ]
+    },
+    {
+      "answer": "No CLI tests reference EXECUTE. 6 test files exist but none test mode validation. No test changes needed.",
+      "evidence": [
+        "scout/reference-map.json facts: 'No test files reference EXECUTE — 6 test files exist but none test mode validation.'"
+      ]
+    }
+  ],
+  "statement": "Minimal CLI change: replace EXECUTE with PLAY in VALID_MODES string array, 3 usage help strings, and 2 documentation references. VALID_MODES is a plain string array (not typed against server TicketMode) so it can be updated independently. No test changes needed.",
+  "followups": []
+}
