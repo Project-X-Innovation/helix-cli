@@ -1,0 +1,35 @@
+{
+  "questions": [
+    "Q1: What command structure should the playbook CLI group follow?",
+    "Q2: What polling strategy is appropriate for the check command?",
+    "Q3: How should the CLI resolve a rule-ref argument?"
+  ],
+  "answers": [
+    {
+      "answer": "New src/playbook/ directory with index.ts (router), check.ts (trigger+poll), checks.ts (list). Follows the goals/ pattern: switch-based subcommand dispatch, help text, parseApiError error handling. 'playbook' case added to src/index.ts dispatcher with configOrHelp.",
+      "evidence": [
+        "src/goals/index.ts: established command group pattern with switch, help, parseApiError",
+        "src/index.ts L81-156: command dispatcher switch; goals/tickets/library all follow same pattern",
+        "Ticket: 'hlx playbook check <rule-ref>' and 'hlx playbook checks <rule-ref>'"
+      ]
+    },
+    {
+      "answer": "Fixed 5-second interval polling with 10-minute timeout. POST to trigger, then loop: sleep(5000) -> GET status -> break on terminal (PASS/FAIL/ERROR). This is the first polling pattern in the CLI. Simple delay loop is appropriate for check durations (1-5 minutes typical).",
+      "evidence": [
+        "No existing polling pattern in the CLI (src/tickets/rerun.ts is fire-and-forget)",
+        "src/lib/http.ts: hxFetch has 30-second per-request timeout, adequate for individual poll calls",
+        "Typical check duration is 1-5 minutes based on PLAYBOOK_CHECK step selection (scout, diagnosis, implementation-plan, implementation, verification)"
+      ]
+    },
+    {
+      "answer": "Accept raw rule ID as positional argument, consistent with hlx goals get <goalId>. No fuzzy matching or prefix resolution in MVP. Users can discover rule IDs via hlx playbook checks or the API.",
+      "evidence": [
+        "src/goals/get.ts: accepts goalId directly as positional arg with no resolution",
+        "No rule-ref resolution endpoint exists on the server",
+        "Simple approach avoids ambiguity and is consistent with existing CLI patterns"
+      ]
+    }
+  ],
+  "statement": "The CLI needs a new playbook command group with two subcommands (check, checks). The primary new behavior is the polling pattern — a 5-second fixed-interval loop with 10-minute timeout. All other aspects (command group structure, API communication, output formatting, error handling) follow established patterns. The CLI depends on server endpoints being implemented.",
+  "followups": []
+}

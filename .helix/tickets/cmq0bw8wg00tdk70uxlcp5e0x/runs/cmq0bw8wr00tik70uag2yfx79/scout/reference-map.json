@@ -1,0 +1,65 @@
+{
+  "problem": "Add CLI commands 'hlx playbook check <rule-ref>' (trigger a check and poll to completion) and 'hlx playbook checks <rule-ref>' (list check history) that communicate with the server's new playbook check API endpoints.",
+  "files": [
+    {
+      "path": "src/index.ts",
+      "why": "Main CLI dispatcher. Lines 81-156: switch statement routes commands. A 'playbook' case needs to be added following the pattern of 'goals', 'tickets', etc. (config via configOrHelp, then runPlaybook)."
+    },
+    {
+      "path": "src/goals/index.ts",
+      "why": "Best reference pattern for a command group with subcommands. Shows goalsUsage(), switch on subcommand, help handling, error catching with parseApiError(). The playbook command group should follow this structure."
+    },
+    {
+      "path": "src/goals/get.ts",
+      "why": "Pattern for fetching and displaying a single resource with --json flag support. printGoalDetail() shows the formatted output pattern."
+    },
+    {
+      "path": "src/goals/list.ts",
+      "why": "Pattern for listing resources with formatting. Shows how to display tabular data with padEnd() alignment."
+    },
+    {
+      "path": "src/tickets/rerun.ts",
+      "why": "Simplest pattern for triggering an async server operation. POST to API, print result. The check trigger is similar but adds polling."
+    },
+    {
+      "path": "src/lib/http.ts",
+      "why": "hxFetch() HTTP client with retries, auth headers, basePath configuration. All API calls use this. The polling loop will call hxFetch repeatedly to check status."
+    },
+    {
+      "path": "src/lib/flags.ts",
+      "why": "Flag parsing utilities: getFlag, hasFlag, requireFlag, isHelpRequested, getPositionalArgs. Used by all commands for argument parsing."
+    },
+    {
+      "path": "src/lib/config.ts",
+      "why": "HxConfig type (apiKey, url, orgId) and requireConfig/loadConfig. Commands use configOrHelp() from index.ts."
+    },
+    {
+      "path": "src/lib/resolve-ticket.ts",
+      "why": "Pattern for resolving a user-provided reference (ID, shortId, number) to an internal ID via API. A similar resolve-rule utility may be needed for rule-ref."
+    },
+    {
+      "path": "src/goals/utils.ts",
+      "why": "parseApiError() utility for extracting user-friendly error messages from API responses. Shared across goal commands."
+    },
+    {
+      "path": "package.json",
+      "why": "Scripts: build (tsc), typecheck (tsc --noEmit), test (tsc && node --test dist/**/*.test.js). No lint script. Binary: hlx -> dist/index.js."
+    }
+  ],
+  "facts": [
+    "No existing playbook commands exist in the CLI. No files matching 'playbook' or 'PLAYBOOK' found in src/.",
+    "CLI uses zero external dependencies (only @types/node and typescript as devDeps). All HTTP via native fetch in hxFetch().",
+    "Command pattern: index.ts dispatches to command group routers (e.g., goals/index.ts), which dispatch to individual command handlers (e.g., goals/get.ts).",
+    "hxFetch uses basePath '/api/inspect' by default but accepts basePath: '/api' override. Playbook endpoints will use basePath: '/api'.",
+    "Auth is via API key (hxi_* or Bearer token) set during 'hlx login'. Config stored locally.",
+    "No existing polling pattern found in the CLI. tickets/rerun.ts fires and forgets. The playbook check command needs to introduce polling (loop with delay, checking status endpoint).",
+    "Output formatting uses console.log with padEnd() for alignment, --json flag for machine-readable output, and abbreviated IDs (id.slice(0,8) + '...').",
+    "Test framework: Node.js built-in test runner. Tests compile to dist/ first (tsc), then run via 'node --test dist/**/*.test.js'.",
+    "No lint script defined in package.json. Only typecheck via 'tsc --noEmit'."
+  ],
+  "unknowns": [
+    "How to resolve a rule-ref in the CLI. Existing resolve-ticket.ts resolves ticket refs via API. A similar mechanism is needed for rules but no rule-ref resolution endpoint exists on the server.",
+    "Polling interval and timeout for 'hlx playbook check'. No existing polling pattern to reference. Need to decide on reasonable defaults (e.g., 5s interval, 10min timeout).",
+    "Whether the server will return the check with nested result data or require a separate artifact fetch. This determines how the CLI displays the result."
+  ]
+}

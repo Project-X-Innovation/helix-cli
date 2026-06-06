@@ -1,0 +1,67 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "Playbook Check CLI Commands (BLD-678)",
+  "description": "This tour walks through the addition of two new CLI commands — `hlx playbook check <rule-ref>` and `hlx playbook checks <rule-ref>` — that let users trigger a live NetSuite business-rule check and review its history. The implementation adds a new `src/playbook/` command group mirroring the existing `src/goals/` pattern, introduces the CLI's first polling loop (POST to trigger, GET to poll until terminal state), and wires the group into the top-level dispatcher in `src/index.ts`. No existing code paths are modified beyond adding a switch case and an import.",
+  "steps": [
+    {
+      "file": "src/index.ts",
+      "line": 17,
+      "description": "The top-level CLI dispatcher in src/index.ts is the single entry point for every `hlx` subcommand. A new import for the playbook command group is added here, and a matching `playbook` case is registered in the switch statement at L133-136. This is the only modification to existing code — all other changes are purely additive new files. Understanding this file first gives context for why the playbook module must export a compatible `runPlaybook(args)` function.",
+      "title": "Overview: dispatcher entry point"
+    },
+    {
+      "file": "src/index.ts",
+      "line": 133,
+      "description": "The `playbook` case follows the identical `configOrHelp` pattern used by the `goals` case a few lines above. When `hlx playbook ...` is invoked, control is handed to `runPlaybook(args)` in `src/playbook/index.ts`. The usage text is also updated here to advertise both `playbook check` and `playbook checks` to users running `hlx --help`.",
+      "title": "Dispatcher: playbook case"
+    },
+    {
+      "file": "src/playbook/index.ts",
+      "line": 1,
+      "description": "src/playbook/index.ts is the router for the playbook command group. It mirrors src/goals/index.ts almost exactly: a switch statement dispatches on the first positional argument (the subcommand name), falls through to help text for unknown or missing subcommands, and wraps everything in a try-catch that calls `parseApiError` (imported from `goals/utils.ts`) for user-friendly HTTP error messages. The ruleId positional argument is validated here before being forwarded to the subcommand handlers. Reusing the goals/ pattern keeps the CLI surface consistent and avoids duplicating error-handling logic.",
+      "title": "Command group router"
+    },
+    {
+      "file": "src/playbook/check.ts",
+      "line": 1,
+      "description": "check.ts implements the CLI's first async polling loop — a pattern that did not exist before this ticket. On invocation it POSTs to `/api/playbook/rules/${ruleId}/check` to trigger a new check run, then enters a loop that GETs `/api/playbook/rules/${ruleId}/checks/${check.id}` every `POLL_INTERVAL_MS` (5 000 ms) for up to `MAX_POLLS` (120) iterations (10 minutes total). The loop exits when the check's `status` field enters `TERMINAL_STATUSES` — the set `{PASS, FAIL, ERROR}`. On success it prints the structured result (interpretation, compliant/violating/total counts, compliance rate, example records). The `--json` flag emits raw JSON for machine consumers. Exit code is 0 for PASS and 1 for anything else, making the command composable in CI scripts.",
+      "title": "Trigger + poll: new polling pattern"
+    },
+    {
+      "file": "src/playbook/check.ts",
+      "line": 5,
+      "description": "`POLL_INTERVAL_MS = 5_000` and `MAX_POLLS = 120` are declared as named constants at the top of the file rather than magic numbers inside the loop. This makes the 10-minute timeout immediately legible and easy to adjust. The `TERMINAL_STATUSES` Set on L7 centralises the terminal-state logic so the poll condition and any future early-exit paths share the same definition.",
+      "title": "Polling constants"
+    },
+    {
+      "file": "src/playbook/check.ts",
+      "line": 60,
+      "description": "The trigger POST is made with `hxFetch` using `basePath: '/api'`, matching every other API call in the codebase and aligning with the server's `/api` router prefix. The response is the newly-created `CheckRecord` (containing at minimum the check `id` and its initial `status`). The id is immediately captured and used as the polling target on the next line, so there is no window in which a check could be created but its id lost.",
+      "title": "POST trigger call"
+    },
+    {
+      "file": "src/playbook/check.ts",
+      "line": 80,
+      "description": "The poll loop GETs the check record by id, inspects `status`, and either returns the result or sleeps and retries. An immediately-terminal check (e.g., a GENERAL org ERROR returned synchronously by the server) is handled correctly because the terminal-state check runs before the first sleep — the loop exits on iteration 0 without unnecessary waiting. On timeout the loop exits with a clear human-readable message rather than a silent hang or an opaque process exit.",
+      "title": "GET poll loop"
+    },
+    {
+      "file": "src/playbook/checks.ts",
+      "line": 1,
+      "description": "checks.ts (plural) is the simpler of the two subcommands. It GETs `/api/playbook/rules/${ruleId}/checks` and renders the response array as a padded table with columns: ID, Status, Compliance rate, and Checked At timestamp. An empty array is handled gracefully with a 'No checks found' message rather than an empty table or a crash. The `--json` flag emits the raw array. The table formatting mirrors the pattern in `src/goals/list.ts` for visual consistency across the CLI.",
+      "title": "List check history"
+    },
+    {
+      "file": "src/playbook/index.ts",
+      "line": 5,
+      "description": "`parseApiError` is imported directly from `goals/utils.ts` rather than being duplicated. This is a deliberate reuse decision: the utility already handles structured API error payloads, network errors, and 4xx/5xx HTTP status codes into readable CLI messages. Importing it here means playbook errors surface with the same formatting as goals errors, and any future improvements to `parseApiError` automatically benefit both command groups.",
+      "title": "Shared error handling via goals/utils"
+    },
+    {
+      "file": "src/index.ts",
+      "line": 133,
+      "description": "All changes are additive: three new files (`src/playbook/index.ts`, `src/playbook/check.ts`, `src/playbook/checks.ts`) plus one new import and one new switch case in `src/index.ts`. No existing command logic, shared library code, or type definitions were modified. The code review (code-review-actual.md) confirms zero regression risks and full coverage of both SCN-07 (trigger + poll) and SCN-08 (list history) requirements. The polling loop, terminal-state detection, API path alignment, error handling, and exit-code semantics all passed review without issues.",
+      "title": "Summary: clean integration, no regressions"
+    }
+  ]
+}

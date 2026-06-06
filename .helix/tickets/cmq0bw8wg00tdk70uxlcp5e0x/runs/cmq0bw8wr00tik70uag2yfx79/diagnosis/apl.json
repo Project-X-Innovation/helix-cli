@@ -1,0 +1,35 @@
+{
+  "questions": [
+    "Q1: What command structure and subcommands are needed for the playbook CLI group?",
+    "Q2: How should the CLI poll for check completion, given no existing polling pattern?",
+    "Q3: How should the CLI resolve a rule-ref argument to a rule ID?"
+  ],
+  "answers": [
+    {
+      "answer": "Two subcommands: 'hlx playbook check <rule-ref>' (trigger + poll to completion, print result) and 'hlx playbook checks <rule-ref>' (list check history). The command group follows the goals/ pattern: src/playbook/index.ts as router with switch statement, src/playbook/check.ts for trigger+poll, src/playbook/checks.ts for history list. The 'playbook' case is added to src/index.ts L81-156 switch statement.",
+      "evidence": [
+        "Ticket: 'hlx playbook check <rule-ref>' to trigger and poll; 'hlx playbook checks <rule-ref>' to list history",
+        "src/goals/index.ts: command group router pattern with switch, help, error handling",
+        "src/index.ts L81-156: command dispatcher switch statement"
+      ]
+    },
+    {
+      "answer": "The check command should POST to trigger the check, then enter a polling loop: GET the check status endpoint at a regular interval (e.g., 3-5 seconds), checking for terminal status (PASS, FAIL, ERROR). On terminal state, print the result. The loop should have a timeout (e.g., 10 minutes) to prevent infinite waiting. Use hxFetch with basePath: '/api' for all calls. This is the first polling pattern in the CLI.",
+      "evidence": [
+        "src/tickets/rerun.ts: fire-and-forget pattern (no polling)",
+        "src/lib/http.ts: hxFetch with basePath, retries, auth",
+        "Ticket: 'trigger a check and poll to completion, printing the result'"
+      ]
+    },
+    {
+      "answer": "The simplest approach: accept the rule ID directly (or a prefix). The server's GET /playbook/rules endpoint returns all rules for the org, and the CLI can match by ID prefix (similar to resolve-ticket.ts pattern). No dedicated resolution endpoint exists on the server, so the CLI would either accept raw IDs or do a client-side match from the list endpoint.",
+      "evidence": [
+        "src/lib/resolve-ticket.ts: resolves ticket refs via API lookup",
+        "No rule-ref resolution endpoint exists on the server",
+        "src/goals/get.ts: accepts goalId directly as positional arg"
+      ]
+    }
+  ],
+  "statement": "The CLI needs a new playbook command group with two subcommands. The primary implementation challenge is the polling pattern, which is new to the CLI. The command structure follows the well-established goals/ pattern. All API communication uses hxFetch with basePath: '/api'. The commands depend on the server endpoints being implemented first.",
+  "followups": []
+}
