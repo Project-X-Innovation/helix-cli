@@ -59,7 +59,7 @@ Implements **RSH-636**. Reconciles with **BLD-680** (account-scoped NetSuite egr
 2 ticket(s) referenced. Full artifacts materialized at `.helix-refs/`:
 
 ### BLD-680: Egress Lockdown ⑥ — Account-scoped NetSuite egress
-- Mode: BUILD | Status: FAILED
+- Mode: BUILD | Status: RUNNING
 - Completed runs: 1 (run-1)
 - Materialized files: 2 artifacts
 - Path: `.helix-refs/BLD-680/`
