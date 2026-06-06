@@ -3,123 +3,145 @@
 ## Technology Foundation
 
 - **Runtime**: Node.js + TypeScript
-- **Build**: `tsc`
-- **Test**: `tsc + node --test`
-- **Typecheck**: `tsc --noEmit`
-- **Architecture**: Thin client — validates mode locally, sends mode string to server API; server enforces platform restrictions
+- **Architecture**: Thin CLI client -- sends requests to helix-global-server
+- **Mode validation**: Local VALID_MODES array, but server is authoritative gatekeeper
+- **Validation**: `npm run typecheck && npm run build`
+
+The CLI is the smallest change surface. It accepts mode strings from the user and sends them to the server. The server validates against platform config. The CLI needs to recognize PLAY as a valid mode and display it in help text.
+
+---
 
 ## Architecture Decision
 
-### Decision 1: Replace EXECUTE with PLAY in VALID_MODES (L1)
+### Simple string replacement (3 files)
 
-**Options considered:**
+**Options Considered**:
 
-| Option | Pros | Cons |
-|--------|------|------|
-| A: Replace EXECUTE with PLAY | Clean; matches server API; no dead code | Scripts using `--mode EXECUTE` break |
-| B: Accept both EXECUTE and PLAY | Backward compatible | Dead code; server rejects EXECUTE anyway; confusing |
+**Option A: Accept both EXECUTE and PLAY (backward compat)**
+- Map EXECUTE -> PLAY on the client side before sending to server.
+- Pros: Scripts using `--mode EXECUTE` keep working.
+- Cons: EXECUTE has zero usage, so there are no scripts to break. Adds complexity for nothing.
 
-**Chosen: Option A** — Replace EXECUTE with PLAY in the `VALID_MODES` tuple. Update help text accordingly.
+**Option B: Replace EXECUTE with PLAY (chosen)**
+- Clean replacement in VALID_MODES and all help text.
+- Pros: Simple, consistent, no dead code.
+- Cons: `--mode EXECUTE` stops working. But nobody uses it (0/852 tickets).
 
-**Rationale**: Zero EXECUTE tickets exist in production. No scripts depend on `--mode EXECUTE`. The server will reject EXECUTE after the API validation update, so keeping it in the CLI gives users a mode the server rejects — a confusing failure path. Clean replacement is correct.
+**Chosen: Option B.** Clean replacement with no backward compat concern.
 
-### Decision 2: No new CLI subcommands for L1 (L2/L3 deferred)
+---
 
-**Options considered:**
+## Five MVP Levels: CLI Changes
 
-| Option | Pros | Cons |
-|--------|------|------|
-| A: L1 = mode flag only; defer play subcommands to L2/L3 | Minimal change; matches "use normal ticket system" | L2/L3 users lack CLI play tools |
-| B: Add placeholder subcommands now | Forward-compatible | Dead code; over-engineering for L1 |
+### MVP-1: Mode Scaffolding (3 files)
 
-**Chosen: Option A** — The CLI's ticket creation flow with `--mode PLAY` is sufficient for L1. The ticket description says "Use normal Helix ticket system to create a Play."
+| File | Change | Lines |
+|------|--------|-------|
+| `src/tickets/create.ts` | Replace EXECUTE with PLAY in VALID_MODES array and help text | 13, 17 |
+| `src/tickets/index.ts` | Replace EXECUTE with PLAY in usage text and help text | 21, 73 |
+| `src/docs/cli-content.ts` | Replace EXECUTE with PLAY in mode table, example text, and mode description | 109, 247, 250 |
 
-L2/L3 deferred subcommands:
-- `hlx plays preview` — trigger play preview from CLI
-- `hlx plays run` — trigger play execution from CLI
-- `hlx plays status` — check play execution status
-- `hlx plays list` — list plays for a ticket
+**Mode validation flow**: User passes `--mode PLAY` -> CLI normalizes to uppercase -> checks against VALID_MODES -> sends `mode: "PLAY"` in POST body -> server validates against platformConfig.allowedModes.
 
-These would be new files in `src/plays/` mirroring the existing `src/tickets/` pattern.
+### MVP-2/3/4/5: Play-specific subcommands (deferred)
 
-## Core API/Methods
+Future levels may add:
+- `hlx plays list` -- list plays for a ticket
+- `hlx plays preview` -- trigger preview execution
+- `hlx plays run` -- trigger full execution
+- `hlx plays status` -- check run status
 
-| Surface | Current | After | File |
-|---------|---------|-------|------|
-| `VALID_MODES` tuple | AUTO, BUILD, FIX, RESEARCH, EXECUTE | AUTO, BUILD, FIX, RESEARCH, PLAY | create.ts:13 |
-| Help text | `--mode <AUTO\|BUILD\|FIX\|RESEARCH\|EXECUTE>` | `--mode <AUTO\|BUILD\|FIX\|RESEARCH\|PLAY>` | create.ts:17 |
-| Mode validation | `includes()` check | Same logic, different value | create.ts:79-88 |
-| Docs mode table | Includes EXECUTE | Includes PLAY | cli-content.ts:109 |
+These are not needed at MVP-1 and depend on server API endpoints from MVP-2+.
+
+---
 
 ## Technical Decisions
 
-### Deploy ordering
+### TD-1: VALID_MODES replaces EXECUTE with PLAY
+- **Decision**: Change `['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE']` to `['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'PLAY']`.
+- **Rationale**: The CLI should only accept modes that the server recognizes. EXECUTE is removed from server app surfaces.
+- **Note**: The mode validation logic (lines 79-87) normalizes to uppercase and checks inclusion -- no structural change needed.
 
-Server must deploy first. The CLI sends `mode: "PLAY"` to `POST /api/tickets`. If PLAY is sent before the server recognizes it in `platformConfig.allowedModes`, the server returns 400. This is low risk — the standard deploy pipeline is server-first.
+### TD-2: Help text updated throughout
+- **Decision**: All three files have their help/usage text updated from EXECUTE to PLAY.
+- **Rationale**: Users reading `hlx tickets create --help` should see PLAY, not EXECUTE.
 
-**Rejected alternative**: Version-negotiated mode values — over-engineering for a simultaneous release.
+### TD-3: Deploy ordering -- server first
+- **Decision**: Server must deploy before CLI.
+- **Rationale**: If CLI sends `mode: "PLAY"` before server recognizes it in `platformConfig.allowedModes`, server returns 400. With server deployed first, PLAY works immediately.
+- **Evidence**: `ticket-controller.ts` line 152 validates mode against `platformConfig.allowedModes`.
 
-### Docs file update
-
-`cli-content.ts` contains an embedded copy of CLI documentation (mode list at line 109). This must be updated alongside `create.ts` to keep the docs mirror consistent with actual behavior.
+---
 
 ## Technical Checks
 
-[TCK-01] PLAY in VALID_MODES
-- Decision Reference: "Replace EXECUTE with PLAY in VALID_MODES" (Architecture Decision 1)
+[TCK-01] PLAY accepted in VALID_MODES, EXECUTE rejected
+- Decision Reference: "VALID_MODES replaces EXECUTE with PLAY" (TD-1)
 - Verification Method: code-inspection
-- Expected Evidence: `VALID_MODES` tuple contains "PLAY" and does not contain "EXECUTE". Help text shows PLAY.
+- Expected Evidence: `create.ts` VALID_MODES array contains 'PLAY', does not contain 'EXECUTE'. Help text shows PLAY.
 
-[TCK-02] CLI docs show PLAY
-- Decision Reference: "Docs file update" (Technical Decision)
+[TCK-02] All help text references PLAY not EXECUTE
+- Decision Reference: "Help text updated throughout" (TD-2)
 - Verification Method: code-inspection
-- Expected Evidence: `cli-content.ts` mode list includes PLAY and does not include EXECUTE.
+- Expected Evidence: `create.ts` help string shows PLAY. `index.ts` usage and help strings show PLAY. `cli-content.ts` mode table, example, and description show PLAY. No string "EXECUTE" in any user-facing text.
 
-[TCK-03] Mode validation accepts PLAY
-- Decision Reference: "Replace EXECUTE with PLAY" (Architecture Decision 1)
-- Verification Method: behavioral
-- Expected Evidence: `hlx tickets create --mode PLAY ...` succeeds (server permitting). `hlx tickets create --mode EXECUTE ...` produces CLI validation error before hitting server.
+---
 
 ## Cross-Platform Considerations
 
-None. The CLI is platform-agnostic — it sends mode strings to the server, which enforces platform restrictions. The CLI does not need to know which modes are platform-specific.
+- CLI sends mode to server via POST body -- server is authoritative validator
+- CLI mode list must match what server accepts for NETSUITE orgs
+- Deploy server before CLI to avoid 400 rejections
+
+---
 
 ## Performance Expectations
 
-Zero impact. The change is a string value replacement in a static tuple and inline help text.
+Zero performance impact. Pure string replacements in static arrays and help text.
+
+---
 
 ## Dependencies
 
-| Dependency | Type | Level | Risk |
-|------------|------|-------|------|
-| Server PLAY recognition | Cross-repo | L1 | Low — server deploys first in standard pipeline |
+No new dependencies. All changes use existing TypeScript patterns.
+
+---
 
 ## Deferred to Round 2
 
-1. **Play subcommands** — `hlx plays preview/run/status/list` (L2/L3)
-2. **Play step definition from CLI** — Define MAP/REDUCE/EFFECT steps via CLI (L2)
-3. **Play execution output streaming** — Stream play execution results to terminal (L3)
+| Item | Why Deferred |
+|------|-------------|
+| Play-specific subcommands | Depends on server API endpoints from MVP-2+ |
+| Play status/monitoring in CLI | Depends on PlayRun data model from MVP-2 |
+
+---
 
 ## Summary Table
 
-| Area | Decision | Level | Rationale |
-|------|----------|-------|-----------|
-| Mode flag | PLAY replaces EXECUTE in VALID_MODES | L1 | 0 EXECUTE tickets; server rejects EXECUTE |
-| Subcommands | None for L1; deferred to L2/L3 | L1 | "Use normal ticket system to create a Play" |
-| Deploy order | Server first | L1 | CLI mode string validated server-side |
-| Docs | Update cli-content.ts mode list | L1 | Keep docs mirror consistent |
+| Aspect | Decision |
+|--------|----------|
+| Scope | 3 files |
+| Approach | Replace EXECUTE with PLAY in VALID_MODES + help text |
+| Deploy order | After server |
+| New deps | None |
+| Structural changes | None -- pure string replacements |
+
+---
 
 ## APL Statement Reference
 
-See `tech-research/apl.json` for the full investigation trace.
+See `tech-research/apl.json`. Key finding: The CLI is a thin client. All PLAY mode logic (validation, platform gating, execution) lives on the server. The CLI just needs to accept "PLAY" as a mode string and display it in help text.
+
+---
 
 ## Artifact Inputs Used
 
 | Artifact | Why Used | Key Takeaway |
 |----------|----------|--------------|
-| ticket.md (description item 1) | CLI scope | "Use normal Helix ticket system to create a Play" |
-| diagnosis/diagnosis-statement.md (cli) | CLI change surface | 2-file change; thin client; server enforces restrictions |
-| diagnosis/apl.json (cli) | Investigation findings | VALID_MODES at create.ts:13; help text at :17; docs at cli-content.ts:109 |
-| product/product.md | Success criteria SCN-02 | `hlx tickets create --mode PLAY --title "..."` |
-| src/tickets/create.ts:13,17 | Verify mode flag | VALID_MODES tuple; inline help text |
-| src/docs/cli-content.ts:109 | Verify docs | Mode table includes EXECUTE |
+| diagnosis/diagnosis-statement.md (CLI) | File-level change map | 3 files with specific line numbers |
+| diagnosis/apl.json (CLI) | Investigation findings | Clean replacement; server-first deploy |
+| scout/scout-summary.md (CLI) | CLI analysis | Thin client; server enforces platform restrictions |
+| product/product.md | Product spec | CLI accepts `hlx tickets create --mode PLAY` |
+| src/tickets/create.ts (lines 13, 17) | Direct inspection | VALID_MODES array and help text |
+| src/tickets/index.ts (lines 21, 73) | Reference from diagnosis | Usage text locations |
+| src/docs/cli-content.ts (lines 109, 247, 250) | Direct inspection | Mode table and descriptions |
