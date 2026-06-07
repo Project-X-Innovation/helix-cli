@@ -1,0 +1,26 @@
+{
+  "questions": [
+    "What CLI changes are needed to add PLAY mode?",
+    "Should EXECUTE be kept alongside PLAY in the CLI's VALID_MODES?"
+  ],
+  "answers": [
+    {
+      "answer": "CLI needs: (1) PLAY added to VALID_MODES array in create.ts:13, (2) help text updated in create.ts:17, index.ts:21, and index.ts:73, (3) CLI documentation content updated in cli-content.ts:109 and :250.",
+      "evidence": [
+        "src/tickets/create.ts:13 — VALID_MODES = ['AUTO','BUILD','FIX','RESEARCH','EXECUTE'] as const",
+        "src/tickets/create.ts:17 — help text references --mode options",
+        "src/tickets/index.ts:21,73 — usage strings with mode options",
+        "src/docs/cli-content.ts:109,250 — mode option documentation text"
+      ]
+    },
+    {
+      "answer": "EXECUTE should be replaced with PLAY in VALID_MODES and all help text, consistent with the client UI changes. The server API still accepts EXECUTE (Prisma enum retained), but no user should be creating EXECUTE tickets. CLI validation gates what users can select.",
+      "evidence": [
+        "Research report: EXECUTE=0 production tickets, safe to remove from user surfaces",
+        "CLI mode validation is client-side (create.ts:79-88) before API call"
+      ]
+    }
+  ],
+  "statement": "The helix-cli needs PLAY added to VALID_MODES and all help/documentation text, replacing EXECUTE. Three files with 5 edit locations. The CLI performs client-side mode validation before the API call, so PLAY must be in VALID_MODES for users to select it.",
+  "followups": []
+}
