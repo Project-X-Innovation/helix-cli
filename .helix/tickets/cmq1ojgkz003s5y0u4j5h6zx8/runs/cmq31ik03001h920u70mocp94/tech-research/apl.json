@@ -1,34 +1,32 @@
 {
   "questions": [
-    "Q1: Should PLAY replace EXECUTE in VALID_MODES or should both be accepted?",
-    "Q2: Does the CLI need new play-specific subcommands for MVP-1?",
+    "Q1: Should PLAY replace EXECUTE or coexist in VALID_MODES?",
+    "Q2: Does the CLI need new subcommands for MVP-1?",
     "Q3: What is the deploy ordering requirement?"
   ],
   "answers": [
     {
-      "answer": "Replace. EXECUTE=0/872 production tickets. CLI is a thin pass-through; server enforces platform gating. No backward-compatibility concern.",
+      "answer": "Replace. Zero production EXECUTE usage. VALID_MODES changes from ['AUTO','BUILD','FIX','RESEARCH','EXECUTE'] to ['AUTO','BUILD','FIX','RESEARCH','PLAY']. Case-insensitive normalization preserved.",
       "evidence": [
-        "Runtime DB: EXECUTE=0/872",
-        "create.ts:13: VALID_MODES = ['AUTO','BUILD','FIX','RESEARCH','EXECUTE']",
-        "Ticket: 'replaces execute'"
+        "create.ts:13 — VALID_MODES array",
+        "Runtime DB: EXECUTE=0/872 tickets"
       ]
     },
     {
-      "answer": "No. MVP-1 is mode scaffolding only. Play-specific subcommands depend on MVP-2/MVP-3 server endpoints that don't exist yet. Adding dead commands creates confusion.",
+      "answer": "No. MVP-1 only updates the existing create command. Play-specific subcommands are deferred to future tickets.",
       "evidence": [
-        "Product spec: MVP-1 = 'Make Play selectable as a ticket mode'",
-        "No server play API endpoints exist yet"
+        "Product spec: 'No new commands for MVP-1'",
+        "Diagnosis: 'Only level that touches CLI is MVP-1'"
       ]
     },
     {
-      "answer": "Server deploys first. CLI sends mode to POST /api/tickets. Server validates against allowedModes. CLI sending PLAY before server update = 400 error.",
+      "answer": "Server first. CLI sends mode in POST body. Server Zod rejects unknown modes with 400.",
       "evidence": [
-        "ticket-controller.ts:152: server validates mode against allowedModes",
-        "create.ts: mode sent in POST body",
-        "Product spec: 'Server must deploy before CLI'"
+        "create.ts:147 — mode sent in POST body",
+        "ticket-controller.ts:27 — server Zod validates mode"
       ]
     }
   ],
-  "statement": "CLI is the smallest change surface: replace EXECUTE with PLAY in VALID_MODES array, help text, and docs across 3 files (6 locations). No structural changes. Deploy after server. Play-specific subcommands deferred to MVP-2/MVP-3.",
+  "statement": "CLI is the smallest change surface: replace EXECUTE with PLAY in VALID_MODES and help text across 3-5 files plus skill docs. Server must deploy first. No new subcommands for MVP-1.",
   "followups": []
 }
