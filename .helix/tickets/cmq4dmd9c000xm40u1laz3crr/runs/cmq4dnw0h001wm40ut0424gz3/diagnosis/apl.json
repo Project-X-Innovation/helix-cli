@@ -1,0 +1,25 @@
+{
+  "questions": [
+    "Q1: Does the CLI need a converse command, and what pattern should it follow?",
+    "Q2: How does the CLI post reach the server's agent dispatch — does it go through the controller?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes, the CLI should have a 'converse' subcommand that posts a comment with isHelixTagged:true and polls for the agent's reply. The polling pattern from playbook/check.ts (5s intervals, 120 polls = 10 min max) adapts directly. The CLI command would POST via the HTTP API (which goes through comment-controller with full dispatch), then poll GET /api/tickets/{ticketId}/comments for a new isAgentAuthored comment with matching parentCommentId.",
+      "evidence": [
+        "helix-cli/src/playbook/check.ts: 5s poll interval, 120 polls, progress dots",
+        "helix-cli/src/comments/post.ts L31-35: POST /api/tickets/{ticketId}/comments — goes through HTTP controller",
+        "helix-cli/src/comments/list.ts: --helix-only, --since, --json for polling"
+      ]
+    },
+    {
+      "answer": "The CLI POST goes to /api/tickets/{ticketId}/comments which is handled by the HTTP comment-controller (src/routes/api.ts L301). This means the CLI already benefits from server-side dispatch — it just needs to set isHelixTagged:true in the POST body (which it currently does not) and poll for the reply.",
+      "evidence": [
+        "helix-global-server/src/routes/api.ts L301: `apiRouter.post('/tickets/:ticketId/comments', ... postComment)`",
+        "helix-cli/src/comments/post.ts L31: `hxFetch(config, '/tickets/${ticketId}/comments', { method: 'POST', body: { content: message } })`"
+      ]
+    }
+  ],
+  "statement": "The CLI needs a new 'converse' subcommand that posts a comment with isHelixTagged:true via the HTTP API (which already has full dispatch logic in the controller) and polls for the agent's reply using the existing playbook/check.ts polling pattern. The CLI's HTTP path already goes through the comment-controller, so no server-side changes are needed for CLI dispatch — only the isHelixTagged flag must be set in the POST body.",
+  "followups": []
+}
