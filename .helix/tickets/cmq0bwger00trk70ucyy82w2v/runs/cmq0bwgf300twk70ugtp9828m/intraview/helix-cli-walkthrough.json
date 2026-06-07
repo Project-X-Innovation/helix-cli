@@ -1,0 +1,37 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "Playbook Check CLI Commands (BLD-676)",
+  "description": "This tour walks through the addition of the 'hlx playbook' command group, which introduces two new CLI commands: 'hlx playbook check <rule-ref>' (triggers a PLAYBOOK_CHECK run and polls to completion) and 'hlx playbook checks <rule-ref>' (lists check history). The implementation follows the existing goals/ command group pattern and introduces the first polling loop in the CLI. All changes are additive — three new files and one new switch case in the dispatcher.",
+  "steps": [
+    {
+      "file": "src/index.ts",
+      "line": 133,
+      "description": "The top-level command dispatcher (src/index.ts) routes CLI arguments to command groups via a switch statement. A new 'playbook' case is added here at L133-136, following the identical configOrHelp pattern used by the 'goals' case. This is the entry point for all 'hlx playbook ...' invocations. The import for the playbook router is added at L17. No existing cases are modified, so there is zero regression risk.",
+      "title": "Dispatcher: register the playbook command group"
+    },
+    {
+      "file": "src/playbook/index.ts",
+      "line": 1,
+      "description": "src/playbook/index.ts is the command group router, mirroring src/goals/index.ts exactly. It parses the first positional argument to determine the subcommand ('check' or 'checks'), displays help text when no subcommand is given or '--help' is requested, and delegates to check.ts or checks.ts accordingly. It imports parseApiError from goals/utils.ts (reused, not duplicated) so user-facing error messages are consistent across all command groups. The ruleId positional argument is validated here before being passed downstream.",
+      "title": "Playbook router: command group entry point"
+    },
+    {
+      "file": "src/playbook/check.ts",
+      "line": 1,
+      "description": "This file implements the first polling pattern in the CLI. Constants at L5-7 define the polling contract: POLL_INTERVAL_MS=5000 (5 s), MAX_POLLS=120 (10 min timeout), and TERMINAL_STATUSES={'PASS','FAIL','ERROR'}. At L60-63 the command POSTs to /playbook/rules/${ruleId}/check with basePath: '/api' to trigger the PLAYBOOK_CHECK agent run. The polling loop (L80-94) then GETs /playbook/rules/${ruleId}/checks/${check.id} every 5 seconds, checks for a terminal status, and exits the loop when one is found or the timeout is reached. On PASS the process exits with code 0; on FAIL or ERROR it exits with code 1, enabling scripted usage. The --json flag emits the raw CheckRecord for machine consumption.",
+      "title": "check.ts: POST trigger + GET poll loop"
+    },
+    {
+      "file": "src/playbook/checks.ts",
+      "line": 1,
+      "description": "src/playbook/checks.ts implements 'hlx playbook checks <rule-ref>', which GETs /playbook/rules/${ruleId}/checks and renders a formatted table of past check results (ID, Status, Compliance rate, Checked At). It handles an empty list gracefully with a friendly message. The --json flag outputs the raw array. This follows the same pattern as src/goals/list.ts for consistent UX across command groups. All hxFetch calls use basePath: '/api', matching the server's API router prefix.",
+      "title": "checks.ts: list check history"
+    },
+    {
+      "file": ".helix/tickets/cmq0bw8wg00tdk70uxlcp5e0x/runs/cmq0bw8wr00tik70uag2yfx79/code-review/code-review-actual.md",
+      "line": 1,
+      "description": "The code review confirmed all four changed files pass review. No requirements gaps were found — both SCN-07 (trigger + poll) and SCN-08 (list history) are fully covered. No correctness or behavior issues were identified. All changes are additive (3 new files + 1 new switch case), so regression risk is assessed as none. The review also confirmed that error propagation via hxFetch and parseApiError is consistent with the rest of the CLI, and that the CheckRecord type correctly reflects the server's PlaybookRuleCheck model.",
+      "title": "Code review: all files pass, no gaps"
+    }
+  ]
+}

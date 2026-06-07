@@ -1,0 +1,67 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "Playbook Check CLI Commands (BLD-678)",
+  "description": "This tour walks through the addition of the `hlx playbook` command group to the Helix CLI. Two new subcommands are introduced: `hlx playbook check <rule-ref>` (triggers a playbook rule check via POST, then polls GET until a terminal state is reached) and `hlx playbook checks <rule-ref>` (lists check history for a rule). The implementation mirrors the existing `goals/` command group pattern, introduces the first async-polling pattern in the CLI, and wires into the main dispatcher in `src/index.ts`. All changes are purely additive.",
+  "steps": [
+    {
+      "file": "src/index.ts",
+      "line": 17,
+      "description": "The main CLI dispatcher (`src/index.ts`) is the single changed existing file. A new `import` for the playbook router is added here, and a `playbook` case is registered in the switch statement around L133–136. This follows the exact same `configOrHelp` pattern used by the `goals` command group. All other changes in this ticket are purely additive new files.",
+      "title": "Overview: Dispatcher Entry Point"
+    },
+    {
+      "file": "src/index.ts",
+      "line": 133,
+      "description": "The `playbook` case is inserted into the top-level command switch. It calls `runPlaybook(config, args)` (or shows help) using the same `configOrHelp` guard pattern as `goals`. The usage text displayed by `--help` is also updated to list both `playbook check` and `playbook checks`. No existing cases are modified — this is a safe additive change with zero regression risk.",
+      "title": "Dispatcher: Playbook Case Registration"
+    },
+    {
+      "file": "src/playbook/index.ts",
+      "line": 1,
+      "description": "This new file (`src/playbook/index.ts`) is the command group router, mirroring `src/goals/index.ts` exactly. It receives `(config, args)`, extracts the subcommand, and dispatches via a `switch` statement to `check.ts` or `checks.ts`. It imports `parseApiError` from `goals/utils.ts` (reused, not duplicated) and validates that a `ruleId` positional argument is present before dispatching. Unknown subcommands print help. This centralised router keeps the main dispatcher clean.",
+      "title": "Playbook Router: Command Group Entry"
+    },
+    {
+      "file": "src/playbook/index.ts",
+      "line": 5,
+      "description": "`parseApiError` is imported from `../goals/utils.js` rather than duplicated. This function converts raw HTTP/network errors into user-friendly CLI messages. The router wraps every subcommand dispatch in a try-catch that calls `parseApiError`, ensuring consistent error presentation across both `check` and `checks` subcommands without any new utility code.",
+      "title": "Playbook Router: Reusing parseApiError"
+    },
+    {
+      "file": "src/playbook/check.ts",
+      "line": 1,
+      "description": "The top of `check.ts` declares the three polling constants: `POLL_INTERVAL_MS = 5_000` (5 seconds between polls), `MAX_POLLS = 120` (10-minute ceiling), and `TERMINAL_STATUSES = new Set(['PASS', 'FAIL', 'ERROR'])`. A `CheckRecord` TypeScript interface captures all fields returned by the server's `PlaybookRuleCheck` model (id, status, complianceRate, compliantCount, violatingCount, totalCount, interpretation, queriesExecuted, exampleRecords, errorMessage, createdAt). These types ensure compile-time safety with no runtime overhead.",
+      "title": "Check Command: Constants and Type Definitions"
+    },
+    {
+      "file": "src/playbook/check.ts",
+      "line": 60,
+      "description": "Data flow step 1 — trigger. The command calls `hxFetch` with method POST to `/playbook/rules/${ruleId}/check` using `basePath: '/api'`. This basePath maps to the server's `/api` router prefix, matching the server route exactly. The POST response returns the newly-created `CheckRecord` (with an initial non-terminal status). If the check is already in a terminal state immediately (e.g., an org-level ERROR), the function short-circuits here and prints the result without entering the poll loop.",
+      "title": "Check Command: POST Trigger"
+    },
+    {
+      "file": "src/playbook/check.ts",
+      "line": 80,
+      "description": "Data flow step 2 — poll. After the POST trigger, the command enters a `for` loop (up to `MAX_POLLS` iterations). Each iteration sleeps `POLL_INTERVAL_MS` ms, then calls GET `/playbook/rules/${ruleId}/checks/${check.id}`. If the returned status is in `TERMINAL_STATUSES`, the loop breaks and the result is printed. If `MAX_POLLS` is exhausted, a clear timeout message is shown. This is the first polling pattern in the Helix CLI — it was designed by studying the fire-and-forget pattern in `src/tickets/rerun.ts` and extending it with the missing wait/retry loop.",
+      "title": "Check Command: GET Poll Loop"
+    },
+    {
+      "file": "src/playbook/check.ts",
+      "line": 94,
+      "description": "On terminal state, the command formats and prints: the rule interpretation, total/compliant/violating counts, compliance rate, any executed queries, and example records. The `--json` flag bypasses formatting and emits raw JSON (useful for scripting/CI). Exit code is `0` for PASS and `1` for FAIL or ERROR — this allows shell scripts and CI pipelines to branch on check outcome without parsing output.",
+      "title": "Check Command: Output and Exit Code"
+    },
+    {
+      "file": "src/playbook/checks.ts",
+      "line": 1,
+      "description": "`checks.ts` implements `hlx playbook checks <rule-ref>`, which calls GET `/playbook/rules/${ruleId}/checks` (no body, no polling). The response is an array of `CheckRecord` objects. The command renders a formatted table with columns: ID (truncated), Status, Compliance Rate, and Checked At timestamp — using `padEnd` alignment following the `src/goals/list.ts` pattern. An empty list is handled gracefully with a `'No checks found.'` message. The `--json` flag emits raw JSON. This command covers SCN-08 (list history) from the product spec.",
+      "title": "Checks History Command"
+    },
+    {
+      "file": "src/playbook/index.ts",
+      "line": 1,
+      "description": "All changes are additive: 3 new files (`src/playbook/index.ts`, `src/playbook/check.ts`, `src/playbook/checks.ts`) and 1 modified file (`src/index.ts` — new import + new switch case + updated help text). No existing command handlers, HTTP utilities, flag parsers, or error utilities were modified. The polling loop is fully self-contained in `check.ts`. The code review confirmed zero regression risks, full API path correctness (`basePath: '/api'`), and complete coverage of both SCN-07 (trigger+poll) and SCN-08 (list history) product requirements.",
+      "title": "Summary: Clean Code Paths"
+    }
+  ]
+}
