@@ -1,0 +1,36 @@
+{
+  "problem": "Accept PLAY as a valid --mode value in CLI ticket creation. Smallest change surface of all repos. The CLI validates mode strings locally and delegates platform enforcement to the server.",
+  "files": [
+    {
+      "path": "src/tickets/create.ts",
+      "why": "VALID_MODES array (line 13) and help text (line 17) both list 5 modes including EXECUTE. Add PLAY. Mode validation is case-insensitive (line 82)."
+    },
+    {
+      "path": "src/tickets/continue.ts",
+      "why": "--dry-run flag (line 30) prints payload preview. Play mode may leverage dry-run for phase preview at later MVP levels."
+    },
+    {
+      "path": "skill-content/SKILL.md",
+      "why": "Bundled skill documentation listing valid modes. Update for PLAY."
+    },
+    {
+      "path": "skill-content/references/commands.md",
+      "why": "CLI command reference with --mode flag docs. Update for PLAY."
+    },
+    {
+      "path": "package.json",
+      "why": "Quality gates: build (tsc), typecheck (tsc --noEmit), test (compile + node test)."
+    }
+  ],
+  "facts": [
+    "VALID_MODES = ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE'] as const (create.ts line 13)",
+    "Help text: --mode <AUTO|BUILD|FIX|RESEARCH|EXECUTE> (create.ts line 17)",
+    "Mode normalized to uppercase (line 82), platform restrictions are server-side",
+    "Mode included in POST body to server API when provided (create.ts line 147)",
+    "Package: @projectxinnovation/helix-cli v1.3.4"
+  ],
+  "unknowns": [
+    "Whether EXECUTE should remain alongside PLAY or be removed from VALID_MODES",
+    "Whether skill docs (SKILL.md, commands.md) are auto-generated or manually maintained"
+  ]
+}

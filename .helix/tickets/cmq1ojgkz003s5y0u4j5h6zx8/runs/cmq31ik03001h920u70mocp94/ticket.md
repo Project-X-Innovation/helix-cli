@@ -1655,3 +1655,4 @@ The exception would be a genuine ambiguity that can't be resolved from the sampl
 
 The comfort you get from NetSuite is that ingress and egress both speak a known language. Setup is where the business logic lives, but it's always operating on shaped, auditable inputs — so there's no mystery about what went in or what's about to go out.
 - **Usher** (2026-06-07T00:24:40.567Z) [Helix]: Okay I'd like to do research on what that first step looks like. We can do some research on what it looks like on a high level and then go into details of what it would take to implement this: what are some nice-to-haves and what are some necessary things.
+- **Helix** (2026-06-07T00:24:58.668Z) [Agent]: Run is underway! It'll cover the Ingress phase end-to-end — high-level concept, NetSuite vs. external source handling, shape gating, and a breakdown of what's essential to get right versus what can come later. I'll flag when the report is ready.
