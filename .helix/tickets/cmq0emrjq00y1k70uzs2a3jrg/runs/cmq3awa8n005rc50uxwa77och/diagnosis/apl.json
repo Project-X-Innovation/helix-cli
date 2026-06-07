@@ -1,27 +1,26 @@
 {
   "questions": [
-    "Q1: What CLI structure changes are needed for hlx inspect netsuite and hlx run?",
-    "Q2: How should the --env parameter be passed to the server endpoints?"
+    "Q1: Are the two new CLI handlers (hlx inspect netsuite, hlx run) correctly implemented as thin interfaces to the server-side endpoints?",
+    "Q2: Does the CLI correctly handle environment selection via --env with manifest-based defaults?"
   ],
   "answers": [
     {
-      "answer": "Two new files and two modified files. New src/inspect/netsuite.ts handler following the db.ts pattern (resolveRepo → hxFetch POST /{repoId}/netsuite → console.log JSON). New src/run/index.ts handler (resolveRepo → hxFetch POST /{repoId}/run → console.log JSON). Modified src/inspect/index.ts to add case 'netsuite' to switch at line 41 and update help text. Modified src/index.ts to add case 'run' to main dispatcher switch at line 81 and update usage text. All use existing hxFetch (http.ts:37) with default basePath /api/inspect.",
+      "answer": "Yes. netsuite.ts (60 lines) supports two modes: query (POST type='query' with query string) and logs (POST type='logs' with optional scriptId). run/index.ts (53 lines) supports --repo (required), --env/--code/--modules (optional). Both follow existing hxFetch + switch-based routing patterns from db.ts and logs.ts.",
       "evidence": [
-        "src/index.ts:81-156 — main dispatcher switch with 13 existing commands",
-        "src/inspect/index.ts:41-128 — inspect router switch with repos/db/logs/api cases",
-        "src/inspect/db.ts:1-12 — template pattern: resolveRepo → hxFetch POST → console.log JSON",
-        "src/lib/http.ts:43 — default basePath /api/inspect"
+        "src/inspect/netsuite.ts — 60 lines, cmdNetsuite handler verified",
+        "src/run/index.ts — 53 lines, cmdRun handler verified",
+        "src/inspect/index.ts lines 125-138 — netsuite case in switch verified",
+        "src/index.ts lines 101-105 — run case in switch verified"
       ]
     },
     {
-      "answer": "The --env parameter should be included in the request body sent to the server. The hxFetch body object can include {env: 'prod'|'sandbox'} alongside the query/code payload. The server handler extracts it and uses it for credential resolution, defaulting to per-step routing when omitted. This aligns with how --limit is passed in the logs handler (body parameter).",
+      "answer": "Yes. Both handlers read /tmp/helix-inspect/manifest.json for nsDefaultEnv. Mapping: PRODUCTION->'prod', else->'sandbox'. The --env flag overrides the default. This matches the ticket requirement: per-step default applies when omitted, caller may override.",
       "evidence": [
-        "src/inspect/logs.ts — --limit flag sent as body parameter",
-        "src/lib/flags.ts:5-9 — getFlag extracts value after named flag",
-        "src/lib/http.ts:37-41 — hxFetch accepts body: Record<string, unknown>"
+        "src/inspect/netsuite.ts line 12 — nsDefaultEnv PRODUCTION->prod mapping",
+        "src/run/index.ts lines 7-18 — same manifest reading and env mapping"
       ]
     }
   ],
-  "statement": "The helix-cli changes are straightforward: two new handler files and two router modifications following well-established patterns. The --env parameter is parsed via getFlag and passed in the request body. hxFetch provides the HTTP client with auth, retry, and correct basePath. No architectural concerns.",
+  "statement": "The helix-cli changes are a thin interface layer (~4 files, ~113 lines of new code) that correctly surfaces the server-side ns-gm decomposition. Two new handlers (cmdNetsuite, cmdRun) follow existing CLI patterns, read environment defaults from the inspection manifest, and POST to the server-side endpoints. No gaps identified.",
   "followups": []
 }
