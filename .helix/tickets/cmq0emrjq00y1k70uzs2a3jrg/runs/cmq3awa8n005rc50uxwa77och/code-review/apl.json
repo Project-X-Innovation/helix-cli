@@ -2,34 +2,40 @@
   "questions": [
     "Do the CLI handlers correctly construct URLs and body payloads matching the server's Zod validation schemas?",
     "Is the --env parameter correctly implemented as a plain body field with manifest-based defaults?",
-    "Are the new commands correctly wired into the CLI's switch-based routing?"
+    "Are the new commands correctly wired into the CLI's switch-based routing?",
+    "Does the hxFetch URL construction produce the correct server endpoint paths?"
   ],
   "answers": [
     {
-      "answer": "Yes. cmdNetsuite POSTs to /{repoId}/netsuite using hxFetch with basePath defaulting to /api/inspect. For queries, sends { type: 'query', query, env? }. For logs, sends { type: 'logs', scriptId?, env? }. Both match the server's inspectNetsuiteBody discriminated union (z.literal('query') with z.string query, z.literal('logs') with optional scriptId). cmdRun POSTs to /{repoId}/run with { code, modules?, env? }, matching the server's runSuitescriptBody schema (z.string code, z.array(z.string) modules, z.enum(['prod','sandbox']) env).",
+      "answer": "Yes. cmdNetsuite POSTs to /{repoId}/netsuite using hxFetch with basePath defaulting to /api/inspect. For queries: { type: 'query', query, env? }. For logs: { type: 'logs', scriptId?, env? }. Both match server's inspectNetsuiteBody discriminated union. cmdRun POSTs to /{repoId}/run with { code, modules?, env? }, matching server's runSuitescriptBody schema. modules are split from comma-separated string to array, matching z.array(z.string()).",
       "evidence": [
-        "src/inspect/netsuite.ts lines 36, 54 -- hxFetch POST to /{repoId}/netsuite",
-        "src/run/index.ts line 48 -- hxFetch POST to /{repoId}/run",
-        "src/lib/http.ts line 43 -- basePath defaults to /api/inspect",
-        "Server inspection-controller.ts lines 152-162, 221-225 -- Zod schemas"
+        "src/inspect/netsuite.ts:36,54 (hxFetch POST to /{repoId}/netsuite)",
+        "src/run/index.ts:48 (hxFetch POST to /{repoId}/run)",
+        "src/run/index.ts:43-45 (modules split/trim/filter to array)"
       ]
     },
     {
-      "answer": "Yes. Both handlers read nsDefaultEnv from /tmp/helix-inspect/manifest.json via readManifestDefaultEnv(). The function maps PRODUCTION -> 'prod', SANDBOX -> 'sandbox', returning undefined if manifest is unavailable. The --env flag takes precedence (envFlag ?? readManifestDefaultEnv()). The env value is included in the body only when defined, allowing the server's resolveEnvironment to handle undefined (defaults to SANDBOX).",
+      "answer": "Yes. Both handlers read nsDefaultEnv from /tmp/helix-inspect/manifest.json via readManifestDefaultEnv(). Maps PRODUCTION -> 'prod', SANDBOX -> 'sandbox', returns undefined if manifest unavailable. --env flag takes precedence (envFlag ?? readManifestDefaultEnv()). env included in body only when defined. Server's Zod validates z.enum(['prod','sandbox']).optional() and resolveEnvironment defaults undefined to SANDBOX.",
       "evidence": [
-        "src/inspect/netsuite.ts lines 7-18, 23-24 -- readManifestDefaultEnv() and envFlag precedence",
-        "src/run/index.ts lines 7-18, 29-30 -- identical pattern",
-        "Server netsuite-proxy-service.ts lines 167-173 -- resolveEnvironment(env?: string)"
+        "src/inspect/netsuite.ts:7-18,23-24 (readManifestDefaultEnv and envFlag precedence)",
+        "src/run/index.ts:7-18,29-30 (identical pattern)"
       ]
     },
     {
-      "answer": "Yes. src/inspect/index.ts has case 'netsuite' at line 125 importing cmdNetsuite from ./netsuite.js (line 8). src/index.ts has case 'run' at line 101 importing cmdRun from ./run/index.js (line 17). Both follow existing patterns: netsuite uses the inspect subcommand router pattern (like db, logs, api), and run uses the top-level command pattern (like login, token, comments).",
+      "answer": "Yes. inspect/index.ts imports cmdNetsuite at line 8 and dispatches via 'case netsuite' at line 125 with --repo validation and help text including usage examples. index.ts imports cmdRun at line 17 and dispatches via 'case run' at line 101 with configOrHelp guard, matching the pattern of other top-level commands (comments, preview).",
       "evidence": [
-        "src/inspect/index.ts line 8 (import), lines 125-138 (case 'netsuite')",
-        "src/index.ts line 17 (import), lines 101-105 (case 'run')"
+        "src/inspect/index.ts:8 (import), 125-138 (case 'netsuite' with help)",
+        "src/index.ts:17 (import), 101-105 (case 'run' with configOrHelp)"
+      ]
+    },
+    {
+      "answer": "Yes. hxFetch(config, path, options) constructs URL as config.url + basePath + path. basePath defaults to '/api/inspect'. So '/{repoId}/netsuite' becomes '/api/inspect/{repoId}/netsuite' and '/{repoId}/run' becomes '/api/inspect/{repoId}/run'. Server routes are apiRouter.post('/inspect/:repositoryId/netsuite') and apiRouter.post('/inspect/:repositoryId/run'), which resolve to /api/inspect/:repositoryId/netsuite and /api/inspect/:repositoryId/run. URLs match.",
+      "evidence": [
+        "src/lib/http.ts:43-44 (basePath default and URL construction)",
+        "Server src/routes/api.ts:263-264 (route registration)"
       ]
     }
   ],
-  "statement": "Independent code review of BLD-693 ns-gm CLI implementation (helix-cli) confirms correct implementation of both new subcommands. All 4 changed files reviewed. cmdNetsuite (query/logs modes) and cmdRun (SuiteScript execution) correctly construct URLs, body payloads, and environment defaults matching the server's Zod validation schemas. --env is implemented as a plain body parameter with manifest-based defaults per Override 1. Both commands are correctly wired into the CLI's switch-based routing. No code changes were needed. Quality gates could not be run due to network unavailability but were confirmed passing in Verification Pass 2.",
+  "statement": "Fresh independent code review of BLD-693 CLI implementation (helix-cli) confirms correct implementation of both new subcommands. All 4 changed files reviewed. cmdNetsuite (query/logs modes) and cmdRun (SuiteScript execution) correctly construct URLs, body payloads, and environment defaults matching the server's Zod validation schemas. --env is a plain body parameter with manifest-based defaults per Override 1. hxFetch URL construction verified to produce correct server endpoint paths. Both commands correctly wired into CLI routing. No code changes needed. Quality gates blocked by network unavailability.",
   "followups": []
 }
