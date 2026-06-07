@@ -1,0 +1,35 @@
+{
+  "questions": [
+    "Q1: Should hlx run be a top-level command or under the inspect prefix?",
+    "Q2: How should the --env default be resolved when the flag is not provided?",
+    "Q3: Does the hxFetch basePath work for both /netsuite and /run routes without override?"
+  ],
+  "answers": [
+    {
+      "answer": "Top-level command (hlx run, not hlx inspect run). Per tech-research AD-2, hlx run has a fundamentally different governance model (not read-only) from hlx inspect. Making it top-level avoids confusion with the 'inspect' (read-only) prefix. On the server side, both routes live under /api/inspect/ for auth simplicity, but the CLI user-facing structure reflects the semantic difference.",
+      "evidence": [
+        "tech-research/tech-research.md (cli) AD-2 — hlx run as top-level command",
+        "product/product.md — SCN-04 uses 'hlx run' (no inspect prefix)",
+        "ticket.md — 'hlx run' specified as distinct from 'hlx inspect netsuite'"
+      ]
+    },
+    {
+      "answer": "The CLI reads nsDefaultEnv from /tmp/helix-inspect/manifest.json (written by the server's configureInspectionForStep). When --env is not provided by the user, the CLI sends the manifest's nsDefaultEnv value in the request body. This avoids the server handler needing to derive step context. Per tech-research AD-4 and TD-1.",
+      "evidence": [
+        "tech-research/tech-research.md (server) AD-9 — 'Write the default environment into the manifest as nsDefaultEnv'",
+        "tech-research/tech-research.md (cli) AD-4 — 'CLI reads nsDefaultEnv from manifest'",
+        "tech-research/tech-research.md (server) TD-1 — Rejected alternative: server-side step context derivation"
+      ]
+    },
+    {
+      "answer": "Yes. hxFetch default basePath is /api/inspect (http.ts:37). The full URLs constructed are: /api/inspect/{repoId}/netsuite and /api/inspect/{repoId}/run — both under the /api/inspect/ prefix. No basePath override is needed. Per tech-research TD-3.",
+      "evidence": [
+        "src/lib/http.ts:37 — basePath defaults to '/api/inspect'",
+        "tech-research/tech-research.md (cli) TD-3 — 'Both use default /api/inspect basePath'",
+        "src/inspect/db.ts:7 — hxFetch(config, '/${repoId}/database') — same relative path pattern"
+      ]
+    }
+  ],
+  "statement": "Implementation plan for helix-cli covers 5 atomic steps: create netsuite inspect handler, create run handler, add netsuite case to inspect router, add run case to main dispatcher, and quality gates. The plan produces 2 new files and 2 modified files, following existing CLI patterns exactly. All steps depend on the server-side implementation (helix-global-server) being complete first for end-to-end functionality, but the CLI can be built and type-checked independently.",
+  "followups": []
+}
