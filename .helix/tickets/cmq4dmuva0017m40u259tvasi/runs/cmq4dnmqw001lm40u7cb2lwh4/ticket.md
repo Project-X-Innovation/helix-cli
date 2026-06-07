@@ -29,3 +29,6 @@ A plan to add Playbook support to the MCP, with the recommended tool set and how
 
 ## Attachments
 - (none)
+
+## Discussion
+- **Helix** (2026-06-07T22:52:33.272Z) [Agent]: Interesting question — let me dig into this right away. I'll share my thoughts shortly.

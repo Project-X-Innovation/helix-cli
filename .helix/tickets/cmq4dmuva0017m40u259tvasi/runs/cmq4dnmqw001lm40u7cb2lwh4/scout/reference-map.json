@@ -1,0 +1,49 @@
+{
+  "problem": "helix-cli has working playbook CLI commands (hlx playbook check, hlx playbook checks) but the SKILL.md frontmatter and documentation do not mention playbook at all. MCP clients using the hlx-cli skill have no visibility into playbook commands. The commands table in SKILL.md lists 9 command groups but omits 'playbook'. Additionally, the CLI only supports check-related operations (trigger check, list checks) — it has no commands for rule CRUD (create, list, get, update, delete rules).",
+  "files": [
+    {
+      "path": "src/playbook/index.ts",
+      "why": "Playbook command router (62 lines): dispatches to 'check' and 'checks' subcommands. Shows the current surface area is check-only, no rule management."
+    },
+    {
+      "path": "src/playbook/check.ts",
+      "why": "Trigger and poll compliance check (113 lines): POST /api/playbook/rules/{ruleId}/check then poll GET .../checks/{checkId} every 5s for up to 10 minutes. Shows async polling model with TERMINAL_STATUSES (PASS, FAIL, ERROR)."
+    },
+    {
+      "path": "src/playbook/checks.ts",
+      "why": "List check history: GET /api/playbook/rules/{ruleId}/checks. Simple list command."
+    },
+    {
+      "path": "skill-content/SKILL.md",
+      "why": "Skill documentation for AI agents. Frontmatter description lists triggers but omits 'playbook'. Commands table (line 36-47) lists 9 groups, no playbook entry. Workflow section has no playbook step."
+    },
+    {
+      "path": "src/index.ts",
+      "why": "Main CLI router (170 lines). Line 17 imports runPlaybook, lines 133-137 route 'playbook' command. Already integrated but undocumented."
+    },
+    {
+      "path": "src/lib/http.ts",
+      "why": "hxFetch client (134 lines) with retry, auth headers (X-API-Key or Bearer), basePath. Playbook commands use basePath: '/api'. Shows API call pattern."
+    },
+    {
+      "path": "package.json",
+      "why": "Package: @projectxinnovation/helix-cli v1.3.4. Bin: hlx. Build: tsc."
+    }
+  ],
+  "facts": [
+    "CLI has 2 playbook subcommands: 'check' (trigger + poll) and 'checks' (list history)",
+    "CLI playbook commands are routed in src/index.ts (line 133-137) but NOT documented in SKILL.md",
+    "SKILL.md frontmatter triggers list does not include 'playbook' or 'hlx playbook'",
+    "SKILL.md commands table (9 entries) omits playbook",
+    "Check polling: 5-second interval, max 120 polls (10 minutes), terminal statuses PASS/FAIL/ERROR",
+    "CLI uses basePath '/api' for playbook endpoints (matching server REST routes)",
+    "CLI has no rule CRUD commands — cannot create, list, get, update, or delete playbook rules from CLI",
+    "CLI command pattern: src/<domain>/index.ts router + subcommand files, hxFetch for API calls, --json flag for structured output",
+    "Goals commands (src/goals/) show the full CRUD pattern: create, list, get, terminate, resume — playbook could follow this pattern"
+  ],
+  "unknowns": [
+    "Whether the CLI needs rule CRUD commands (create, list, get, update, delete) or if check-only is sufficient for MCP use cases",
+    "Whether the CLI's playbook commands are used by any MCP tool definitions or only as direct CLI commands",
+    "Whether SKILL.md documentation alone is sufficient for MCP exposure or if explicit MCP tool registration is also needed in helix-cli"
+  ]
+}
