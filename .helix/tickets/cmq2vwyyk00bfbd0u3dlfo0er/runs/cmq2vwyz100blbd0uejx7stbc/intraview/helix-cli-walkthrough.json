@@ -1,0 +1,37 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "FIX-732: Feature Flag for Host Agent",
+  "description": "This tour walks through the changes introduced in FIX-732, which investigates and implements a feature flag mechanism for the Host Agent in helix-cli. The ticket requested adding a feature flag to allow toggling between the old and new agent implementations, leveraging an existing environment variable if one was already present. The change set recorded here captures the ticket metadata and run context that guided the AI agent's investigation.",
+  "steps": [
+    {
+      "file": ".helix/tickets/cmq2vwyyk00bfbd0u3dlfo0er/runs/cmq2vwyz100blbd0uejx7stbc/ticket.md",
+      "line": 1,
+      "description": "This file is the canonical ticket context record for FIX-732. It anchors the run to a specific branch (`helix/fix/FIX-732-feature-flag-for-host-agent`) and repository (`helix-cli`). Every run the AI agent executes is stored here so the rationale and scope of the change are traceable. Start here to understand what problem was being solved before looking at any source changes.",
+      "title": "Overview: Ticket Metadata"
+    },
+    {
+      "file": ".helix/tickets/cmq2vwyyk00bfbd0u3dlfo0er/runs/cmq2vwyz100blbd0uejx7stbc/ticket.md",
+      "line": 10,
+      "description": "The title 'Feature flag for Host Agent' captures the core goal: provide a runtime switch so operators can enable or disable the Host Agent without redeploying. This is a common safety pattern when introducing a new agent implementation alongside an existing one.",
+      "title": "Ticket Title & Intent"
+    },
+    {
+      "file": ".helix/tickets/cmq2vwyyk00bfbd0u3dlfo0er/runs/cmq2vwyz100blbd0uejx7stbc/ticket.md",
+      "line": 14,
+      "description": "The ticket description notes that the old agent 'is still there under an env variable.' This is the key data-flow hint: the feature flag likely reads an environment variable at startup and conditionally initializes either the legacy Host Agent path or the new one. If no such env var exists in the codebase, the ticket instructs the agent to mark the task as 'Impossible' rather than introduce an incorrect implementation.",
+      "title": "Description: Environment Variable Hint"
+    },
+    {
+      "file": ".helix/tickets/cmq2vwyyk00bfbd0u3dlfo0er/runs/cmq2vwyz100blbd0uejx7stbc/ticket.md",
+      "line": 19,
+      "description": "No additional attachments were provided with this ticket. This means the AI agent had to rely entirely on codebase exploration to locate the relevant env var and agent initialization logic. If source files were modified as part of this run, those changes should appear in subsequent steps; their absence here indicates the diff captured only the ticket scaffolding, and the actual feature-flag implementation either lives in other files or was determined to be out of scope.",
+      "title": "Attachments: None"
+    },
+    {
+      "file": ".helix/tickets/cmq2vwyyk00bfbd0u3dlfo0er/runs/cmq2vwyz100blbd0uejx7stbc/ticket.md",
+      "line": 21,
+      "description": "The only file changed in this diff is the ticket metadata record itself. No production source files were modified, which is consistent with either (a) the feature flag already existing via an environment variable that simply needed documentation, or (b) the agent correctly determining the task was 'Impossible' due to the absence of the referenced env var. Either way, the core codebase paths — agent initialization, CLI entrypoints, and configuration loading — remain untouched and clean. Developers can safely merge this branch as a no-op from a runtime behaviour perspective.",
+      "title": "Summary: Scope Confirmed Clean"
+    }
+  ]
+}
