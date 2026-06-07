@@ -60,6 +60,7 @@ Is there anything specific you'd like me to do about it right now — like kick 
 - **Usher** (2026-06-07T03:20:06.448Z) [Helix]: Go ahead the ticket is already there
 - **Helix** (2026-06-07T03:20:16.612Z) [Agent]: On it — I've kicked off a new run to dig into this properly. I'll work through the root cause of why errors are surfacing in demos and being marked as successes, and what needs to change so that never happens again.
 - **Helix** (2026-06-07T04:10:23.285Z) [Agent]: Your research report is ready!
+- **Helix** (2026-06-07T05:16:39.615Z) [Agent]: Interesting question — let me dig into this right away. I'll share my thoughts shortly.
 
 ## Continuation Context
 This is totally off.
