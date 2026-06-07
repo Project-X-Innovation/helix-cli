@@ -1,0 +1,25 @@
+{
+  "questions": [
+    "Q1: What CLI changes are needed to support machine-parseable comment output for the runner's pull loop?",
+    "Q2: Does the existing CommentResponse type already include the comment ID field?"
+  ],
+  "answers": [
+    {
+      "answer": "A --json flag on `hlx comments list` that outputs JSON.stringify of the filtered comments array (including all fields: id, author, content, isHelixTagged, isAgentAuthored, createdAt). This is a non-breaking addition — default output remains human-readable. The runner's agent tool (run_helix_cli) and the runner's polling loop both benefit from structured output.",
+      "evidence": [
+        "src/comments/list.ts:42-51 — current output is human-readable, excludes comment id",
+        "src/comments/list.ts:5-14 — CommentResponse type already includes id field from API",
+        "product/product.md MVP feature #5 — 'CLI JSON output: hlx comments list --json flag for machine-parseable output including comment IDs'"
+      ]
+    },
+    {
+      "answer": "Yes. The CommentResponse type at list.ts:5-14 includes `id: string` in each comment object. The API response already provides the id — it is simply not rendered in the current human-readable output format.",
+      "evidence": [
+        "src/comments/list.ts:6 — CommentResponse.comments[].id: string",
+        "src/comments/list.ts:42-51 — output format: [timestamp] Author [markers]: content — no id shown"
+      ]
+    }
+  ],
+  "statement": "The CLI needs a --json flag on hlx comments list to output structured JSON including comment IDs. The CommentResponse type already includes the id field from the API; it just needs to be included in the output. This is a minimal, non-breaking change to enable the runner's pull-based comment consumption.",
+  "followups": []
+}
