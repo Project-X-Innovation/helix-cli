@@ -1,0 +1,19 @@
+{
+  "questions": [
+    "Should EXECUTE be fully removed from CLI VALID_MODES or kept alongside PLAY?"
+  ],
+  "answers": [
+    {
+      "answer": "Replace EXECUTE with PLAY in VALID_MODES. EXECUTE has 0 production tickets. The CLI performs client-side validation (create.ts:79-88) before the API call, so removing EXECUTE from VALID_MODES prevents users from selecting it. The server API still accepts EXECUTE via the Zod enum (backwards compatibility), but no user path should create new EXECUTE tickets. Update all 5 help/documentation text locations to show PLAY instead of EXECUTE.",
+      "evidence": [
+        "create.ts:13 — VALID_MODES = ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE'] as const",
+        "create.ts:79-88 — CLI validates mode against VALID_MODES before sending to API",
+        "Research report: EXECUTE=0 production tickets, safe to replace",
+        "Help text at create.ts:17, index.ts:21, index.ts:73 — all reference EXECUTE",
+        "cli-content.ts:109,250 — mode documentation references EXECUTE"
+      ]
+    }
+  ],
+  "statement": "The helix-cli replaces EXECUTE with PLAY in the VALID_MODES array and updates all 5 help/documentation text locations. Three files change: create.ts (VALID_MODES + help text), index.ts (2 usage strings), cli-content.ts (2 documentation references). This is a straightforward text-level change with no architectural decisions.",
+  "followups": []
+}
