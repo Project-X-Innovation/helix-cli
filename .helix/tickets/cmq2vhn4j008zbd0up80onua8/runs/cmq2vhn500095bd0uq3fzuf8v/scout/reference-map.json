@@ -1,0 +1,32 @@
+{
+  "problem": "Ticket FIX-730 asks about second runs, recurring failures, and failure reports. The CLI repo provides commands for creating reruns (hlx tickets rerun, hlx tickets continue) and displaying run status/history. It is a context-only repo for this ticket — the CLI is an interface to the server's run management, not the source of run/failure behavior.",
+  "files": [
+    {
+      "path": "src/tickets/rerun.ts",
+      "why": "CLI command for triggering reruns: POST /api/tickets/{id}/rerun. Creates new run with parentRunId."
+    },
+    {
+      "path": "src/tickets/continue.ts",
+      "why": "CLI command for continuing a run: POST /api/tickets/{id}/rerun with continuationContext. Same endpoint as rerun."
+    },
+    {
+      "path": "src/tickets/get.ts",
+      "why": "Displays ticket details including all runs with ID, status, startedAt, finishedAt."
+    },
+    {
+      "path": "src/lib/http.ts",
+      "why": "HTTP client with retry logic: max 3 attempts, retryable status codes (429, 500, 502, 503, 504), exponential backoff."
+    }
+  ],
+  "facts": [
+    "Rerun and continue commands both POST to /api/tickets/{id}/rerun. Continue passes additional continuationContext field.",
+    "CLI HTTP client retries on 429, 500, 502, 503, 504 with exponential backoff (max 3 attempts).",
+    "Terminal statuses for display: failed, error, cancelled, completed, succeeded.",
+    "No database or ORM. CLI is a REST API client to helix-global-server.",
+    "Quality gates: npm run build (tsc), npm run typecheck (tsc --noEmit), npm run test (typecheck + node tests)."
+  ],
+  "unknowns": [
+    "The ticket does not reference any CLI-specific behavior or bug.",
+    "Unlikely that CLI changes are needed — it is a thin interface to server-side logic."
+  ]
+}
