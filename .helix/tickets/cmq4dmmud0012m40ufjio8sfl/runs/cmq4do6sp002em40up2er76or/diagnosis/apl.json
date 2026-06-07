@@ -1,0 +1,17 @@
+{
+  "questions": [
+    "Does the CLI need changes for MCP tool flag management?"
+  ],
+  "answers": [
+    {
+      "answer": "The CLI does not invoke MCP tools or interact with the MCP server endpoint—it uses REST API endpoints exclusively. If MCP tool flag admin commands are needed (e.g., 'hlx admin mcp-tools enable/disable'), they would call the same REST admin API endpoints that the client UI uses. However, the ticket deliverable is a design recommendation. CLI admin commands are a lower-priority extension that can be deferred to a follow-up ticket since the admin UI in helix-global-client provides the primary management surface.",
+      "evidence": [
+        "src/index.ts: no MCP-related commands registered",
+        "src/lib/http.ts: REST-only API client, no MCP protocol interaction",
+        "ticket.md: deliverable is a recommended design across helix-global-client, helix-global-server, helix-cli"
+      ]
+    }
+  ],
+  "statement": "The CLI may optionally receive admin commands for MCP tool flag management as a design extension, but the primary management surface is the admin UI. CLI changes are lower priority and can be deferred. The CLI's role in this ticket is limited to being mentioned in the design recommendation scope.",
+  "followups": []
+}
