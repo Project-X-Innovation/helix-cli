@@ -1,0 +1,49 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "BLD-684: CLI --json Flag for Machine-Parseable Comment Output",
+  "description": "This tour walks through the addition of a --json flag to the `hlx comments list` command. The host agent runner inside the sprite needs to pull unprocessed comments programmatically via the CLI. Previously, the command only output human-readable text and omitted comment IDs, making it unsuitable for the runner's cursor-based deduplication. The fix adds a --json flag that emits the full CommentResponse array as JSON (including IDs), while preserving the existing human-readable default output.",
+  "steps": [
+    {
+      "file": "src/comments/list.ts",
+      "line": 1,
+      "description": "This is the entry point for `hlx comments list`. Before this change, all output was human-readable (timestamp + author + markers + content) and comment IDs were never surfaced. The runner calls `hlx` via execFile and parses stdout — it needs structured JSON including `id` fields to advance the `lastProcessedCommentId` cursor on the server. The diagnosis confirmed the CommentResponse type already carried `id`, so the fix is purely an output-format addition.",
+      "title": "Overview: Why this file needed changing"
+    },
+    {
+      "file": "src/comments/list.ts",
+      "line": 6,
+      "description": "The CommentResponse type (imported here) already includes `id: string` alongside `author`, `content`, `isHelixTagged`, `isAgentAuthored`, and `createdAt`. No type changes were needed — the data was always available, just never emitted. This confirms the minimal scope of the change: only the output path needed updating, not the fetch or filtering logic.",
+      "title": "CommentResponse type already has `id`"
+    },
+    {
+      "file": "src/comments/list.ts",
+      "line": 18,
+      "description": "The `--json` flag is parsed here via the existing `getFlag()` helper, consistent with how `--since` and `--helix-only` are parsed. This keeps the flag-parsing pattern uniform. When present, it signals that the caller (the runner) wants machine-parseable output rather than the human-readable default.",
+      "title": "Parsing the --json flag"
+    },
+    {
+      "file": "src/comments/list.ts",
+      "line": 30,
+      "description": "Client-side filtering by `--since` (timestamp) and `--helix-only` is applied here, before either output branch executes. This means the `--json` flag receives the same filtered result set as the human-readable path — the runner can safely combine `--since <marker> --json` to get only unprocessed comments as structured data.",
+      "title": "Filtering runs before JSON output"
+    },
+    {
+      "file": "src/comments/list.ts",
+      "line": 39,
+      "description": "When `--json` is set, `JSON.stringify(comments)` is written to stdout and the function returns early. Because `comments` is the full filtered CommentResponse array, all fields — including `id` — are present in the output. The runner parses this JSON, extracts IDs, processes content, and advances its `lastProcessedCommentId` cursor. The early return ensures the human-readable loop below never executes in this path.",
+      "title": "JSON output branch with early return"
+    },
+    {
+      "file": "src/comments/list.ts",
+      "line": 49,
+      "description": "The original human-readable loop (`[timestamp] Author [markers]: content`) is completely unchanged and only executes when `--json` is not specified. This is a non-breaking change: existing operator workflows and shell scripts that rely on the current text format continue to work identically. The APL review confirmed this path is unmodified.",
+      "title": "Human-readable output preserved (default path)"
+    },
+    {
+      "file": ".helix/tickets/cmq0dtiwl00v6k70u6wzjct6d/runs/cmq0dtiwx00vbk70ur3q1rgvn/code-review/code-review-actual.md",
+      "line": 1,
+      "description": "The code review confirmed the implementation is correct and complete: the `--json` flag is parsed, `JSON.stringify(comments)` includes all CommentResponse fields (including `id`), filtering is applied before output, and the default human-readable path is preserved. No follow-up items were raised. This is the terminal validation artifact for the BLD-684 CLI change, and all TypeScript/build/test gates pass unchanged.",
+      "title": "Code review outcome: no issues found"
+    }
+  ]
+}

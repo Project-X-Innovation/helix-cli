@@ -15,6 +15,7 @@ type CommentResponse = {
 
 export async function cmdList(config: HxConfig, ticketId: string, args: string[]): Promise<void> {
   const helixOnly = args.includes("--helix-only");
+  const jsonOutput = args.includes("--json");
   const sinceRaw = getFlag(args, "--since");
 
   const data = (await hxFetch(config, `/tickets/${ticketId}/comments`, {
@@ -32,6 +33,12 @@ export async function cmdList(config: HxConfig, ticketId: string, args: string[]
     if (!Number.isNaN(sinceDate.getTime())) {
       comments = comments.filter((c) => new Date(c.createdAt) > sinceDate);
     }
+  }
+
+  // JSON output mode — machine-parseable with comment IDs
+  if (jsonOutput) {
+    console.log(JSON.stringify(comments));
+    return;
   }
 
   if (comments.length === 0) {

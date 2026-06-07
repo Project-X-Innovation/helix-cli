@@ -1,0 +1,17 @@
+{
+  "questions": [
+    "Q1: What is the minimal CLI change needed for machine-parseable comment output?"
+  ],
+  "answers": [
+    {
+      "answer": "Add --json flag parsing in src/comments/list.ts. When present, output JSON.stringify(comments) with all fields including id. Default human-readable output unchanged. The CommentResponse type already includes id (L7). Single-file change, no server-side API modifications.",
+      "evidence": [
+        "helix-cli/src/comments/list.ts:5-14 — CommentResponse type already includes id field",
+        "helix-cli/src/comments/list.ts:42-51 — current output is human-readable, omits id",
+        "tech-research.md AD-11 — CLI --json design decision"
+      ]
+    }
+  ],
+  "statement": "The helix-cli plan adds a single --json flag to hlx comments list in src/comments/list.ts. When present, the command outputs JSON.stringify of the filtered comments array including comment IDs. Default output is unchanged. This supports the runner's direct HTTP polling (primary) and agent tool use (secondary). Two quality gate checks (typecheck, build) and one functional check (--json code presence) verify the change.",
+  "followups": []
+}

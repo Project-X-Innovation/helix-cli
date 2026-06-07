@@ -1,0 +1,24 @@
+{
+  "questions": [
+    "Does the --json flag output include comment IDs for cursor-based deduplication by the runner?",
+    "Is the default human-readable output preserved when --json is not specified?"
+  ],
+  "answers": [
+    {
+      "answer": "Yes. The JSON output uses JSON.stringify(comments) which includes all fields from the CommentResponse type, including the 'id' field needed by the runner for marker-based deduplication.",
+      "evidence": [
+        "list.ts L6: CommentResponse type includes id: string in the comment array element",
+        "list.ts L40: JSON.stringify(comments) outputs the full filtered array with all fields"
+      ]
+    },
+    {
+      "answer": "Yes. The --json flag is checked at L39 with an early return. The human-readable output loop at L49-58 is unchanged and only executes when --json is not specified.",
+      "evidence": [
+        "list.ts L39-42: jsonOutput branch with early return",
+        "list.ts L49-58: human-readable output loop unchanged"
+      ]
+    }
+  ],
+  "statement": "No issues found in helix-cli changes. The --json flag implementation is correct, includes comment IDs for cursor deduplication, and preserves default output behavior.",
+  "followups": []
+}
