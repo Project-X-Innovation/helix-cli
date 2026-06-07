@@ -1,0 +1,52 @@
+{
+  "questions": [
+    "Q1: Should the CLI converse command be a new subcommand, a flag on post, or a top-level command?",
+    "Q2: How should the CLI detect the agent's reply — polling, SSE, or a new endpoint?",
+    "Q3: What polling interval and timeout should the CLI use?",
+    "Q4: Does the CLI need to set isHelixTagged explicitly, or can it rely on server-side detection?",
+    "Q5: How does the CLI identify the correct agent reply from the comment list?"
+  ],
+  "answers": [
+    {
+      "answer": "New subcommand `hlx comments converse` under the existing comments domain. The CLI organizes commands by domain (comments/, playbook/, tickets/). A converse operation is fundamentally different from posting — it posts AND waits. Keeping it separate follows the established pattern and leaves the existing `post` command unchanged.",
+      "evidence": [
+        "src/comments/index.ts L25-48: switch on subcommand (list, post) — converse adds as third case",
+        "Product product.md: specifies `hlx comments converse --ticket <id> <message>` as the command signature"
+      ]
+    },
+    {
+      "answer": "HTTP polling via GET /api/tickets/{ticketId}/comments. The CLI already has a proven polling pattern in playbook/check.ts (5s intervals, 120 polls, progress dots). The GET endpoint returns isAgentAuthored and parentCommentId fields needed for reply detection. The CLI has no SSE client infrastructure and adding one would break the zero-dependency principle.",
+      "evidence": [
+        "src/playbook/check.ts L5-6: POLL_INTERVAL_MS = 5_000, MAX_POLLS = 120 — directly adaptable",
+        "src/comments/list.ts L6-13: CommentResponse includes isAgentAuthored, createdAt — sufficient for detection",
+        "package.json: zero runtime dependencies — SSE client would be first external dep"
+      ]
+    },
+    {
+      "answer": "5s poll interval (matching check.ts) with a configurable timeout defaulting to 300s (60 polls). This aligns with the MCP converse tool's 300s default. A --timeout flag lets users shorten or extend the wait. Agent replies vary from <1s (error) to 3-5 min (IDLE→ACTIVE→reply), so 300s covers the common range.",
+      "evidence": [
+        "src/playbook/check.ts L5: POLL_INTERVAL_MS = 5_000 — established pattern",
+        "Server diagnosis: host-tier replies take 2-4 min; IDLE→ACTIVE adds ~60s",
+        "MCP tool tech-research: 300s default timeout chosen for same reasons"
+      ]
+    },
+    {
+      "answer": "Always set isHelixTagged: true explicitly. The converse command exists specifically to trigger a Helix conversation, so the flag should be deterministic. Server-side isDirectHelixAddress detection is a fallback for web UI typing, not for programmatic invocation. The current post.ts sends only { content } — confirmed as the gap in diagnosis.",
+      "evidence": [
+        "src/comments/post.ts L31-35: POST body is { content: message } — no isHelixTagged",
+        "helix-global-server comment-controller.ts L75-84: checks isHelixTagged from body, then falls back to isDirectHelixAddress",
+        "Diagnosis statement: 'CLI post omits isHelixTagged — even though HTTP path has dispatch'"
+      ]
+    },
+    {
+      "answer": "Filter by isAgentAuthored === true AND createdAt > postedCreatedAt AND thread membership (same parentCommentId as posted comment, or parentCommentId === postedCommentId). Take the first matching reply. This handles both top-level and threaded conversations, and avoids matching stale agent replies from before the posted message.",
+      "evidence": [
+        "src/comments/list.ts L6-13: CommentResponse has isAgentAuthored, createdAt — available in poll response",
+        "Server comment-service.ts L46-47: single-level threading resolves parentCommentId to thread root",
+        "MCP tool tech-research: combined matching strategy chosen for same threading concern"
+      ]
+    }
+  ],
+  "statement": "The CLI converse command is a new subcommand `hlx comments converse` in src/comments/converse.ts. It POSTs the user's message with isHelixTagged:true (fixing the gap in post.ts), then polls GET /api/tickets/{ticketId}/comments every 5s for an isAgentAuthored reply, following the check.ts polling pattern. Default timeout is 300s (configurable via --timeout), with progress dots during wait. On reply: prints content and exits 0. On timeout: prints posted comment ID and exits 1. Supports --json for machine output and --parent for threading. One modified file: src/comments/index.ts (add converse case). No server changes needed — the CLI relies on the existing HTTP controller dispatch. No new dependencies.",
+  "followups": []
+}
