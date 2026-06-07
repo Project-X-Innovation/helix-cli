@@ -1,35 +1,34 @@
 {
   "questions": [
-    "Q1: Should hlx run be a top-level command or under the inspect prefix?",
-    "Q2: How should the --env default be resolved when the flag is not provided?",
-    "Q3: Does the hxFetch basePath work for both /netsuite and /run routes without override?"
+    "Q1: Is the CLI implementation code already in place on the branch?",
+    "Q2: What quality gates must pass for the helix-cli changes?",
+    "Q3: How should the CLI commands be verified without a running server?"
   ],
   "answers": [
     {
-      "answer": "Top-level command (hlx run, not hlx inspect run). Per tech-research AD-2, hlx run has a fundamentally different governance model (not read-only) from hlx inspect. Making it top-level avoids confusion with the 'inspect' (read-only) prefix. On the server side, both routes live under /api/inspect/ for auth simplicity, but the CLI user-facing structure reflects the semantic difference.",
+      "answer": "Yes, all CLI implementation code is confirmed in place by diagnosis. Two new files (inspect/netsuite.ts at 60 lines, run/index.ts at 53 lines) and two modified router files (inspect/index.ts case 'netsuite' at lines 125-138, index.ts case 'run' at lines 101-105) are all implemented following existing hxFetch patterns.",
       "evidence": [
-        "tech-research/tech-research.md (cli) AD-2 — hlx run as top-level command",
-        "product/product.md — SCN-04 uses 'hlx run' (no inspect prefix)",
-        "ticket.md — 'hlx run' specified as distinct from 'hlx inspect netsuite'"
+        "diagnosis/diagnosis-statement.md (cli): 'All code is implemented' with 4 success criteria verified",
+        "diagnosis/apl.json (cli): 2 questions answered, no gaps, followups=[]",
+        "Both handler files exist: src/inspect/netsuite.ts (EXISTS), src/run/index.ts (EXISTS)"
       ]
     },
     {
-      "answer": "The CLI reads nsDefaultEnv from /tmp/helix-inspect/manifest.json (written by the server's configureInspectionForStep). When --env is not provided by the user, the CLI sends the manifest's nsDefaultEnv value in the request body. This avoids the server handler needing to derive step context. Per tech-research AD-4 and TD-1.",
+      "answer": "Two quality gates: (1) typecheck via `npm run typecheck` (tsc --noEmit), (2) build via `npm run build` (tsc). Tests via `npm test` (tsc && node --test dist/**/*.test.js) should also pass, though no existing inspect handler tests exist as precedent. Zero runtime npm dependencies.",
       "evidence": [
-        "tech-research/tech-research.md (server) AD-9 — 'Write the default environment into the manifest as nsDefaultEnv'",
-        "tech-research/tech-research.md (cli) AD-4 — 'CLI reads nsDefaultEnv from manifest'",
-        "tech-research/tech-research.md (server) TD-1 — Rejected alternative: server-side step context derivation"
+        "package.json scripts: typecheck='tsc --noEmit', build='tsc', test='tsc && node --test dist/**/*.test.js'",
+        "scout/scout-summary.md (cli): 'No existing inspect handler tests. No test files for netsuite.ts or run/index.ts.'"
       ]
     },
     {
-      "answer": "Yes. hxFetch default basePath is /api/inspect (http.ts:37). The full URLs constructed are: /api/inspect/{repoId}/netsuite and /api/inspect/{repoId}/run — both under the /api/inspect/ prefix. No basePath override is needed. Per tech-research TD-3.",
+      "answer": "The CLI can be type-checked and built independently of the server. Static verification: confirm exports (cmdNetsuite, cmdRun), router wiring (case statements), and help text inclusion. After building, run `node dist/index.js --help` and `node dist/index.js inspect --help` to verify new commands appear. End-to-end testing against the server is a cross-repo concern covered by the server plan's CHK-08.",
       "evidence": [
-        "src/lib/http.ts:37 — basePath defaults to '/api/inspect'",
-        "tech-research/tech-research.md (cli) TD-3 — 'Both use default /api/inspect basePath'",
-        "src/inspect/db.ts:7 — hxFetch(config, '/${repoId}/database') — same relative path pattern"
+        "CLI uses hxFetch which makes HTTP calls to the server — server must be running for E2E",
+        "TypeScript compilation validates all imports, types, and structure independently",
+        "scout/reference-map.json (cli): handler patterns match db.ts/logs.ts templates exactly"
       ]
     }
   ],
-  "statement": "Implementation plan for helix-cli covers 5 atomic steps: create netsuite inspect handler, create run handler, add netsuite case to inspect router, add run case to main dispatcher, and quality gates. The plan produces 2 new files and 2 modified files, following existing CLI patterns exactly. All steps depend on the server-side implementation (helix-global-server) being complete first for end-to-end functionality, but the CLI can be built and type-checked independently.",
+  "statement": "Implementation plan for helix-cli covers 5 verification-focused steps: environment setup, typecheck, build, handler/router verification, and help text verification. All implementation code is already on the branch (~4 files, ~113 lines of new code) confirmed by diagnosis. The CLI can be built and verified independently of the server. The verification plan includes 5 required checks covering typecheck, build, handler exports, help text, and tests.",
   "followups": []
 }
