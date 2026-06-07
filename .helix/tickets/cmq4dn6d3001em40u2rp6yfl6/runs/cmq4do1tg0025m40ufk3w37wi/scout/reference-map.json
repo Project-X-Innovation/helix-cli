@@ -1,0 +1,72 @@
+{
+  "problem": "The CLI is a thin client that delegates all authorization to the server. It exposes ticket operations (create, rerun, continue, update-description) and goal operations (create with requireApproval flag, terminate, resume) but performs no client-side role or permission checks. Approval status is displayed but not enforced. The CLI is also packaged as a skill for AI agents (SKILL.md) — this skill content may need updates if MCP tool availability changes based on roles.",
+  "files": [
+    {
+      "path": "src/tickets/create.ts",
+      "why": "CLI ticket creation: POST /api/tickets. Parameters: title, description, repositoryIds, mode, afterTicketId, implementFromTicketId, referencedTicketIds. No client-side approval or role checks."
+    },
+    {
+      "path": "src/tickets/get.ts",
+      "why": "CLI ticket detail: displays approvalStatus when present (lines 76-78). Shows mergeQueueStatus. Read-only display."
+    },
+    {
+      "path": "src/tickets/list.ts",
+      "why": "CLI ticket listing: displays [APPROVAL_STATUS] tag (line 110). approvalStatus is in the response data structure."
+    },
+    {
+      "path": "src/tickets/update-description.ts",
+      "why": "CLI ticket update: PATCH /api/tickets/{id} with description only. No role checks."
+    },
+    {
+      "path": "src/tickets/rerun.ts",
+      "why": "CLI ticket rerun: POST /api/tickets/{id}/rerun. No approval or role checks."
+    },
+    {
+      "path": "src/tickets/continue.ts",
+      "why": "CLI ticket continue: POST /api/tickets/{id}/rerun with continuationContext. Supports --dry-run."
+    },
+    {
+      "path": "src/goals/create.ts",
+      "why": "CLI goal creation: POST /api/goals with requireApproval boolean parameter. When true, server transitions goal to PENDING_APPROVAL state before creating child tickets."
+    },
+    {
+      "path": "src/goals/get.ts",
+      "why": "CLI goal detail: displays 'Approval Mode: enabled/disabled' based on requireApproval flag."
+    },
+    {
+      "path": "src/lib/http.ts",
+      "why": "HTTP layer: hxFetch() with auth headers. API keys (hxi_) use X-API-Key header, others use Bearer. X-Helix-Org-ID header when orgId is present. Server errors surfaced to user."
+    },
+    {
+      "path": "src/lib/config.ts",
+      "why": "Config management: HxConfig with apiKey, url, orgId. Multi-org support via ~/.hlx/config.json."
+    },
+    {
+      "path": "skill-content/SKILL.md",
+      "why": "Skill definition for AI agents. Lists available CLI commands and guardrails. May need updates if MCP tool availability changes based on roles."
+    },
+    {
+      "path": "skill-content/references/commands.md",
+      "why": "Detailed command reference with flags and usage patterns."
+    },
+    {
+      "path": "package.json",
+      "why": "Scripts: build (tsc), typecheck (tsc --noEmit), test (node --test). Zero production deps — Node built-ins only."
+    }
+  ],
+  "facts": [
+    "CLI performs zero client-side authorization or role checks — all enforcement delegated to server",
+    "CLI displays approval status from server responses but does not gate operations on it",
+    "Goal creation supports requireApproval flag — when true, goals transition to PENDING_APPROVAL before spawning child tickets",
+    "HTTP layer (hxFetch) surfaces server error responses (including 403s) directly to the user",
+    "CLI supports multi-org context via orgId in config — X-Helix-Org-ID header passed to server",
+    "API keys starting with hxi_ use X-API-Key header; other tokens use Bearer Authorization",
+    "CLI has no MCP server — it's a direct REST client that AI agents use via the skill framework",
+    "Skill content (SKILL.md + references/) defines how AI agents interact with the CLI"
+  ],
+  "unknowns": [
+    "Whether CLI skill content (SKILL.md) needs to document role-based restrictions or hard-blocked operations for AI agent awareness",
+    "Whether the CLI needs to display permission denial reasons differently for MCP-originated errors vs direct CLI errors",
+    "Whether CLI commands need to surface which operations are role-gated before the user attempts them"
+  ]
+}
