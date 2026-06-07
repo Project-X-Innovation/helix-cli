@@ -1,73 +1,65 @@
 {
-  "problem": "The helix-cli needs two new subcommands: 'hlx inspect netsuite' for read-only SuiteQL/logs queries and 'hlx run' for arbitrary SuiteScript execution. Both send HTTP POST to server-side inspection endpoints using the existing inspection token authentication. Environment selection is via --env prod|sandbox parameter with per-step defaults.",
+  "problem": "Add hlx inspect netsuite and hlx run CLI commands as thin interfaces to the server-side inspection proxy endpoints for NetSuite SuiteQL/logs and arbitrary SuiteScript execution. Both use existing inspection token auth and hxFetch HTTP client. Environment selection via --env prod|sandbox with per-step defaults from manifest.",
   "files": [
     {
       "path": "src/inspect/netsuite.ts",
-      "why": "NEW — Handler for 'hlx inspect netsuite': resolve repo → POST /api/inspect/{repoId}/netsuite with {type: 'query', query} or {type: 'logs', ...} → print JSON. ~20 lines following db.ts pattern."
+      "why": "NEW (60 lines) — cmdNetsuite handler: two modes (query via POST type='query', logs via POST type='logs'). Reads manifest nsDefaultEnv for default --env. Flags: --env, --query, --script-id. POSTs to /{repoId}/netsuite."
     },
     {
       "path": "src/run/index.ts",
-      "why": "NEW — Handler for 'hlx run': parse flags (--repo, --env), resolve repo, POST /api/inspect/{repoId}/run with {code, modules?} → print JSON."
+      "why": "NEW (53 lines) — cmdRun handler: --repo required, --env/--code/--modules optional. Reads manifest nsDefaultEnv. Parses --modules as comma-separated. POSTs to /{repoId}/run."
     },
     {
       "path": "src/inspect/index.ts",
-      "why": "MOD — Add 'case \"netsuite\"' to switch (lines 41-128). Add --env flag parsing. Update usage text (lines 9-31) to include netsuite subcommand."
+      "why": "MOD — 'netsuite' case (lines 125-138) in inspect subcommand router switch. Imports cmdNetsuite from ./netsuite.js. Validates --repo flag, delegates to handler."
     },
     {
       "path": "src/index.ts",
-      "why": "MOD — Add 'case \"run\"' to main dispatcher (lines 81-156). Import runRun at top. Add 'hlx run' to usage help text (lines 39-67)."
-    },
-    {
-      "path": "src/inspect/db.ts",
-      "why": "REFERENCE — Template pattern: resolve repo → hxFetch POST /{repoId}/database with {query} → console.log JSON. 12 lines. Netsuite handler follows same pattern."
-    },
-    {
-      "path": "src/inspect/logs.ts",
-      "why": "REFERENCE — Logs handler with --limit flag: resolveRepo → hxFetch POST /{repoId}/logs. 14 lines."
-    },
-    {
-      "path": "src/inspect/api.ts",
-      "why": "REFERENCE — API handler: resolveRepo → hxFetch GET with path query param. 11 lines."
-    },
-    {
-      "path": "src/inspect/repos.ts",
-      "why": "REFERENCE — Repos listing handler. 13 lines."
+      "why": "MOD — 'run' case (lines 101-105) in main command dispatcher switch. Imports cmdRun from ./run/index.js. Uses configOrHelp for auth."
     },
     {
       "path": "src/lib/http.ts",
-      "why": "REFERENCE — hxFetch (line 18): HTTP client with retry, default basePath '/api/inspect', Bearer/X-API-Key auth, 30s timeout. Used by all inspect and run handlers."
-    },
-    {
-      "path": "src/lib/flags.ts",
-      "why": "REFERENCE — getFlag, hasFlag, getPositionalArgs, isHelpRequested, requireFlag utilities. Used for --repo, --env, --limit flag parsing."
+      "why": "BOUNDARY — hxFetch (lines 37-41): basePath /api/inspect, auth via X-API-Key (hxi_ prefix) or Bearer token, retry with exponential backoff (3 attempts, 2s base delay), 30s timeout. Used by both handlers."
     },
     {
       "path": "src/lib/resolve-repo.ts",
-      "why": "REFERENCE — resolveRepo: match by exact ID, name (case-insensitive), or partial name. Used by all inspect handlers."
+      "why": "BOUNDARY — resolveRepo: resolves repo name or ID to internal ID via repos endpoint. Used by both handlers."
+    },
+    {
+      "path": "src/lib/flags.ts",
+      "why": "BOUNDARY — getFlag and getPositionalArgs: CLI argument parsing. Handles --repo, --env, --query, --script-id, --code, --modules."
     },
     {
       "path": "src/lib/config.ts",
-      "why": "REFERENCE — HxConfig type with apiKey, url, orgId. Auth from HELIX_API_KEY/HELIX_INSPECT_TOKEN/HELIX_INSPECT_API_KEY env vars or ~/.hlx/config.json."
+      "why": "BOUNDARY — HxConfig type with token, baseUrl, orgId. Auth from HELIX_INSPECT_TOKEN (sandbox) or HELIX_API_KEY or config file."
+    },
+    {
+      "path": "src/inspect/db.ts",
+      "why": "REFERENCE — Template pattern: resolveRepo -> hxFetch POST /{repoId}/database -> console.log JSON. 12 lines."
+    },
+    {
+      "path": "src/inspect/logs.ts",
+      "why": "REFERENCE — Logs handler with optional --limit flag pattern. 14 lines."
     },
     {
       "path": "package.json",
-      "why": "REFERENCE — Build: tsc. Typecheck: tsc --noEmit. Test: tsc && node --test dist/**/*.test.js. Target ES2022, Module Node16."
+      "why": "EXECUTION — Build: tsc. Test: tsc && node --test dist/**/*.test.js. Typecheck: tsc --noEmit. Zero runtime deps. ES2022/Node16."
     }
   ],
   "facts": [
-    "CLI command dispatcher is a switch statement in src/index.ts (lines 81-156). Top-level commands: login, token, inspect, comments, preview, library, org, tickets, goals, skill, update, --version, --help.",
-    "Inspect router is a switch statement in src/inspect/index.ts (lines 41-128). Current subcommands: repos, db, logs, api.",
-    "All inspect handlers follow pattern: resolve repo → hxFetch(config, '/{repoId}/{type}', {method: 'POST', body: {...}}) → console.log JSON.stringify(result).",
-    "hxFetch default basePath is '/api/inspect'. Auth via Bearer token or X-API-Key header depending on apiKey prefix.",
-    "Flag parsing uses getFlag(args, '--flag') for value flags, hasFlag for booleans, getPositionalArgs for remaining args.",
-    "No 'run' top-level command exists yet. Must be added to switch in index.ts and usage text.",
-    "No 'netsuite' inspect subcommand exists yet. Must be added to switch in inspect/index.ts and usage text.",
-    "Build command: tsc. Typecheck: tsc --noEmit. Test: tsc && node --test dist/**/*.test.js.",
-    "No existing tests for inspect handlers (no .test.ts files in src/inspect/). Test framework is Node.js built-in test runner."
+    "Both netsuite.ts and run/index.ts are fully implemented and follow existing inspect handler patterns.",
+    "Both handlers read /tmp/helix-inspect/manifest.json for nsDefaultEnv to determine default --env value. Mapping: PRODUCTION->'prod', else->'sandbox'.",
+    "netsuite.ts supports two modes: query (body type='query' with query string) and logs (body type='logs' with optional scriptId). First positional arg 'logs' triggers log mode.",
+    "run/index.ts: --repo required (validated with process.exit(1)), --env optional, --code flag or positional args for code, --modules as comma-separated string.",
+    "hxFetch uses basePath /api/inspect. All requests go to /api/inspect/{repoId}/{endpoint}. Auth auto-detected from token prefix.",
+    "Build: tsc only. No Prisma, no bundling. CI: build-release.yml + publish.yml.",
+    "Zero runtime npm dependencies. Only devDependencies: @types/node, typescript.",
+    "ES2022 target, Node16 module resolution, strict TypeScript. Output in dist/.",
+    "netsuite.ts line 12: maps manifest nsDefaultEnv 'PRODUCTION'->'prod', otherwise->'sandbox'.",
+    "No test files exist for the inspect handlers or run handler. Test framework: Node.js built-in test runner."
   ],
   "unknowns": [
-    "Whether 'hlx run' should have subcommands (e.g., 'hlx run suitescript') or be a flat command taking code as positional or --code flag.",
-    "Whether the --env flag should be added to the hxFetch body or as a query parameter — depends on server-side route design.",
-    "Whether 'hlx inspect netsuite' should support both query and logs modes via separate subcommands or flags — the server endpoint uses a type discriminator in the body."
+    "Whether the CLI should handle the HTTP 400 error from unavailable credentials with a user-friendly message (currently hxFetch propagates the error as-is, which includes the server's descriptive message).",
+    "Whether test files for netsuite.ts or run/index.ts are needed — no existing inspect handler tests found as precedent."
   ]
 }

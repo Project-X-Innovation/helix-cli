@@ -6,68 +6,70 @@ The helix-cli needs two new subcommands to surface the server-side ns-gm decompo
 1. `hlx inspect netsuite` — SuiteQL queries + NetSuite script logs (read-only, routed through server)
 2. `hlx run` — arbitrary SuiteScript execution (role-bounded, routed through server)
 
-Both use the existing inspection token authentication and `hxFetch` HTTP client. Environment selection is via `--env prod|sandbox` parameter with per-step defaults.
+Both use existing inspection token authentication and `hxFetch` HTTP client. Environment selection via `--env prod|sandbox` parameter with per-step defaults read from the inspection manifest.
 
 ## Analysis Summary
 
-### CLI Architecture
-- Main dispatcher is a switch statement in `src/index.ts` (lines 81-156) with 13 top-level commands.
-- Inspect router is a switch in `src/inspect/index.ts` (lines 41-128) with 4 subcommands: repos, db, logs, api.
-- All inspect handlers follow a consistent pattern: `resolveRepo → hxFetch POST → console.log JSON.stringify(result)`.
-- `hxFetch` (src/lib/http.ts) has default basePath `/api/inspect`, retry logic (3 attempts), and auth via Bearer token or X-API-Key header.
+### hlx inspect netsuite — netsuite.ts (60 lines, implemented)
+- `cmdNetsuite` handler with two modes detected by first positional arg:
+  - **Query mode** (default): body `{type: 'query', query, env?}`, POST to `/{repoId}/netsuite`. Query from `--query` flag or positional args.
+  - **Logs mode** (first arg = "logs"): body `{type: 'logs', scriptId?, env?}`, POST to `/{repoId}/netsuite`. Optional `--script-id` flag.
+- Reads `/tmp/helix-inspect/manifest.json` for `nsDefaultEnv` default (PRODUCTION->'prod', else->'sandbox').
+- Output: `JSON.stringify(result, null, 2)` to stdout.
 
-### New Subcommand: `hlx inspect netsuite`
-- New file `src/inspect/netsuite.ts` following `db.ts` pattern (~12 lines).
-- POST to `/api/inspect/{repoId}/netsuite` with body `{type: 'query', query}` or `{type: 'logs', scriptId, ...}`.
-- Flags: `--repo <name>`, `--env prod|sandbox` (optional), query as positional or `--query` flag.
-- Add `case "netsuite"` to switch in `src/inspect/index.ts`.
+### hlx run — run/index.ts (53 lines, implemented)
+- `cmdRun` handler at top-level `run` command.
+- Required: `--repo` (validated with `process.exit(1)` on missing).
+- Optional: `--env`, `--code` (or positional args), `--modules` (comma-separated, split and trimmed).
+- Body: `{code, modules?, env?}`, POST to `/{repoId}/run`.
+- Reads manifest `nsDefaultEnv` for default environment, same as netsuite.ts.
 
-### New Subcommand: `hlx run`
-- New file `src/run/index.ts` for the top-level `run` command.
-- POST to `/api/inspect/{repoId}/run` with body `{code, modules?}`.
-- Flags: `--repo <name>`, `--env prod|sandbox` (optional), code from positional or flag.
-- Add `case "run"` to switch in `src/index.ts`.
+### Routing Integration (implemented)
+- `src/index.ts` line 101-105: `case "run"` dispatches to `cmdRun(config, args.slice(1))`.
+- `src/inspect/index.ts` line 125-138: `case "netsuite"` dispatches to `cmdNetsuite(config, repoNameOrId, args)`.
+- Both import paths use `.js` extensions (ES module convention).
 
-### Shared Infrastructure (Unchanged)
-- `hxFetch` with retry, auth, basePath — reused as-is.
-- `resolveRepo` for repository name/ID resolution — reused as-is.
-- Flag parsing utilities (getFlag, hasFlag, getPositionalArgs) — reused as-is.
-- Config loading from env vars or `~/.hlx/config.json` — reused as-is.
+### Shared Infrastructure (unchanged)
+- `hxFetch` (src/lib/http.ts): basePath `/api/inspect`, Bearer/X-API-Key auth, 3-attempt retry with exponential backoff, 30s timeout.
+- `resolveRepo` (src/lib/resolve-repo.ts): resolves name or ID to internal repo ID.
+- `getFlag` / `getPositionalArgs` (src/lib/flags.ts): flag parsing utilities.
+- Config from `HELIX_INSPECT_TOKEN` env var (in sandbox) or `HELIX_API_KEY` or `~/.hlx/config.json`.
 
 ### Build & Quality Gates
-- Build: `tsc` (TypeScript compilation)
+- Build: `tsc` (TypeScript ES2022, Node16 modules, strict)
 - Typecheck: `tsc --noEmit`
 - Test: `tsc && node --test dist/**/*.test.js` (Node.js built-in test runner)
-- No existing inspect handler tests.
+- No existing inspect handler tests. No test files for netsuite.ts or run/index.ts.
+- Zero runtime npm dependencies.
+- CI: `build-release.yml` (build + test + metadata + tarball) and `publish.yml` (npm publish with provenance).
 
 ## Relevant Files
 
 | File | Role | Key Detail |
 |------|------|------------|
-| `src/inspect/netsuite.ts` | NEW | Handler for hlx inspect netsuite (~20 lines) |
-| `src/run/index.ts` | NEW | Handler for hlx run (~30 lines) |
-| `src/inspect/index.ts` | MOD | Add netsuite case to switch + update usage |
-| `src/index.ts` | MOD | Add run case to dispatcher + update usage |
+| `src/inspect/netsuite.ts` | NEW | cmdNetsuite: query/logs modes, 60 lines |
+| `src/run/index.ts` | NEW | cmdRun: --repo/--env/--code/--modules, 53 lines |
+| `src/inspect/index.ts` | MOD | 'netsuite' case at lines 125-138 |
+| `src/index.ts` | MOD | 'run' case at lines 101-105 |
+| `src/lib/http.ts` | BOUNDARY | hxFetch with basePath /api/inspect, retry, 30s timeout |
+| `src/lib/resolve-repo.ts` | BOUNDARY | Repo name/ID resolution |
+| `src/lib/flags.ts` | BOUNDARY | getFlag, getPositionalArgs utilities |
+| `src/lib/config.ts` | BOUNDARY | HxConfig type, HELIX_INSPECT_TOKEN env var |
 | `src/inspect/db.ts` | REF | Template pattern (12 lines) |
-| `src/inspect/logs.ts` | REF | Logs handler with --limit flag (14 lines) |
-| `src/inspect/api.ts` | REF | API handler (11 lines) |
-| `src/lib/http.ts` | REF | hxFetch with retry, auth, basePath |
-| `src/lib/flags.ts` | REF | Flag parsing utilities |
-| `src/lib/resolve-repo.ts` | REF | Repository name/ID resolution |
-| `src/lib/config.ts` | REF | Config loading + auth env vars |
-| `package.json` | REF | Build: tsc. Test: node --test |
+| `src/inspect/logs.ts` | REF | Handler with optional --limit flag (14 lines) |
+| `package.json` | EXECUTION | Build: tsc. Test: node --test. Zero runtime deps |
 
 ## Artifact Inputs Used
 
 | Artifact | Why Used | Key Takeaway |
 |----------|----------|--------------|
-| ticket.md (Research Report RSH-636) | CLI scope specification | ~4 files changed: 2 new handlers, 2 router modifications |
+| ticket.md (Research Report RSH-636) | CLI scope specification | ~4 files: 2 new handlers + 2 router modifications |
 | ticket.md (Override 1) | Environment parameter design | --env prod\|sandbox as plain parameter, not JWT claim |
-| src/inspect/index.ts | Existing router structure | Switch-based routing with 4 subcommands, help text, flag parsing |
-| src/index.ts | Main dispatcher structure | Switch-based, 13 commands, configOrHelp pattern |
-| src/inspect/db.ts | Handler template | resolveRepo → hxFetch POST → console.log JSON (12 lines) |
-| src/inspect/logs.ts | Handler with optional flag | --limit flag pattern |
-| src/lib/http.ts | HTTP client internals | basePath /api/inspect, Bearer/X-API-Key auth, retry logic |
-| src/lib/flags.ts | Flag parsing API | getFlag, hasFlag, getPositionalArgs, isHelpRequested |
-| src/lib/config.ts | Auth token sources | HELIX_INSPECT_TOKEN env var for sandbox auth |
-| package.json | Quality gates | Build: tsc. Test: tsc && node --test. Typecheck: tsc --noEmit |
+| repo-guidance.json | Repo intent | helix-cli is secondary target |
+| src/inspect/netsuite.ts | Direct file read | 60-line handler with query/logs modes, fully implemented |
+| src/run/index.ts | Direct file read | 53-line handler with --repo/--env/--code/--modules, fully implemented |
+| src/inspect/index.ts | Agent exploration | netsuite case at lines 125-138 in router switch |
+| src/index.ts | Agent exploration | run case at lines 101-105 in main dispatcher |
+| src/lib/http.ts | Agent exploration | hxFetch: basePath /api/inspect, retry logic, auth modes |
+| src/inspect/db.ts | Agent exploration | Template pattern: resolveRepo -> hxFetch POST -> console.log |
+| package.json | Agent exploration | Build: tsc. Test: tsc && node --test. Zero runtime deps |
