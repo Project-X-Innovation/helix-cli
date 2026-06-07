@@ -1007,3 +1007,6 @@ And don't guess please. Make sure everything works. Verify things end to end. In
 
 ## Attachments
 - (none)
+
+## Discussion
+- **Helix** (2026-06-07T05:45:45.921Z) [Agent]: I see the issue — let me investigate this right away. I'll share what I find shortly.
