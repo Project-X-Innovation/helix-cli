@@ -1,0 +1,37 @@
+{
+  "questions": [
+    "Q1: What is the CLI's current Playbook command surface and what is missing?",
+    "Q2: Is the CLI's playbook functionality documented for AI agent / MCP client discovery?",
+    "Q3: Does the CLI need rule CRUD commands, or is the check-only surface sufficient?"
+  ],
+  "answers": [
+    {
+      "answer": "The CLI has 2 playbook subcommands: 'check' (trigger compliance check and poll to completion) and 'checks' (list check history for a rule). Both are routed in src/index.ts lines 133-137. Missing: all rule CRUD operations (create, list, get, update, delete rules). The goals/ directory shows the full CRUD pattern (create, list, get, terminate, resume) that playbook could follow.",
+      "evidence": [
+        "src/playbook/index.ts — dispatches 'check' and 'checks'",
+        "src/playbook/check.ts — POST trigger + GET poll, 5s interval, 120 max polls",
+        "src/playbook/checks.ts — GET list checks",
+        "src/index.ts lines 133-137 — case 'playbook' routes to runPlaybook",
+        "src/goals/index.ts — full CRUD pattern: create, list, get, terminate, resume"
+      ]
+    },
+    {
+      "answer": "No. SKILL.md — the primary interface for MCP/AI agent discovery — has zero mentions of playbook. The frontmatter triggers list does not include 'playbook' or 'hlx playbook'. The commands table lists 9 command groups but omits playbook. The workflow section has no playbook step. This means MCP clients using the hlx-cli skill have no visibility into playbook commands.",
+      "evidence": [
+        "skill-content/SKILL.md — no match for 'playbook' in any section",
+        "SKILL.md frontmatter — triggers list omits playbook",
+        "SKILL.md commands table — 9 entries, no playbook row"
+      ]
+    },
+    {
+      "answer": "For the MCP tools ticket specifically, the minimum CLI change is updating SKILL.md to document the existing check/checks commands. Rule CRUD commands would provide full parity with the REST API but are not strictly required for MCP tool exposure — MCP tools delegate directly to the server's service layer, not through the CLI. Rule CRUD CLI commands are a separate enhancement that would benefit direct CLI users.",
+      "evidence": [
+        "MCP tools are registered server-side in src/mcp/tools/ and call service functions directly",
+        "CLI commands use REST API endpoints, not service functions",
+        "SKILL.md documentation is needed for AI agent discovery of existing CLI commands"
+      ]
+    }
+  ],
+  "statement": "helix-cli has working playbook commands (check and checks) that are undocumented in SKILL.md, making them invisible to AI agent / MCP client discovery. The minimum fix is updating SKILL.md frontmatter triggers and commands table to include playbook. Rule CRUD CLI commands are a separate future enhancement.",
+  "followups": []
+}
