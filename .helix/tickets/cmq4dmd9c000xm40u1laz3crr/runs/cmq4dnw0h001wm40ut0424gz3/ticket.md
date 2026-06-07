@@ -34,3 +34,6 @@ Implementation plan with recommended approach and components affected across hel
 
 ## Attachments
 - (none)
+
+## Discussion
+- **Helix** (2026-06-07T22:52:45.200Z) [Agent]: On it — diving into the research now. I'll have my take shortly.

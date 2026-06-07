@@ -1,0 +1,54 @@
+{
+  "problem": "The ticket may require a CLI-side 'converse' command that posts a comment to the Helix agent and waits for the reply. The CLI already has comment posting (comments post) and a polling pattern (playbook/check.ts) that could serve as the template for synchronous wait behavior.",
+  "files": [
+    {
+      "path": "src/comments/post.ts",
+      "why": "Current comment posting command. POST /api/tickets/{ticketId}/comments with { content: message }. Returns comment ID. Does not set isHelixTagged, does not wait for agent reply."
+    },
+    {
+      "path": "src/comments/list.ts",
+      "why": "Comment listing command. GET /api/tickets/{ticketId}/comments. Supports --helix-only filter and --since date filter. --json output mode. Could be used to poll for agent reply."
+    },
+    {
+      "path": "src/comments/index.ts",
+      "why": "Comment command router. Dispatches to list/post subcommands. New 'converse' subcommand would be added here."
+    },
+    {
+      "path": "src/playbook/check.ts",
+      "why": "Existing polling pattern. POST to trigger, then poll with 5s intervals (POLL_INTERVAL_MS), max 120 polls (10min). Checks for terminal status set. This pattern could be adapted for converse: post comment → poll for agent-authored reply."
+    },
+    {
+      "path": "src/lib/http.ts",
+      "why": "HTTP client wrapper (hxFetch). 30s request timeout, 3 retries with exponential backoff, supports API key and Bearer auth. basePath option for /api vs /api/inspect."
+    },
+    {
+      "path": "src/lib/config.ts",
+      "why": "CLI config loading. Env vars (HELIX_API_KEY, HELIX_URL) or multi-org config file (~/.hlx/config.json). Auth: hxi_ prefix → X-API-Key, else → Bearer token."
+    },
+    {
+      "path": "src/lib/flags.ts",
+      "why": "Argument parsing utilities. getFlag, hasFlag, getPositionalArgs, requireFlag."
+    },
+    {
+      "path": "src/index.ts",
+      "why": "CLI entry point and main router (L84-145). Routes commands to runX() functions."
+    },
+    {
+      "path": "package.json",
+      "why": "Build: tsc. Test: node --test dist/**/*.test.js. Zero runtime deps. Node >= 18."
+    }
+  ],
+  "facts": [
+    "CLI comments post (src/comments/post.ts L31-35) sends POST /api/tickets/{ticketId}/comments with { content: message } — does not pass isHelixTagged. Server-side implicit detection via isDirectHelixAddress would still trigger for vocative patterns.",
+    "Polling pattern in playbook/check.ts uses 5s intervals with 10-minute max timeout. Adapting for converse: post comment → poll GET /api/tickets/{ticketId}/comments for new isAgentAuthored comment.",
+    "hxFetch has 30s per-request timeout with 3 retries. A converse command would need longer overall timeout (agent reply can take minutes).",
+    "CLI has no MCP server — it's purely a CLI tool. The MCP converse tool would live in helix-global-server. CLI would have a corresponding 'converse' subcommand.",
+    "Zero runtime dependencies — all built on Node.js standard library. hxFetch uses native fetch().",
+    "Comment list supports --json output — machine-parseable for polling reply detection."
+  ],
+  "unknowns": [
+    "Should the CLI have a 'converse' command, or should this only be an MCP tool on the server?",
+    "What timeout should the CLI converse command use — short (system ack ~1s) or long (full host reply ~2-4 min)?",
+    "Should the CLI converse command stream intermediate status (thinking dots like playbook/check) or block silently?"
+  ]
+}
