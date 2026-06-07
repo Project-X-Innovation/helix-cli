@@ -1,0 +1,30 @@
+{
+  "title": "BLD-693: ns-gm Server-Side Decomposition (CLI)",
+  "description": "Tour of the CLI-side changes: two new subcommands (hlx inspect netsuite and hlx run) as thin HTTP interfaces to the server-side NetSuite proxy.",
+  "steps": [
+    {
+      "file": "src/inspect/netsuite.ts",
+      "line": 20,
+      "title": "cmdNetsuite Handler - SuiteQL + Logs",
+      "description": "60-line handler with two modes: query mode (SuiteQL via --query or positional args) and logs mode (triggered by 'logs' positional arg with optional --script-id). Reads nsDefaultEnv from /tmp/helix-inspect/manifest.json for default --env."
+    },
+    {
+      "file": "src/run/index.ts",
+      "line": 20,
+      "title": "cmdRun Handler - Arbitrary SuiteScript",
+      "description": "53-line handler for arbitrary SuiteScript execution. --repo is required (validated with exit(1)), --code from flag or positional args, --modules split on commas, --env with manifest fallback. POSTs to /api/inspect/{repoId}/run."
+    },
+    {
+      "file": "src/inspect/index.ts",
+      "line": 125,
+      "title": "Inspect Router - netsuite Case",
+      "description": "case 'netsuite' dispatches to cmdNetsuite(config, repo, rest). Includes help text for the netsuite subcommand with query and logs modes."
+    },
+    {
+      "file": "src/index.ts",
+      "line": 101,
+      "title": "Main Dispatcher - run Case",
+      "description": "case 'run' dispatches to cmdRun(config, args.slice(1)). Uses configOrHelp guard pattern consistent with other top-level commands."
+    }
+  ]
+}

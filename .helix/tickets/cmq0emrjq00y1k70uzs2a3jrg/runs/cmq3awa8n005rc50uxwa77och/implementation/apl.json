@@ -1,34 +1,35 @@
 {
   "questions": [
-    "Q1: Does the CLI build succeed with the new netsuite and run handler files?",
-    "Q2: Does the CLI help text correctly show both new commands?",
-    "Q3: Does the manifest default env reading work correctly for both handlers?"
+    "Q1: Are all CLI handler files in place with correct exports?",
+    "Q2: Are the CLI router switch cases correctly wired?",
+    "Q3: Do the CLI quality gates pass?"
   ],
   "answers": [
     {
-      "answer": "Yes. `npx tsc --noEmit` exits with code 0 and `npm run build` succeeds. Both new files (src/inspect/netsuite.ts and src/run/index.ts) compile correctly with proper imports from existing lib modules.",
+      "answer": "Yes. src/inspect/netsuite.ts exports cmdNetsuite (line 20) with query/logs modes and manifest nsDefaultEnv reading. src/run/index.ts exports cmdRun (line 20) with --repo/--env/--code/--modules flags and manifest nsDefaultEnv reading. Both follow existing hxFetch patterns from db.ts/logs.ts.",
       "evidence": [
-        "npx tsc --noEmit exit code 0 in helix-cli directory",
-        "npm run build exit code 0 producing dist/ output",
-        "Both files use existing imports: HxConfig, hxFetch, resolveRepo, getFlag, getPositionalArgs"
+        "src/inspect/netsuite.ts: export async function cmdNetsuite at line 20",
+        "src/run/index.ts: export async function cmdRun at line 20",
+        "Both read /tmp/helix-inspect/manifest.json for nsDefaultEnv with PRODUCTION->prod mapping"
       ]
     },
     {
-      "answer": "Yes. `node dist/index.js --help` shows `hlx run` and `hlx inspect netsuite` in the top-level help. `node dist/index.js inspect --help` shows the netsuite subcommand usage. Both help texts match the implementation plan specification.",
+      "answer": "Yes. src/inspect/index.ts has case 'netsuite' at line 125 dispatching to cmdNetsuite (imported at line 8). src/index.ts has case 'run' at line 101 dispatching to cmdRun (imported at line 17). Both use existing patterns (configOrHelp guard, help text).",
       "evidence": [
-        "Top-level help output includes 'hlx run --repo <name> <code>' and 'hlx inspect netsuite --repo <name> --query \"<suiteql>\"'",
-        "Inspect help output includes netsuite with query and logs modes"
+        "src/inspect/index.ts line 8: import { cmdNetsuite } from './netsuite.js'",
+        "src/inspect/index.ts line 125: case 'netsuite'",
+        "src/index.ts line 17: import { cmdRun } from './run/index.js'",
+        "src/index.ts line 101: case 'run'"
       ]
     },
     {
-      "answer": "Yes. Both handlers (cmdNetsuite and cmdRun) share the same readManifestDefaultEnv pattern: read /tmp/helix-inspect/manifest.json, check nsDefaultEnv field, map PRODUCTION→prod and SANDBOX→sandbox. The --env flag overrides the manifest default when provided.",
+      "answer": "Blocked by network unavailability in this pass. Previously verified passing in Verification Pass 2: typecheck exit 0, build exit 0, tests 63/63 pass, help text shows both new commands.",
       "evidence": [
-        "src/inspect/netsuite.ts:7-17 — readManifestDefaultEnv function",
-        "src/run/index.ts:7-18 — identical readManifestDefaultEnv function",
-        "Both use: envFlag ?? readManifestDefaultEnv() pattern"
+        "npm install error: ENOTFOUND registry.npmjs.org",
+        "Verification Pass 2: CLI CHK-01 (tsc) PASS, CHK-02 (build) PASS, CHK-04 (help) PASS, CHK-05 (tests 63/63) PASS"
       ]
     }
   ],
-  "statement": "Implementation complete for helix-cli. All 5 steps executed: netsuite handler (cmdNetsuite with query/logs modes), run handler (cmdRun with code/modules/env), inspect router integration (case 'netsuite'), main dispatcher integration (case 'run'), and quality gates (typecheck pass, build pass, help text verified). Both handlers follow existing patterns from db.ts and logs.ts, use hxFetch for server communication, and read nsDefaultEnv from the inspection manifest.",
+  "statement": "Implementation confirmed complete for helix-cli. All 4 source files verified correct via static inspection: cmdNetsuite handler (query/logs modes), cmdRun handler (code/modules/env), inspect router (case 'netsuite'), main dispatcher (case 'run'). npm-dependent quality gates blocked by network but previously verified passing in Verification Pass 2 (typecheck, build, 63/63 tests, help text).",
   "followups": []
 }
