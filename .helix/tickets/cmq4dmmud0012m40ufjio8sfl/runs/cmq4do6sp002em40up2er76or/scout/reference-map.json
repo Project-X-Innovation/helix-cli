@@ -1,0 +1,37 @@
+{
+  "problem": "The CLI interacts with Helix via REST API endpoints, not MCP tools directly. It has no MCP tool invocation or feature flag code. The CLI may need awareness of MCP tool flags only if admin management commands are added.",
+  "files": [
+    {
+      "path": "src/index.ts",
+      "why": "CLI entry point. Registers all command modules. No MCP-related commands exist."
+    },
+    {
+      "path": "src/lib/http.ts",
+      "why": "HTTP client (hxFetch) for all API calls. Bearer token auth and hxi_ API key support. X-Helix-Org-ID header for org-scoped requests."
+    },
+    {
+      "path": "src/lib/config.ts",
+      "why": "CLI configuration. Reads HELIX_API_KEY, HELIX_URL env vars or ~/.hlx/config.json. Multi-org config support."
+    },
+    {
+      "path": "src/inspect/index.ts",
+      "why": "Inspect commands (db, logs, api, repos). Read-only production inspection. Shows CLI command pattern for API interaction."
+    },
+    {
+      "path": "package.json",
+      "why": "Scripts: build (tsc), typecheck (tsc --noEmit), test (tsc && node --test). No dependencies beyond TypeScript. Pure ESM."
+    }
+  ],
+  "facts": [
+    "The CLI has no MCP tool invocation or listing code. It only calls REST API endpoints.",
+    "No feature flag code exists in the CLI codebase.",
+    "The CLI authenticates via Bearer tokens or hxi_ API keys, not MCP OAuth.",
+    "CLI commands: tickets, comments, library, playbook, goals, inspect, skill, login, token, org.",
+    "The ticket description lists helix-cli as a target repo, suggesting CLI may need new admin commands for MCP tool flag management."
+  ],
+  "unknowns": [
+    "Whether the CLI needs new commands for managing MCP tool flags (e.g., 'hlx admin tools enable/disable').",
+    "Whether the CLI should display MCP tool flag status as part of existing commands.",
+    "The scope of CLI changes—if any—depends on the design recommendation."
+  ]
+}
