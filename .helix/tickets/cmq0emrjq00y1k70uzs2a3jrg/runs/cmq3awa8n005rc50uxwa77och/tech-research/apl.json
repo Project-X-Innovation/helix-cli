@@ -1,38 +1,37 @@
 {
   "questions": [
-    "Q1: What CLI structure changes are needed for hlx inspect netsuite and hlx run?",
-    "Q2: How should --env parameter be passed to the server endpoints?",
+    "Q1: How should the CLI commands for netsuite and run integrate with the existing hlx CLI structure?",
+    "Q2: How should the CLI handle environment defaults and override?",
     "Q3: Should hlx run be a top-level command or under inspect?"
   ],
   "answers": [
     {
-      "answer": "Two new handler files (src/inspect/netsuite.ts and src/run/index.ts) following the existing db.ts pattern: resolveRepo -> hxFetch POST /{repoId}/{type} -> console.log JSON. Two modified files: src/inspect/index.ts adds case 'netsuite' to the switch, src/index.ts adds case 'run' to the main dispatcher. Both use the existing hxFetch client with default basePath /api/inspect. No new dependencies.",
+      "answer": "Two new handler files follow the established db.ts/logs.ts pattern: netsuite.ts (60 lines) as a subcommand of 'inspect' with query/logs modes, and run/index.ts (53 lines) as a top-level command. Both use resolveRepo, getFlag, getPositionalArgs, and hxFetch. Verified: netsuite case at inspect/index.ts lines 125-138, run case at index.ts lines 101-105. Both import with .js extensions (ES module convention).",
       "evidence": [
-        "src/inspect/db.ts:1-12 — Template: resolveRepo, hxFetch POST /{repoId}/database, console.log JSON. 12 lines.",
-        "src/inspect/index.ts:41-128 — Inspect router switch with repos/db/logs/api cases. Add netsuite after api.",
-        "src/index.ts:81-156 — Main dispatcher switch with 13 commands. Add run after existing commands.",
-        "src/lib/http.ts:43 — Default basePath '/api/inspect'. No override needed."
+        "src/inspect/netsuite.ts — 60 lines, cmdNetsuite handler, query/logs modes via POST to /{repoId}/netsuite",
+        "src/run/index.ts — 53 lines, cmdRun handler, --repo/--env/--code/--modules via POST to /{repoId}/run",
+        "src/inspect/index.ts lines 125-138 — netsuite case in router switch",
+        "src/index.ts lines 101-105 — run case in main dispatcher"
       ]
     },
     {
-      "answer": "The --env parameter is parsed via getFlag(args, '--env') and included in the hxFetch POST body as { env: 'prod' | 'sandbox' }. When --env is not provided by the user, the CLI reads nsDefaultEnv from the manifest (/tmp/helix-inspect/manifest.json) and sends that instead. This matches how --limit is passed in the logs handler (body parameter). The server handler maps 'prod' -> PRODUCTION, 'sandbox' -> SANDBOX.",
+      "answer": "Both handlers read /tmp/helix-inspect/manifest.json for nsDefaultEnv (set by orchestrator per step). Mapping: PRODUCTION->'prod', else->'sandbox'. The --env flag overrides the manifest default. Graceful fallback: if manifest is unreadable (try/catch), env defaults to undefined (server resolves to SANDBOX). Verified: readManifestDefaultEnv function at netsuite.ts lines 7-18 and run/index.ts lines 7-18 (identical implementation).",
       "evidence": [
-        "src/inspect/logs.ts:7-8 — body: Record<string, unknown> = { query }; if (limit) body.limit = limit. Same pattern for env.",
-        "src/lib/flags.ts:5-9 — getFlag(args, '--env') extracts value after --env flag.",
-        "src/lib/http.ts:37-41 — hxFetch accepts body: Record<string, unknown> for POST.",
-        "ticket.md Override 1 — 'Environment is a plain --env prod|sandbox parameter on the request.'"
+        "src/inspect/netsuite.ts lines 7-18 — readManifestDefaultEnv with try/catch",
+        "src/run/index.ts lines 7-18 — identical readManifestDefaultEnv function",
+        "src/inspect/netsuite.ts line 24 — const env = envFlag ?? readManifestDefaultEnv()",
+        "src/run/index.ts line 30 — const env = envFlag ?? readManifestDefaultEnv()"
       ]
     },
     {
-      "answer": "hlx run should be a top-level command (not hlx inspect run). The server route is POST /api/inspect/:repoId/run (under inspect for auth simplicity), but the CLI command is top-level to reflect the fundamentally different governance model: hlx inspect netsuite is read-only by construction, hlx run allows arbitrary SuiteScript. Top-level placement avoids confusion with the read-only 'inspect' prefix. The handler lives in src/run/index.ts as a new directory.",
+      "answer": "hlx run is a top-level command (not hlx inspect run). The server route is POST /api/inspect/:repoId/run (under inspect for auth simplicity), but the CLI command is top-level to reflect the fundamentally different governance model: inspect netsuite is read-only by construction, run allows arbitrary SuiteScript. Verified: case 'run' in src/index.ts main dispatcher (lines 101-105), handler at src/run/index.ts.",
       "evidence": [
-        "RSH-636 AD-1 — Both routes under /api/inspect/ for auth simplicity (server concern).",
-        "RSH-636 AD-6 — hlx run allows arbitrary SuiteScript, no assertReadOnlyQuery (different governance).",
-        "ticket.md — 'hlx run — arbitrary SuiteScript, not read-only.'",
-        "src/index.ts:81-156 — Main dispatcher has dedicated top-level commands for distinct features."
+        "src/index.ts lines 101-105 — case 'run' in main dispatcher, imports cmdRun from ./run/index.js",
+        "src/run/index.ts — handler in its own directory, not under inspect/",
+        "RSH-636 AD-6 — hlx run allows arbitrary SuiteScript, no assertReadOnlyQuery (different governance)"
       ]
     }
   ],
-  "statement": "The CLI changes are minimal and pattern-consistent: two new handler files (~20-30 lines each) following the proven resolveRepo -> hxFetch POST -> console.log JSON template, plus two switch-case additions in existing routers. The --env parameter is passed as a body parameter. hlx run is top-level to reflect its distinct governance model. Default environment comes from the manifest's nsDefaultEnv. No new dependencies. No architectural concerns.",
+  "statement": "The helix-cli changes are a thin interface layer (~4 files, ~113 lines of new code) following established CLI patterns. Two new handlers (cmdNetsuite, cmdRun) read environment defaults from the inspection manifest, use hxFetch for HTTP dispatch, and output JSON to stdout. hlx run is top-level (not under inspect) to reflect its distinct governance model. No new dependencies, zero architectural risk.",
   "followups": []
 }

@@ -2,13 +2,13 @@
 
 ## Technology Foundation
 
-- **Runtime**: Node.js with TypeScript (ES2022, Node16 module resolution)
-- **CLI pattern**: Switch-based command dispatcher in `src/index.ts` (13 top-level commands) with sub-routers (e.g., `src/inspect/index.ts` with 4 subcommands)
-- **HTTP client**: `hxFetch` in `src/lib/http.ts` — default basePath `/api/inspect`, retry (3 attempts), Bearer token or X-API-Key auth
-- **Flag parsing**: `src/lib/flags.ts` — `getFlag`, `hasFlag`, `getPositionalArgs`, `isHelpRequested`, `requireFlag`
+- **Runtime**: Node.js with TypeScript (ES2022, Node16 module resolution, strict mode)
+- **CLI pattern**: Switch-based command dispatcher in `src/index.ts` with sub-routers (e.g., `src/inspect/index.ts`)
+- **HTTP client**: `hxFetch` in `src/lib/http.ts` — default basePath `/api/inspect`, retry (3 attempts, 2s base delay), Bearer token or X-API-Key auth, 30s timeout
+- **Flag parsing**: `src/lib/flags.ts` — `getFlag`, `hasFlag`, `getPositionalArgs`, `isHelpRequested`
 - **Repo resolution**: `src/lib/resolve-repo.ts` — match by exact ID, name (case-insensitive), or partial name
-- **Auth**: `HELIX_INSPECT_TOKEN` env var -> Bearer token header (sourced from `/tmp/helix-inspect/env.sh`)
-- **Build**: `tsc`. Test: `tsc && node --test dist/**/*.test.js`. Typecheck: `tsc --noEmit`
+- **Auth**: `HELIX_INSPECT_TOKEN` env var -> Bearer token header (sourced from `/tmp/helix-inspect/env.sh` in sandbox)
+- **Build**: `tsc`. Test: `tsc && node --test dist/**/*.test.js`. Typecheck: `tsc --noEmit`. Zero runtime npm deps.
 
 ## Architecture Decision
 
@@ -20,7 +20,9 @@
 
 **Chosen: Option 2 — Separate handler files**
 
-**Rationale:** The existing codebase cleanly separates each inspect subcommand into its own file (`db.ts`, `logs.ts`, `api.ts`, `repos.ts`). Each is ~12-14 lines following the pattern: `resolveRepo -> hxFetch POST -> console.log JSON`. Creating `src/inspect/netsuite.ts` and `src/run/index.ts` as separate files maintains this consistent separation and makes the codebase easy to navigate.
+**Rationale:** The existing codebase cleanly separates each inspect subcommand into its own file (`db.ts` at 12 lines, `logs.ts` at 14 lines, `api.ts`). Each follows the pattern: `resolveRepo -> hxFetch POST -> console.log JSON`. Creating `src/inspect/netsuite.ts` (60 lines) and `src/run/index.ts` (53 lines) maintains this consistent separation.
+
+**Verified:** `netsuite.ts` follows the exact same pattern: resolveRepo (line 21), hxFetch POST (lines 36-39 and 54-57), console.log JSON (lines 40 and 58). `run/index.ts` follows the same pattern with resolveRepo (line 27), hxFetch POST (line 48-51), console.log JSON (line 52).
 
 ### AD-2: `hlx run` as a top-level command
 
@@ -30,101 +32,112 @@
 
 **Chosen: Option 2 — Top-level `hlx run`**
 
-**Rationale:** Per RSH-636, `hlx run` is not read-only and has a fundamentally different governance model from `hlx inspect netsuite`. Making it top-level avoids confusion with the "inspect" (read-only) prefix. On the server side, both routes live under `/api/inspect/` for auth simplicity, but the CLI user-facing command structure should reflect the semantic difference. The `src/run/index.ts` handler is added as a new directory with its own module.
+**Rationale:** Per RSH-636, `hlx run` is not read-only and has a fundamentally different governance model from `hlx inspect netsuite`. Making it top-level avoids confusion with the "inspect" (read-only) prefix. On the server side, both routes live under `/api/inspect/` for auth simplicity, but the CLI user-facing command structure should reflect the semantic difference.
 
-### AD-3: `--env` flag as body parameter
+**Verified:** `src/run/index.ts` is in its own directory. `src/index.ts` has `case "run"` at lines 101-105 in the main dispatcher, same level as `inspect`, `version`, etc.
+
+### AD-3: `--env` flag as body parameter with manifest default
 
 **Options considered:**
 1. **Query parameter** on the URL.
 2. **Body parameter** in the POST request body.
+3. **CLI-side only** (no env sent to server, server derives from step context).
 
-**Chosen: Option 2 — Body parameter**
+**Chosen: Option 2 — Body parameter with manifest default**
 
-**Rationale:** `hxFetch` sends body as `Record<string, unknown>` for POST requests (http.ts:37-41). The `--env` flag is parsed via `getFlag(args, '--env')` and included in the body alongside the query/code payload. This matches how `--limit` is passed in the logs handler. When `--env` is not provided, the key is omitted from the body, and the server applies the manifest-provided default.
+**Rationale:** `hxFetch` sends body as `Record<string, unknown>` for POST requests. The `--env` flag is parsed via `getFlag(args, '--env')` and included in the body alongside the query/code payload. When `--env` is not provided, the CLI reads `nsDefaultEnv` from the manifest and sends that instead. The server handler uses `env` from the body directly — no step context lookup needed.
+
+**Verified:** Both handlers have identical `readManifestDefaultEnv()` functions (lines 7-18) that read `/tmp/helix-inspect/manifest.json`, map `PRODUCTION` -> `'prod'`, and return `'sandbox'` for other values. The `env` key is included in the body when present (netsuite.ts line 34/52, run/index.ts line 46).
 
 ### AD-4: Manifest-based default environment
 
-**Decision:** The CLI reads `nsDefaultEnv` from `/tmp/helix-inspect/manifest.json` (written by `configureInspectionForStep` on the server). When the user does not provide `--env`, the CLI sends the manifest's `nsDefaultEnv` value in the body. This avoids the server handler needing to derive step context.
+**Decision:** The CLI reads `nsDefaultEnv` from `/tmp/helix-inspect/manifest.json` (written by `configureInspectionForStep` on the server during sandbox provisioning). When the user does not provide `--env`, the CLI sends the manifest's `nsDefaultEnv` value.
 
-**Implementation approach:** The netsuite.ts and run/index.ts handlers read the manifest to get the default env. If the manifest doesn't have `nsDefaultEnv` (backward compat), the CLI omits `env` from the body and the server falls back to SANDBOX.
+**Verified:** `readManifestDefaultEnv()` at netsuite.ts lines 7-18 wraps the manifest read in try/catch. If the manifest is unreadable or missing `nsDefaultEnv`, returns `undefined`. The env resolution chain: `--env flag` -> `manifest nsDefaultEnv` -> `undefined` (server falls back to SANDBOX).
 
 ## Core API/Methods
 
-### src/inspect/netsuite.ts (NEW)
+### src/inspect/netsuite.ts (NEW, 60 lines)
 
-```
-cmdNetsuite(config, repoNameOrId, args) {
-  resolveRepo -> determine type (query vs logs) from args ->
-  hxFetch POST /{repoId}/netsuite with { type, query/scriptId, env? } ->
-  console.log JSON
-}
-```
+`cmdNetsuite(config, repoNameOrId, args)`:
+- Resolves repo via `resolveRepo`
+- Parses `--env` flag with manifest fallback
+- Detects mode from first positional arg:
+  - `"logs"` -> POST `{ type: 'logs', scriptId?, env? }` to `/{repoId}/netsuite`
+  - default -> POST `{ type: 'query', query, env? }` to `/{repoId}/netsuite`
+- Query from `--query` flag or positional args joined
+- Missing query -> `process.exit(1)` with error message
+- Output: `JSON.stringify(result, null, 2)` to stdout
 
-- Supports `hlx inspect netsuite --repo <name> --query <suiteql>` for SuiteQL
-- Supports `hlx inspect netsuite --repo <name> logs [--script-id <id>]` for script logs
-- Supports `--env prod|sandbox` for environment override
-- Query can be positional or via `--query` flag
+### src/run/index.ts (NEW, 53 lines)
 
-### src/run/index.ts (NEW)
-
-```
-cmdRun(config, repoNameOrId, args) {
-  resolveRepo -> parse code from positional or --code flag ->
-  hxFetch POST /{repoId}/run with { code, modules?, env? } ->
-  console.log JSON
-}
-```
-
-- Supports `hlx run --repo <name> <code>` for positional code
-- Supports `hlx run --repo <name> --code <code>` for flag-based code
-- Supports `--env prod|sandbox` for environment override
-- Supports `--modules <module1,module2>` for required SuiteScript modules
+`cmdRun(config, args)`:
+- Parses `--repo` (required, validated with `process.exit(1)` on missing)
+- Resolves repo via `resolveRepo`
+- Parses `--env` flag with manifest fallback
+- Code from `--code` flag or positional args joined
+- Missing code -> `process.exit(1)` with error message
+- Modules from `--modules` flag, split on comma, trimmed, filtered
+- POST `{ code, modules?, env? }` to `/{repoId}/run`
+- Output: `JSON.stringify(result, null, 2)` to stdout
 
 ### src/inspect/index.ts (MOD)
 
-- Add `case "netsuite"` to switch statement (after existing `api` case around line 120)
-- Parse `--env` flag
-- Update help/usage text to include netsuite subcommand
+- `case "netsuite"` at lines 125-138 in inspect router switch
+- Validates `--repo` flag (required for inspect subcommands)
+- Dispatches to `cmdNetsuite(config, repoNameOrId, args)`
 
 ### src/index.ts (MOD)
 
-- Add `case "run"` to main dispatcher switch (after existing commands around line 136)
-- Import `cmdRun` from `src/run/index.ts`
-- Update usage text to include `hlx run` command
+- `case "run"` at lines 101-105 in main dispatcher switch
+- Uses `configOrHelp` for auth resolution
+- Dispatches to `cmdRun(config, args.slice(1))`
 
 ## Technical Decisions (including rejected alternatives)
 
 ### TD-1: Code input for `hlx run`
 
-**Decision:** Accept code from positional argument (first non-flag arg after `--repo`) or `--code` flag. Positional is the primary mode for short scripts. The `--code` flag exists for scripts that start with dashes or need explicit quoting.
+**Decision:** Accept code from positional argument (args after flags) or `--code` flag. Positional is the primary mode for short scripts. The `--code` flag exists for scripts that start with dashes or need explicit quoting. Missing code results in `process.exit(1)` with an error message.
 
-### TD-2: No tests for new handlers
+**Verified:** run/index.ts lines 32-39 — `const code = codeFlag ?? positional.join(" "); if (!code) { console.error(...); process.exit(1); }`
 
-**Decision:** No existing inspect handler tests exist in the CLI codebase (no `.test.ts` files in `src/inspect/`). The new handlers follow the same pattern and have the same test coverage (none). Adding CLI-level tests is deferred — the server-side handlers are the critical test boundary.
+### TD-2: Modules as comma-separated string
 
-### TD-3: hxFetch basePath compatibility
+**Decision:** `--modules N/record,N/search` is parsed as `modulesFlag.split(",").map(m => m.trim()).filter(Boolean)` and sent as a string array in the body. The server Zod schema accepts `z.array(z.string()).optional()`.
 
-**Decision:** Both `hlx inspect netsuite` and `hlx run` use the default `/api/inspect` basePath. The server routes are `POST /api/inspect/:repoId/netsuite` and `POST /api/inspect/:repoId/run`. hxFetch constructs the full URL as `${baseUrl}/api/inspect/${repoId}/netsuite` and `${baseUrl}/api/inspect/${repoId}/run`. No basePath override is needed.
+**Verified:** run/index.ts lines 43-45 — `if (modulesFlag) { body.modules = modulesFlag.split(",").map((m) => m.trim()).filter(Boolean); }`
+
+### TD-3: No tests for new handlers
+
+**Decision:** No existing inspect handler tests exist in the CLI codebase (no `.test.ts` files in `src/inspect/`). The new handlers follow the same pattern and have the same test coverage (none). Adding CLI-level tests is deferred. The server-side handlers are the critical test boundary.
+
+### TD-4: Duplicate `readManifestDefaultEnv` function
+
+**Decision:** Both `netsuite.ts` and `run/index.ts` have an identical `readManifestDefaultEnv()` function (lines 7-18). This duplication is acceptable for 12 lines of manifest-reading code. Extracting to a shared utility would add a new module for minimal benefit. Can be refactored later if more handlers need it.
+
+### TD-5: hxFetch basePath compatibility
+
+**Decision:** Both commands use the default `/api/inspect` basePath from hxFetch. The server routes are `POST /api/inspect/:repoId/netsuite` and `POST /api/inspect/:repoId/run`. hxFetch constructs URLs as `${baseUrl}/api/inspect/${path}`, so passing `/${repoId}/netsuite` and `/${repoId}/run` produces the correct full URLs. No basePath override is needed.
 
 ## Technical Checks
 
 [TCK-01] CLI routes to correct server endpoints
 - Decision Reference: "Both under /api/inspect/ with hxFetch default basePath"
-  (from AD-3, TD-3)
+  (from AD-3, TD-5)
 - Verification Method: code-inspection
-- Expected Evidence: `src/inspect/netsuite.ts` calls `hxFetch(config, '/${repoId}/netsuite', ...)`. `src/run/index.ts` calls `hxFetch(config, '/${repoId}/run', ...)`. Both use POST method.
+- Expected Evidence: `netsuite.ts` calls `hxFetch(config, '/${repoId}/netsuite', ...)` with POST method. `run/index.ts` calls `hxFetch(config, '/${repoId}/run', ...)` with POST method.
 
-[TCK-02] --env flag included in request body
+[TCK-02] --env flag included in request body when present
 - Decision Reference: "--env parsed via getFlag and included in the request body"
   (from AD-3)
 - Verification Method: code-inspection
-- Expected Evidence: Both handlers call `getFlag(args, '--env')` and include the result in the body object when present. When absent, `env` key is omitted from the body.
+- Expected Evidence: Both handlers call `getFlag(args, '--env')`, fall back to `readManifestDefaultEnv()`, and include the result in the body object via `if (env) body.env = env`. When absent, `env` key is omitted from the body.
 
 [TCK-03] Switch cases added to routers
 - Decision Reference: "Add case 'netsuite' to inspect router and case 'run' to main dispatcher"
   (from AD-1, AD-2)
 - Verification Method: code-inspection
-- Expected Evidence: `src/inspect/index.ts` switch includes `case "netsuite"` dispatching to `cmdNetsuite`. `src/index.ts` switch includes `case "run"` dispatching to `cmdRun`.
+- Expected Evidence: `inspect/index.ts` switch includes `case "netsuite"` dispatching to `cmdNetsuite`. `index.ts` switch includes `case "run"` dispatching to `cmdRun`.
 
 ## Cross-Platform Considerations
 
@@ -133,14 +146,15 @@ Not applicable. The CLI runs inside Vercel Sandboxes (Linux/Node.js). No cross-p
 ## Performance Expectations
 
 - CLI latency is dominated by server-side processing (OAuth2 token exchange, RESTlet call). CLI overhead is negligible (<10ms for flag parsing, repo resolution, HTTP dispatch).
-- hxFetch retry logic (3 attempts) handles transient network errors.
+- hxFetch retry logic (3 attempts, 2s base delay, exponential backoff) handles transient network errors.
+- 30s timeout per request (hxFetch default) — adequate for RESTlet calls.
 
 ## Dependencies
 
 ### Existing (no new dependencies)
-- Node.js built-in modules only (no npm additions)
+- Node.js built-in modules only (`node:fs` for manifest reading)
 - `hxFetch` for HTTP client with auth and retry
-- `getFlag`/`hasFlag`/`getPositionalArgs` for flag parsing
+- `getFlag`/`getPositionalArgs` for flag parsing
 - `resolveRepo` for repository name/ID resolution
 
 ### Zero new npm dependencies
@@ -148,39 +162,39 @@ Not applicable. The CLI runs inside Vercel Sandboxes (Linux/Node.js). No cross-p
 ## Deferred to Round 2
 
 - CLI tests for inspect netsuite and run handlers
-- Richer error messaging (structured error display vs raw JSON)
+- Richer error messaging (structured error display vs raw JSON propagation)
 - Interactive mode for `hlx run` (stdin pipe for longer scripts)
+- Extracting `readManifestDefaultEnv` to a shared utility (if more handlers need it)
 
 ## Summary Table
 
 | Aspect | Decision |
 |--------|----------|
-| New files | `src/inspect/netsuite.ts`, `src/run/index.ts` |
-| Modified files | `src/inspect/index.ts`, `src/index.ts` |
+| New files | `src/inspect/netsuite.ts` (60 lines), `src/run/index.ts` (53 lines) |
+| Modified files | `src/inspect/index.ts` (netsuite case, lines 125-138), `src/index.ts` (run case, lines 101-105) |
 | Handler pattern | resolveRepo -> hxFetch POST -> console.log JSON (same as db.ts/logs.ts) |
 | `hlx run` scope | Top-level command (not under inspect) |
-| `--env` passing | Body parameter via getFlag, omitted when not provided |
-| Default env | From manifest `nsDefaultEnv`, written by server's configureInspectionForStep |
+| `--env` passing | Body parameter via getFlag, manifest fallback via readManifestDefaultEnv |
+| Default env | From manifest `nsDefaultEnv`, mapped PRODUCTION->'prod', else->'sandbox' |
 | basePath | Default `/api/inspect` — no override needed |
+| Modules | Comma-separated `--modules` flag, split/trimmed/filtered to string array |
 | New dependencies | None |
 
 ## APL Statement Reference
 
-See `tech-research/apl.json`. All questions resolved with evidence. No unresolved followups.
+See `tech-research/apl.json`. All 3 questions resolved with code-grounded evidence. No unresolved followups.
 
 ## Artifact Inputs Used
 
 | Artifact | Why Used | Key Takeaway |
 |----------|----------|--------------|
 | ticket.md (description + Override 1) | Primary specification, env as plain parameter | Two CLI subcommands, --env prod/sandbox as body param |
-| ticket.md (Research Report RSH-636 §4) | CLI scope specification | ~4 files: 2 new handlers, 2 router modifications |
-| diagnosis/diagnosis-statement.md (cli) | CLI implementation scope | 2 new files, 2 modified files, hxFetch basePath works, --env as body param |
-| diagnosis/apl.json (cli) | Answered questions about CLI structure and --env passing | Switch locations, --env in body, basePath compatibility |
-| scout/scout-summary.md (cli) | CLI architecture analysis | Switch-based routing, hxFetch client, flag utilities, consistent patterns |
+| ticket.md (Research Report RSH-636 section 4) | CLI scope specification | ~4 files: 2 new handlers, 2 router modifications |
+| diagnosis/diagnosis-statement.md (cli) | CLI implementation scope confirmation | 2 new files, 2 modified files, follows existing patterns, no test files (convention) |
+| diagnosis/apl.json (cli) | Answered questions about CLI structure | hxFetch basePath works, --env in body, manifest env reading |
+| scout/scout-summary.md (cli) | CLI architecture analysis | Switch-based routing, hxFetch client, flag utilities, zero runtime deps |
 | scout/reference-map.json (cli) | File map with handler templates | db.ts (12 lines), logs.ts (14 lines), http.ts basePath, flags.ts API |
-| product/product.md | Product scenarios for CLI behavior | SCN-01 through SCN-06 define CLI command signatures and expected outcomes |
-| src/inspect/db.ts:1-12 | Handler template pattern | resolveRepo -> hxFetch POST /{repoId}/database -> console.log JSON |
-| src/inspect/logs.ts:1-14 | Handler with optional flag | --limit flag sent as body parameter, same pattern for --env |
-| src/lib/http.ts:18-43 | HTTP client internals | basePath /api/inspect, body as Record<string, unknown>, Bearer auth |
-| src/lib/flags.ts:5-35 | Flag parsing API | getFlag extracts value after named flag |
+| product/product.md | Product scenarios for CLI behavior | SCN-01 through SCN-13 define command signatures and expected outcomes |
 | repo-guidance.json | Repo intent mapping | helix-cli = target (secondary) |
+| src/inspect/netsuite.ts (direct read, 60 lines) | Grounded handler implementation | query/logs modes, readManifestDefaultEnv, hxFetch POST, console.log JSON |
+| src/run/index.ts (direct read, 53 lines) | Grounded handler implementation | --repo required, --code/--modules/--env, hxFetch POST, console.log JSON |
