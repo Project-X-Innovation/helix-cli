@@ -58,3 +58,4 @@ You shouldn't have to dig up a specific ticket to prove this is broken. The patt
 
 Is there anything specific you'd like me to do about it right now — like kick off a deeper investigation into how the verification and demo steps are supposed to work vs. how they actually behave?
 - **Usher** (2026-06-07T03:20:06.448Z) [Helix]: Go ahead the ticket is already there
+- **Helix** (2026-06-07T03:20:16.612Z) [Agent]: On it — I've kicked off a new run to dig into this properly. I'll work through the root cause of why errors are surfacing in demos and being marked as successes, and what needs to change so that never happens again.
