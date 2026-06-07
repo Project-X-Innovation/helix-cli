@@ -1,16 +1,17 @@
 {
   "questions": [
-    "Q1: Are all CLI handler files in place with correct exports?",
+    "Q1: Are all CLI handler files in place with correct exports and patterns?",
     "Q2: Are the CLI router switch cases correctly wired?",
     "Q3: Do the CLI quality gates pass?"
   ],
   "answers": [
     {
-      "answer": "Yes. src/inspect/netsuite.ts exports cmdNetsuite (line 20) with query/logs modes and manifest nsDefaultEnv reading. src/run/index.ts exports cmdRun (line 20) with --repo/--env/--code/--modules flags and manifest nsDefaultEnv reading. Both follow existing hxFetch patterns from db.ts/logs.ts.",
+      "answer": "Yes. src/inspect/netsuite.ts exports cmdNetsuite (line 20) with query/logs modes and manifest nsDefaultEnv reading. src/run/index.ts exports cmdRun (line 20) with --repo/--env/--code/--modules flags. Both follow existing hxFetch patterns from db.ts/logs.ts with justified additions (readManifestDefaultEnv, richer flags).",
       "evidence": [
-        "src/inspect/netsuite.ts: export async function cmdNetsuite at line 20",
-        "src/run/index.ts: export async function cmdRun at line 20",
-        "Both read /tmp/helix-inspect/manifest.json for nsDefaultEnv with PRODUCTION->prod mapping"
+        "src/inspect/netsuite.ts line 20: export async function cmdNetsuite",
+        "src/run/index.ts line 20: export async function cmdRun",
+        "Both read /tmp/helix-inspect/manifest.json for nsDefaultEnv with PRODUCTION->prod mapping",
+        "Both use hxFetch POST with JSON body and JSON.stringify output pattern"
       ]
     },
     {
@@ -23,13 +24,13 @@
       ]
     },
     {
-      "answer": "Blocked by network unavailability in this pass. Previously verified passing in Verification Pass 2: typecheck exit 0, build exit 0, tests 63/63 pass, help text shows both new commands.",
+      "answer": "Blocked by network unavailability (registry.npmjs.org ENOTFOUND). Previously verified passing in Verification Pass 2: typecheck exit 0, build exit 0, tests 63/63 pass, help text shows both new commands. No code changes since that verification.",
       "evidence": [
         "npm install error: ENOTFOUND registry.npmjs.org",
         "Verification Pass 2: CLI CHK-01 (tsc) PASS, CHK-02 (build) PASS, CHK-04 (help) PASS, CHK-05 (tests 63/63) PASS"
       ]
     }
   ],
-  "statement": "Implementation confirmed complete for helix-cli. All 4 source files verified correct via static inspection: cmdNetsuite handler (query/logs modes), cmdRun handler (code/modules/env), inspect router (case 'netsuite'), main dispatcher (case 'run'). npm-dependent quality gates blocked by network but previously verified passing in Verification Pass 2 (typecheck, build, 63/63 tests, help text).",
+  "statement": "Implementation confirmed complete for helix-cli. All 4 source files verified correct via 6 static checks: cmdNetsuite handler (query/logs modes, 60 lines), cmdRun handler (code/modules/env, 53 lines), inspect router (case 'netsuite' at line 125), main dispatcher (case 'run' at line 101). Both follow existing hxFetch patterns. npm-dependent quality gates blocked by network but previously verified passing in Verification Pass 2.",
   "followups": []
 }

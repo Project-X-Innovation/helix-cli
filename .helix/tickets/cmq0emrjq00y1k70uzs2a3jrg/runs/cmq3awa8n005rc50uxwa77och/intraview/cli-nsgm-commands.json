@@ -1,0 +1,30 @@
+{
+  "title": "ns-gm CLI Subcommands (helix-cli)",
+  "description": "Tour of the two new CLI subcommands: hlx inspect netsuite and hlx run, with router wiring.",
+  "steps": [
+    {
+      "file": "src/inspect/netsuite.ts",
+      "line": 20,
+      "title": "cmdNetsuite Handler",
+      "description": "60-line handler for 'hlx inspect netsuite'. Two modes: SuiteQL query (--query or positional arg) and log retrieval ('logs' subcommand with optional --script-id). Reads nsDefaultEnv from manifest for default --env value."
+    },
+    {
+      "file": "src/run/index.ts",
+      "line": 20,
+      "title": "cmdRun Handler",
+      "description": "53-line handler for 'hlx run'. Flags: --repo (required), --code, --modules (comma-separated), --env (optional, defaults from manifest). POSTs to /{repoId}/run via hxFetch."
+    },
+    {
+      "file": "src/inspect/index.ts",
+      "line": 125,
+      "title": "Inspect Router - netsuite case",
+      "description": "case 'netsuite' dispatches to cmdNetsuite after extracting --repo flag. Follows the same pattern as existing db/logs/api cases in the inspect switch."
+    },
+    {
+      "file": "src/index.ts",
+      "line": 101,
+      "title": "Main Dispatcher - run case",
+      "description": "case 'run' dispatches to cmdRun with configOrHelp guard. Top-level command alongside existing inspect/sdf commands."
+    }
+  ]
+}
