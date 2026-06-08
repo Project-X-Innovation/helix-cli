@@ -2,34 +2,40 @@
 
 ## How `hlx update` works
 
-1. **Resolve latest release.** The CLI calls the GitHub API at
+1. **Choose a channel.** Canonical GitHub installs are treated as `lab`. npm and unknown
+   installs are treated as `lts`.
+
+2. **Try lab first when applicable.** For lab installs, the CLI calls the GitHub API at
    `https://api.github.com/repos/Project-X-Innovation/helix-cli/releases/tags/latest`
    to find the most recent release.
 
-2. **Authenticate (optional).** If the repo requires authentication, the CLI discovers a
+3. **Authenticate (optional).** If the repo requires authentication, the CLI discovers a
    GitHub token from (in priority order):
    - `GITHUB_TOKEN` environment variable
    - `GH_TOKEN` environment variable
    - `gh auth token` (GitHub CLI)
 
-3. **Download tarball.** The `helix-cli.tgz` release asset is downloaded to a staging
+4. **Download tarball.** The `helix-cli.tgz` release asset is downloaded to a staging
    directory at `~/.hlx/staging/<commitSha>/`.
 
-4. **Extract in-process.** The tarball is extracted without shelling out to an external
+5. **Extract in-process.** The tarball is extracted without shelling out to an external
    `tar` binary.
 
-5. **Validate staged candidate.** Three checks must pass:
+6. **Validate staged candidate.** Three checks must pass:
    - `dist/index.js` exists on disk.
    - `package.json` exists on disk.
    - `node <staged>/dist/index.js --version` runs successfully and produces output
      (with `HLX_SKIP_UPDATE_CHECK=1` set to prevent recursion).
 
-6. **Atomic swap.** The live `dist/`, `skill-content/`, and `package.json` are backed up
+7. **Atomic swap.** The live `dist/`, `skill-content/`, and `package.json` are backed up
    with `.bak` suffixes, then the staged versions are renamed into place. If the swap
    fails, backups are restored automatically.
 
-7. **Persist metadata.** On success, install-source metadata (mode, repo, branch, commit)
-   is written to `~/.hlx/config.json` so future update checks compare correctly.
+8. **Fall back to LTS when needed.** If the lab path fails, the CLI installs the latest
+   public npm package globally and rewrites install metadata to `npm`.
+
+9. **Persist metadata.** On success, install-source metadata is written to
+   `~/.hlx/config.json` so future update checks compare correctly.
 
 ## How to install from scratch
 
@@ -62,7 +68,7 @@ If the `hlx` command still runs:
 hlx update
 ```
 
-This downloads a fresh copy from GitHub releases and replaces the broken files.
+This tries the preferred update channel and falls back to npm LTS when needed.
 
 ### If `hlx update` itself fails
 
@@ -101,14 +107,13 @@ This downloads a fresh copy from GitHub releases and replaces the broken files.
 | `hlx` command not found | Binary not on PATH | Re-create alias or symlink to `node <install>/dist/index.js` |
 | `Cannot find module` errors | Incomplete extraction or interrupted update | Re-download and extract the tarball |
 | `--version` produces no output | Corrupted `dist/index.js` | Re-download and extract the tarball |
-| Update check fails with 401/403 | Missing GitHub auth token | Set `GITHUB_TOKEN` or `GH_TOKEN`, or run `gh auth login` |
+| Lab update check fails | GitHub unavailable or auth required | Re-run `hlx update` to fall back to LTS or install from npm directly |
 | Swap failed (EPERM on Windows) | File locked by another process | Close programs accessing the install directory, then retry `hlx update` |
 
 ## Auto-update
 
-- `hlx update --enable-auto` — enables automatic update checks before each command invocation.
-- `hlx update --disable-auto` — disables automatic update checks.
+- `hlx update --enable-auto` - enables automatic update checks before each command invocation.
+- `hlx update --disable-auto` - disables automatic update checks.
 
-When auto-update is enabled and the install source is recognized as canonical
-(`Project-X-Innovation/helix-cli` on `main`), the CLI silently checks for updates
-before dispatching the command. Network failures are non-blocking.
+When auto-update is enabled, the CLI silently checks for updates before dispatching
+the command. Lab installs can fall back to LTS, and network failures are non-blocking.

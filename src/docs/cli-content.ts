@@ -369,7 +369,7 @@ To update the CLI to the latest version:
 hlx update
 \`\`\`
 
-This checks GitHub for the latest commit on main and applies the update automatically.
+This updates the CLI using the preferred channel for the current install. Lab installs try GitHub first; LTS installs use npm.
 
 You can also enable or disable automatic update checks:
 
@@ -390,7 +390,7 @@ If \`hlx\` stops working after an update (e.g. "command not found" or "module no
 hlx update
 \`\`\`
 
-If \`hlx\` is completely unusable, download the latest release manually from https://github.com/Project-X-Innovation/helix-cli/releases/latest and reinstall.
+If \`hlx\` is completely unusable, reinstall the latest published package or download the latest release manually from https://github.com/Project-X-Innovation/helix-cli/releases/latest.
 
 ### Authentication Issues
 

@@ -43,7 +43,7 @@ Trust the current `helix-cli/src/**` for CLI behavior. Pass ticket refs as-given
 | `comments` | List or post ticket comments |
 | `library` | Browse and rate published research reports |
 | `skill` | Show or install the bundled hlx-cli skill |
-| `update` | Check for and apply CLI updates from GitHub |
+| `update` | Check for and apply CLI updates |
 
 Full flag reference: [references/commands.md](references/commands.md)
 
@@ -72,10 +72,10 @@ See [references/ticket-prompting.md](references/ticket-prompting.md) for the tic
 
 ## Install and update
 
-Install and update both download from GitHub release assets (the `latest` release of `Project-X-Innovation/helix-cli`).
+Install supports GitHub release assets, while update prefers the current install channel and falls back to npm LTS when needed.
 
 - **Install:** Download `helix-cli.tgz` from the GitHub Releases page, extract, and verify `dist/index.js` exists.
-- **Update:** Run `hlx update`. The CLI downloads, validates, and swaps atomically with rollback.
+- **Update:** Run `hlx update`. Lab installs try GitHub release assets first; if that fails, the CLI falls back to npm LTS.
 - **Recovery:** See [references/recovery.md](references/recovery.md).
 
 ## Source of truth
