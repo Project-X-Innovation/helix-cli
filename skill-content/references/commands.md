@@ -334,7 +334,7 @@ Rating values: `thumbs-up` (alias `up`), `thumbs-down` (alias `down`), `love`.
 
 ## hlx update
 
-Check for and apply CLI updates from GitHub release assets.
+Check for and apply CLI updates.
 
 ```
 hlx update                       Check for updates and apply if available

@@ -3,6 +3,23 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadFullConfig } from "../lib/config.js";
 
+function readPackageVersionField(): string {
+  const thisDir = dirname(fileURLToPath(import.meta.url));
+  const packageRoot = join(thisDir, "..", "..");
+  const pkgPath = join(packageRoot, "package.json");
+  const raw = readFileSync(pkgPath, "utf8");
+  const pkg = JSON.parse(raw) as { version?: string };
+  return pkg.version ?? "unknown";
+}
+
+export function getPackageSemver(): string {
+  try {
+    return readPackageVersionField();
+  } catch {
+    return "unknown";
+  }
+}
+
 /**
  * Read the package version from package.json at runtime.
  * At runtime this file lives at dist/update/version.js,
@@ -13,18 +30,14 @@ import { loadFullConfig } from "../lib/config.js";
  * Falls back to semver-only if the SHA is absent or config is unreadable.
  */
 export function getPackageVersion(): string {
-  let semver = "unknown";
-  let packageRoot = "";
-  try {
-    const thisDir = dirname(fileURLToPath(import.meta.url));
-    packageRoot = join(thisDir, "..", "..");
-    const pkgPath = join(packageRoot, "package.json");
-    const raw = readFileSync(pkgPath, "utf8");
-    const pkg = JSON.parse(raw) as { version?: string };
-    semver = pkg.version ?? "unknown";
-  } catch {
+  const semver = getPackageSemver();
+  if (semver === "unknown") {
     return "unknown";
   }
+
+  let packageRoot = "";
+  const thisDir = dirname(fileURLToPath(import.meta.url));
+  packageRoot = join(thisDir, "..", "..");
 
   try {
     const config = loadFullConfig();
