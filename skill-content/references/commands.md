@@ -259,6 +259,67 @@ hlx inspect api --repo <name> <path>
 - **PowerShell 5.1**: Use double quotes with backtick-escaped inner quotes.
 - **Any shell**: Use `--query-file` with a `.sql` file to avoid quoting issues entirely.
 
+## hlx connectors
+
+Read org data through the connector gateway (`{server}/api/connect/v1`). All subcommands are read-only — everything outbound is a play.
+
+Auth resolution (all subcommands):
+
+- URL: `--url` flag > `HELIX_CONNECT_URL` env > current org's url from `~/.hlx/config.json`
+- Token: `--token` flag > `HELIX_CONNECTOR_TOKEN` env (connector tokens are `hct_...`, minted by an org admin; sandboxes get the env var injected)
+
+| Flag | Description |
+|------|-------------|
+| `--url` | Gateway server URL |
+| `--token` | Connector token (hct_...) |
+
+### hlx connectors list
+
+```
+hlx connectors list
+```
+
+List the connectors enabled for the org (the gateway's `$connectors` index). Errors with an upgrade hint if the server does not expose `$connectors` yet.
+
+### hlx connectors skill
+
+```
+hlx connectors skill <name>
+```
+
+Print the connector's SKILL.md (raw markdown) — semantics, gotchas, and usage rules for the connector.
+
+### hlx connectors schema
+
+```
+hlx connectors schema <name> [resource]
+```
+
+Print the connector's `$schema` as pretty JSON — the whole document, or just one resource's schema when `[resource]` is given.
+
+### hlx connectors read
+
+```
+hlx connectors read <name> <resource> [--limit <N>] [--cursor <C>] [--param key=value ...]
+hlx connectors read <name> <resource> --id <id>
+```
+
+| Flag | Description |
+|------|-------------|
+| `--limit` | Page size |
+| `--cursor` | Opaque cursor from a previous page's `nextCursor` |
+| `--param` | Connector-specific query param as `key=value` (repeatable) |
+| `--id` | Fetch a single record instead of a page |
+
+Prints one page as `{data: [...], nextCursor?}` — pass `nextCursor` back as `--cursor` for the next page. With `--id`, prints the single record as `{data: {...}}`.
+
+```
+hlx connectors read files objects --limit 20 --param prefix=/receipts/
+hlx connectors read files objects --id <fileId>
+```
+
+Git Bash on Windows: values that start with `/` (like `--param prefix=/receipts/`) get mangled by MSYS path conversion — prefix the command with `MSYS_NO_PATHCONV=1`.
+
 ## hlx comments
 
 Post and list ticket comments.
@@ -334,7 +395,7 @@ Rating values: `thumbs-up` (alias `up`), `thumbs-down` (alias `down`), `love`.
 
 ## hlx update
 
-Check for and apply CLI updates from GitHub release assets.
+Check for and apply CLI updates.
 
 ```
 hlx update                       Check for updates and apply if available
