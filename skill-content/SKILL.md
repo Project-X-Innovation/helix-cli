@@ -6,8 +6,9 @@ description: >-
   list/latest/get/create/rerun/continue/artifacts/artifact/bundle/update-description,
   ticket-ref resolution (numeric, short-id, internal-id), hlx inspect
   repos/db/logs/api, hlx comments list/post, hlx library list/show/comments,
-  writing Helix tickets, ticket prompting, hlx update, hlx skill show/install,
-  broken hlx install, install recovery.
+  hlx connectors list/skill/schema/read, connector gateway, HELIX_CONNECT_URL,
+  HELIX_CONNECTOR_TOKEN, hct_ tokens, writing Helix tickets, ticket prompting,
+  hlx update, hlx skill show/install, broken hlx install, install recovery.
 ---
 
 ## Workflow
@@ -40,6 +41,7 @@ Trust the current `helix-cli/src/**` for CLI behavior. Pass ticket refs as-given
 | `org` | Manage organization context (current, list, switch) |
 | `tickets` | Discover, inspect, create, continue, bundle tickets |
 | `inspect` | Read-only production inspection (repos, db, logs, api) |
+| `connectors` | Read org data through the connector gateway (list, skill, schema, read) |
 | `comments` | List or post ticket comments |
 | `library` | Browse and rate published research reports |
 | `skill` | Show or install the bundled hlx-cli skill |
@@ -61,6 +63,28 @@ Full flag reference: [references/commands.md](references/commands.md)
 Terminal statuses (`DEPLOYED`, `UNVERIFIED`, `FAILED`) may return an empty `artifacts` summary. Pass `--run <runId>` to target a specific run.
 
 `PREVIEW_READY` status is fixed by PR #36.
+
+## Connectors
+
+Helix SMB connectors expose an org's business data (files, external systems) through the Mothership gateway — a uniform, read-only wire protocol at `{server}/api/connect/v1`:
+
+- `GET /:connector/$schema` — machine-readable resource schemas: `{data: {connector, resources, ...}}`
+- `GET /:connector/$skill` — the connector's SKILL.md (markdown)
+- `GET /:connector/:resource?limit=&cursor=` — one page of rows: `{data: [...], nextCursor?}`
+- `GET /:connector/:resource/:id` — one record: `{data: {...}}`
+
+Auth is an org-scoped connector token (`hct_...`) sent as `Authorization: Bearer`. Errors come back as `{error: {code, message}}`. **Connectors are read-only: everything outbound is a play.** Never try to write through the gateway — mutations go through Helix plays, which carry review, evidence, and rollback.
+
+Credentials resolve per command: `--url` flag > `HELIX_CONNECT_URL` env > current org's url from `~/.hlx/config.json`; token: `--token` flag > `HELIX_CONNECTOR_TOKEN` env. Org admins mint connector tokens on the Helix server; Helix sandboxes get `HELIX_CONNECTOR_TOKEN` injected automatically.
+
+The discovery loop — list, skill, schema, read:
+
+1. `hlx connectors list` — see which connectors the org has enabled.
+2. `hlx connectors skill files` — read the connector's SKILL.md for semantics and gotchas.
+3. `hlx connectors schema files` (or `hlx connectors schema files objects`) — get the machine-readable field list, filters, and ordering.
+4. `hlx connectors read files objects --limit 20` — page through rows; pass the returned `nextCursor` back as `--cursor` for the next page. `--param key=value` (repeatable) sets connector-specific filters, e.g. `--param prefix=/receipts/`. `--id <id>` fetches a single record.
+
+Full flag reference: [references/commands.md](references/commands.md)
 
 ## Inspection
 

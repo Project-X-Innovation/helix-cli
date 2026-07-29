@@ -15,6 +15,7 @@ import { runSkill } from "./skill/index.js";
 import { runLibrary } from "./library/index.js";
 import { runPreview } from "./preview/index.js";
 import { runPlaybook } from "./playbook/index.js";
+import { runConnectors } from "./connectors/index.js";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -51,6 +52,10 @@ Usage:
   hlx goals create|list|get|terminate  Manage Goals
   hlx playbook check <ruleId>     Trigger a compliance check and poll
   hlx playbook checks <ruleId>    List check history
+  hlx connectors list             List connectors enabled for the org
+  hlx connectors skill <name>     Print a connector's SKILL.md
+  hlx connectors schema <name> [resource]  Print a connector's $schema
+  hlx connectors read <name> <resource> [--limit N] [--cursor C] [--id <id>]
   hlx inspect repos               List repositories and inspection types
   hlx inspect db --repo <name> "<sql>"
   hlx inspect logs --repo <name> "<query>"
@@ -135,6 +140,12 @@ try {
       await runPlaybook(config, args.slice(1));
       break;
     }
+
+    case "connectors":
+      // Connector auth is self-contained (--url/--token flags, HELIX_CONNECT_URL /
+      // HELIX_CONNECTOR_TOKEN env, org config url fallback) — no hxi_ config required.
+      await runConnectors(args.slice(1));
+      break;
 
     case "skill":
       runSkill(args.slice(1));
