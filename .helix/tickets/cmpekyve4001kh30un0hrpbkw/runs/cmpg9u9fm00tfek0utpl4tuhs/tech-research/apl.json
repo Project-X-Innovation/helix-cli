@@ -1,0 +1,25 @@
+{
+  "questions": [
+    "Q1: Should the CLI add GOAL to VALID_MODES or create a new command namespace?",
+    "Q2: What commands does the hlx goals family need?"
+  ],
+  "answers": [
+    {
+      "answer": "New hlx goals command family in src/goals/ directory. VALID_MODES stays unchanged at 5 values. Goals are a separate entity with own API endpoints (POST /api/goals, not POST /api/tickets). The CLI namespace must reflect this separation.",
+      "evidence": [
+        "src/tickets/create.ts line 13: VALID_MODES = ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE'] -- unchanged",
+        "Goals use separate API endpoints (POST /api/goals, GET /api/goals, etc.)",
+        "src/tickets/index.ts: subcommand router pattern applicable to goals family"
+      ]
+    },
+    {
+      "answer": "Four commands for MVP: create (POST /api/goals), list (GET /api/goals with --status filter), get (GET /api/goals/:id), terminate (POST /api/goals/:id/terminate with --outcome). Create accepts --title, --description, --max-children, --require-approval, --repo flags.",
+      "evidence": [
+        "product/product.md SCN-11: 'hlx goals create --title \"Automate RMA process\" --description \"...\" with optional --max-children 15'",
+        "product/product.md essential feature #14: 'hlx goals create, hlx goals list, hlx goals get, hlx goals terminate'"
+      ]
+    }
+  ],
+  "statement": "CLI adds a new hlx goals command family (create, list, get, terminate) in src/goals/ mirroring the src/tickets/ pattern. VALID_MODES is unchanged. Commands hit the separate /api/goals server endpoints. Tertiary scope -- depends on server API being available.",
+  "followups": []
+}

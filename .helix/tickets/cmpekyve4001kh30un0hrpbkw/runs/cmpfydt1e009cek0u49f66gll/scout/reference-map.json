@@ -1,0 +1,57 @@
+{
+  "problem": "Update helix-cli to support Goal creation. If Goals use TicketMode approach: add GOAL to VALID_MODES and docs. If Goals are a separate entity: may need a new 'hlx goals create' command rather than --mode GOAL. The entity model decision impacts CLI scope.",
+  "files": [
+    {
+      "path": "src/tickets/create.ts",
+      "why": "VALID_MODES array at line 13 defines accepted modes: ['AUTO','BUILD','FIX','RESEARCH','EXECUTE']. If TicketMode approach: add 'GOAL'. Usage string at line 17 lists modes. Mode validation at lines 79-88 normalizes to uppercase."
+    },
+    {
+      "path": "src/tickets/index.ts",
+      "why": "Help/usage strings referencing valid modes. Must update if TicketMode approach."
+    },
+    {
+      "path": "src/docs/cli-content.ts",
+      "why": "CLI documentation listing valid modes (line 107 and 203). Must include GOAL or document separate goal commands."
+    },
+    {
+      "path": "src/tickets/get.ts",
+      "why": "Returns ticket mode in RelatedTicket type. Already handles arbitrary mode strings. If separate entity: may need to show Goal parent info for child tickets."
+    },
+    {
+      "path": "package.json",
+      "why": "Quality gates: build='tsc', typecheck='tsc --noEmit', test='tsc && node --test'. Node >=18, ES Module."
+    }
+  ],
+  "facts": [
+    {
+      "claim": "VALID_MODES is ['AUTO','BUILD','FIX','RESEARCH','EXECUTE'] at line 13 of create.ts",
+      "source": "src/tickets/create.ts line 13"
+    },
+    {
+      "claim": "Mode input normalized to uppercase (line 82), validated via includes (line 83)",
+      "source": "src/tickets/create.ts lines 79-88"
+    },
+    {
+      "claim": "Mode is conditionally included in POST body (line 147)",
+      "source": "src/tickets/create.ts line 147"
+    },
+    {
+      "claim": "Documentation lists modes in two places: cli-content.ts line 107 and line 203",
+      "source": "src/docs/cli-content.ts"
+    },
+    {
+      "claim": "No existing 'goal' or 'goals' commands in the CLI",
+      "source": "Grep for 'goal|Goal|GOAL' across src/ returned zero matches"
+    }
+  ],
+  "unknowns": [
+    {
+      "question": "If Goals are a separate entity (Option B), does the CLI need 'hlx goals create' instead of --mode GOAL?",
+      "context": "User says Goals should have their own UI. If they're a separate entity with their own API, the CLI may need a separate command namespace ('hlx goals') rather than a mode flag."
+    },
+    {
+      "question": "Should the CLI support Goal-specific fields (maxChildren, success criteria) at creation time?",
+      "context": "Research report lists maxChildren as configurable. Current CLI only passes title, description, repos, mode, afterTicketId, referencedTicketIds, implementFromTicketId."
+    }
+  ]
+}

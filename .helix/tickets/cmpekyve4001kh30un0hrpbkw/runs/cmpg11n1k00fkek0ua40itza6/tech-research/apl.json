@@ -1,0 +1,18 @@
+{
+  "questions": [
+    "Q1: Should the CLI add GOAL to VALID_MODES or create a new command namespace?"
+  ],
+  "answers": [
+    {
+      "answer": "New command namespace (hlx goals). Goals are a separate entity (user decision), not a TicketMode. VALID_MODES (create.ts:13) stays at 5 values. A new src/goals/ directory mirrors the src/tickets/ pattern with create, list, get, terminate subcommands. Registered as a top-level command family in src/index.ts.",
+      "evidence": [
+        "ticket.md: 'goals can be their own thing. They don't need to be tickets'",
+        "create.ts line 13: VALID_MODES = ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE'] -- unchanged",
+        "src/tickets/ directory: established pattern for command family structure",
+        "diagnosis/diagnosis-statement.md (CLI): 'New src/goals/ directory with create, list, get, terminate subcommands'"
+      ]
+    }
+  ],
+  "statement": "The CLI needs a new hlx goals command family (create, list, get, terminate) in a new src/goals/ directory, mirroring the src/tickets/ pattern. VALID_MODES is unchanged since Goals are a separate entity, not a TicketMode. All commands call server /api/goals endpoints.",
+  "followups": []
+}

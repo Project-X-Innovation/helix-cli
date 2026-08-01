@@ -1,0 +1,49 @@
+{
+  "problem": "Add GOAL to the helix-cli's VALID_MODES array so the CLI accepts --mode GOAL when creating tickets.",
+  "files": [
+    {
+      "path": "src/tickets/create.ts",
+      "why": "VALID_MODES array at line 13 defines accepted modes: ['AUTO','BUILD','FIX','RESEARCH','EXECUTE']. Must add 'GOAL'. Usage string at line 17 lists modes for help text."
+    },
+    {
+      "path": "src/tickets/index.ts",
+      "why": "Contains usage/help strings referencing valid modes. Must update mode list in usage text."
+    },
+    {
+      "path": "src/docs/cli-content.ts",
+      "why": "CLI documentation export. Must list GOAL as a valid mode."
+    },
+    {
+      "path": "src/tickets/get.ts",
+      "why": "Returns ticket mode in RelatedTicket type. Already handles arbitrary mode strings — no change expected."
+    },
+    {
+      "path": "package.json",
+      "why": "Quality gates: build (tsc), typecheck (tsc --noEmit), test (tsc && node --test). Node >=18, ES Module."
+    }
+  ],
+  "facts": [
+    {
+      "claim": "VALID_MODES is defined as const array at line 13: ['AUTO','BUILD','FIX','RESEARCH','EXECUTE']",
+      "source": "src/tickets/create.ts line 13"
+    },
+    {
+      "claim": "Mode input is normalized to uppercase (line 82) and validated with case-insensitive includes check (line 83)",
+      "source": "src/tickets/create.ts lines 79-88"
+    },
+    {
+      "claim": "Mode is conditionally included in request body only when provided (line 147)",
+      "source": "src/tickets/create.ts line 147"
+    },
+    {
+      "claim": "CLI package version: 1.3.4, ES Module, bin entry: hlx -> dist/index.js",
+      "source": "package.json"
+    }
+  ],
+  "unknowns": [
+    {
+      "question": "Should the CLI validate Goal-specific fields (e.g., maxChildren) at creation time?",
+      "context": "Research report lists maxChildren as a Goal field. Current CLI creation only passes title, description, repos, mode, afterTicketId, referencedTicketIds, implementFromTicketId."
+    }
+  ]
+}

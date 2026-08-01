@@ -1,0 +1,26 @@
+{
+  "questions": [
+    "Q1: What CLI changes are needed for Goals as a separate entity?",
+    "Q2: What is the current CLI command structure and what patterns apply?"
+  ],
+  "answers": [
+    {
+      "answer": "Since Goals are a separate entity (not TicketMode), the CLI needs a new `hlx goals` command family — not a modification to VALID_MODES. Commands needed: `hlx goals create` (title, description, maxChildren), `hlx goals list` (active goals), `hlx goals get` (goal detail with children, evaluations, roadmap), `hlx goals terminate` (mark complete or failed). VALID_MODES at create.ts line 13 remains unchanged.",
+      "evidence": [
+        "create.ts line 13: VALID_MODES = ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE'] — no GOAL needed since Goals are separate entity",
+        "scout/reference-map.json (cli): 'No goal-related code exists in the CLI'",
+        "index.ts: top-level command families include tickets, inspect, comments, library, skill — 'goals' would be registered here"
+      ]
+    },
+    {
+      "answer": "CLI uses pure TypeScript with no runtime deps. Command families are registered in src/index.ts. Each family has its own directory (e.g., src/tickets/) with subcommand files. Pattern: parse args, validate, call API, format output. Quality gates: build (tsc), typecheck (tsc --noEmit), test (tsc + node --test).",
+      "evidence": [
+        "package.json: version 1.3.4, build 'tsc', no runtime deps",
+        "src/index.ts: command routing for tickets, inspect, comments, library, skill families",
+        "create.ts: mode validation via .toUpperCase() + VALID_MODES.includes()"
+      ]
+    }
+  ],
+  "statement": "The CLI needs a new `hlx goals` command family (create, list, get, terminate) registered in src/index.ts, implemented in a new src/goals/ directory. VALID_MODES is unchanged since Goals are a separate entity. This is tertiary scope — depends on server API being available first.",
+  "followups": []
+}

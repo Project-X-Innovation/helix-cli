@@ -1,0 +1,18 @@
+{
+  "questions": [
+    "Should the CLI add GOAL to VALID_MODES or create a new command namespace, given that Goals are a separate entity?"
+  ],
+  "answers": [
+    {
+      "answer": "New `hlx goals` command namespace. Since Goals are a separate database entity (not a TicketMode), the CLI should reflect this: `hlx goals create`, `hlx goals list`, `hlx goals get`, `hlx goals terminate`. The VALID_MODES array in src/tickets/create.ts stays at 5 values. Goal-specific operations (terminate with verdict, evaluation history) don't fit the ticket command structure.",
+      "evidence": [
+        "Server tech-research: Goals are separate entity, not TicketMode",
+        "ticket.md Description: 'goals can be their own thing. They don't need to be tickets'",
+        "src/tickets/create.ts line 13: VALID_MODES stays unchanged",
+        "scout/scout-summary.md (cli): 'If separate entity: new goals/ directory with commands'"
+      ]
+    }
+  ],
+  "statement": "The CLI implements Goals as a new `hlx goals` command namespace (create, list, get, terminate) in a new src/goals/ directory. VALID_MODES in src/tickets/create.ts is unchanged. This follows from Goals being a separate database entity, not a TicketMode.",
+  "followups": []
+}
