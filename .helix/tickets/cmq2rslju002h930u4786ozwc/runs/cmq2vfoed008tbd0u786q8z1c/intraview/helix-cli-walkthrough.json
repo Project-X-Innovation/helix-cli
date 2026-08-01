@@ -1,0 +1,43 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "FIX-724: Another Bug — Ticket Run Context Walkthrough",
+  "description": "This tour walks through the changes introduced by FIX-724 ('Another bug'), which addresses a UI inconsistency where a ticket shows a 'Failed' status while the associated run reports success, leaving the detail page without merge options or actionable information. The change materializes the ticket context and referenced artifacts so the agent and reviewers can trace the bug back to its roots in FIX-712 and BLD-680.",
+  "steps": [
+    {
+      "file": ".helix/tickets/cmq2rslju002h930u4786ozwc/runs/cmq2rslk7002m930ukya9cyxb/ticket.md",
+      "line": 1,
+      "description": "This file is the canonical context document for ticket FIX-724 (run cmq2rslk7002m930ukya9cyxb, branch helix/fix/FIX-724-another-bug). It is the entry point the agent uses to understand what problem it must fix. The metadata block at the top (ticket_id, short_id, run_id, run_branch, repo_key, repo_url) anchors every downstream artifact and decision to this specific run, preventing cross-contamination with other concurrent runs.",
+      "title": "Overview: Ticket & Run Identity"
+    },
+    {
+      "file": ".helix/tickets/cmq2rslju002h930u4786ozwc/runs/cmq2rslk7002m930ukya9cyxb/ticket.md",
+      "line": 9,
+      "description": "Lines 9–22 describe the bug: the ticket detail page displays 'Failed' while the underlying run reports 'successful', and crucially the UI surfaces no merge options or additional information. This is the root symptom being fixed. Understanding the mismatch between ticket-level status and run-level status is essential before touching any status-propagation or UI-rendering code paths.",
+      "title": "Problem Statement: Status/UI Mismatch"
+    },
+    {
+      "file": ".helix/tickets/cmq2rslju002h930u4786ozwc/runs/cmq2rslk7002m930ukya9cyxb/ticket.md",
+      "line": 24,
+      "description": "BLD-680 is a FAILED build ticket whose artifacts are materialized under .helix-refs/BLD-680/. It is referenced here because the egress-lockdown work may have introduced a regression in the status-propagation pipeline. The agent is expected to read BLD-680's manifest to determine whether any networking or egress change broke the run-status reporting pathway that FIX-724 is now tasked with repairing.",
+      "title": "Referenced Tickets: BLD-680 — NetSuite Egress Lockdown"
+    },
+    {
+      "file": ".helix/tickets/cmq2rslju002h930u4786ozwc/runs/cmq2rslk7002m930ukya9cyxb/ticket.md",
+      "line": 35,
+      "description": "FIX-712 (status: DEPLOYED) is the direct predecessor fix and is the canonical reference for 'see fixes' in the description. Its single materialized artifact under .helix-refs/FIX-712/ contains the prior resolution. The agent must diff FIX-712's approach against the current failure to identify what regressed or was left incomplete, ensuring FIX-724 does not duplicate work but instead extends it correctly.",
+      "title": "Referenced Tickets: FIX-712 — Missing Run Fix and Other Bugs"
+    },
+    {
+      "file": ".helix/tickets/cmq2rslju002h930u4786ozwc/runs/cmq2rslk7002m930ukya9cyxb/ticket.md",
+      "line": 44,
+      "description": "Three Chrome screenshots (captured 2026-06-06) are attached as binary evidence of the bug. Screenshot_154954 likely shows the ticket page displaying 'Failed', Screenshot_155021 shows the run page showing 'successful', and Screenshot_155027 shows the missing merge/options section. These screenshots serve as acceptance-test references: once the fix is applied, the detail page must show consistent status and render the merge options panel.",
+      "title": "Attachments: Screenshot Evidence"
+    },
+    {
+      "file": ".helix/tickets/cmq2rslju002h930u4786ozwc/runs/cmq2rslk7002m930ukya9cyxb/ticket.md",
+      "line": 1,
+      "description": "After applying FIX-724, three major code paths must remain clean: (1) the run-status aggregation path that rolls individual run results up to ticket-level status — it must correctly reflect a successful run as ticket-success; (2) the detail-page rendering path that conditionally shows the merge/options panel — it must gate on run status, not stale ticket status; (3) the referenced-artifact materialization path under .helix-refs/ — BLD-680 and FIX-712 artifacts must be accessible so future agents can audit the full fix lineage without re-fetching remote data.",
+      "title": "Summary: Code Paths to Verify"
+    }
+  ]
+}
