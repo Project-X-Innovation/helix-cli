@@ -1,0 +1,35 @@
+{
+  "problem": "Implement MVP Play mode in the CLI. Replace EXECUTE with PLAY in VALID_MODES and help text. The CLI is a thin client — validates mode strings locally, delegates platform restrictions to server. Smallest change surface of all 4 repos. L1 only (L2/L3 play-specific subcommands deferred).",
+  "files": [
+    {
+      "path": "src/tickets/create.ts",
+      "why": "Line 13: VALID_MODES=['AUTO','BUILD','FIX','RESEARCH','EXECUTE']. Line 17: help text shows --mode <AUTO|BUILD|FIX|RESEARCH|EXECUTE>. Lines 79-88: mode validation logic. Must replace EXECUTE with PLAY."
+    },
+    {
+      "path": "src/tickets/continue.ts",
+      "why": "Line 30: --dry-run flag. Mode-agnostic — works for PLAY without changes. Context only."
+    },
+    {
+      "path": "src/index.ts",
+      "why": "Main entry. May have mode references in top-level help text."
+    },
+    {
+      "path": "src/docs/cli-content.ts",
+      "why": "Line 109: Documented mode list. Must update EXECUTE→PLAY."
+    }
+  ],
+  "facts": [
+    "Package: @projectxinnovation/helix-cli v1.3.4. Pure TypeScript + Node built-ins. Zero runtime dependencies.",
+    "Quality gates: npm run typecheck (tsc --noEmit), npm run build (tsc), npm run test (tsc && node --test dist/**/*.test.js).",
+    "VALID_MODES (create.ts:13): ['AUTO','BUILD','FIX','RESEARCH','EXECUTE'] as const.",
+    "Mode validation (lines 79-88): uppercase normalize then includes() check.",
+    "Thin client: CLI validates string, server enforces platform restrictions. No platform-aware logic in CLI.",
+    "6 test files exist. None test create.ts mode validation directly.",
+    "Mode sent as JSON field to POST /api/tickets (create.ts:147).",
+    "No ORM. No migration concerns."
+  ],
+  "unknowns": [
+    "Whether docs/cli-content.ts has additional EXECUTE references beyond line 109.",
+    "Whether to add a test for mode validation during this ticket."
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "questions": [
+    "Q1: What CLI files need PLAY updates?",
+    "Q2: Does EXECUTE get removed or does PLAY coexist?",
+    "Q3: What deployment ordering is required?"
+  ],
+  "answers": [
+    {
+      "answer": "Three files: (1) src/tickets/create.ts — VALID_MODES array line 13, help text line 17; (2) src/tickets/index.ts — usage text line 21, help text line 73; (3) src/docs/cli-content.ts — mode table line 109, example line 247, description line 250. Skill docs (skill-content/SKILL.md, skill-content/references/commands.md) also reference modes.",
+      "evidence": [
+        "create.ts:13 — VALID_MODES = ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE']",
+        "Previous diagnosis: index.ts:21,73 and cli-content.ts:109,247,250 also reference EXECUTE"
+      ]
+    },
+    {
+      "answer": "EXECUTE is replaced by PLAY. Zero production usage. Ticket says 'replaces execute'. No backward compatibility needed.",
+      "evidence": [
+        "ticket.md point 1: 'replaces execute'",
+        "Runtime DB (prior run): EXECUTE=0/872 tickets"
+      ]
+    },
+    {
+      "answer": "Server deploys first. CLI sends mode to POST /api/tickets — server validates against platformConfig.allowedModes. If CLI sends PLAY before server recognizes it, server returns 400. Coordinate deployment.",
+      "evidence": [
+        "create.ts:147 — mode sent in POST body",
+        "ticket-controller.ts:152-154 — server validates mode"
+      ]
+    }
+  ],
+  "statement": "CLI is the smallest change surface: replace EXECUTE with PLAY in VALID_MODES, help text, and docs across 3-5 files. Server must deploy first. Only MVP-1 touches the CLI.",
+  "followups": []
+}

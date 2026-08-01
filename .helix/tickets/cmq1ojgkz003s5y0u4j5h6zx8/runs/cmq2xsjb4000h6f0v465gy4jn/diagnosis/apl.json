@@ -1,0 +1,33 @@
+{
+  "questions": [
+    "Q1: What CLI files need PLAY updates?",
+    "Q2: Should EXECUTE remain alongside PLAY?",
+    "Q3: What deploy ordering is required?"
+  ],
+  "answers": [
+    {
+      "answer": "Three files: (1) src/tickets/create.ts — VALID_MODES array line 13, help text line 17; (2) src/tickets/index.ts — usage text line 21, help text line 73; (3) src/docs/cli-content.ts — mode table line 109, example line 247, description line 250. Mode validation normalizes to uppercase and checks inclusion — no structural change needed.",
+      "evidence": [
+        "create.ts line 13: VALID_MODES = ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE']",
+        "create.ts lines 79-87: uppercase normalize + includes check",
+        "cli-content.ts lines 109, 247, 250: mode docs in 3 locations"
+      ]
+    },
+    {
+      "answer": "No. Replace EXECUTE with PLAY. Zero production tickets use EXECUTE. Ticket says 'replaces execute'. No backward compat needed.",
+      "evidence": [
+        "Runtime DB: EXECUTE=0/872 tickets",
+        "Ticket description: 'replaces execute'"
+      ]
+    },
+    {
+      "answer": "Server deploys first. CLI sends mode to POST /api/tickets — server validates against platformConfig.allowedModes. If CLI sends PLAY before server recognizes it, server returns 400.",
+      "evidence": [
+        "ticket-controller.ts lines 152-154: server validates mode",
+        "create.ts line 147: mode sent in POST body"
+      ]
+    }
+  ],
+  "statement": "CLI is the smallest change: replace EXECUTE with PLAY in VALID_MODES, help text, and docs across 3 files. Server must deploy first. Only needed at MVP-1.",
+  "followups": []
+}

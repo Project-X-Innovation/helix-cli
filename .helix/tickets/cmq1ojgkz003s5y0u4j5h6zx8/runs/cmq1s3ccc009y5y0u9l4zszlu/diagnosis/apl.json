@@ -1,0 +1,25 @@
+{
+  "questions": [
+    "Q1: What CLI files reference EXECUTE and need PLAY updates?",
+    "Q2: Is the CLI change safe to deploy independently?"
+  ],
+  "answers": [
+    {
+      "answer": "Two files: (1) create.ts line 13 — VALID_MODES array, line 17 — help text. (2) cli-content.ts line 109 — mode documentation table. The mode validation logic (lines 79-88) normalizes to uppercase and checks includes() — no structural change, just swap EXECUTE for PLAY in the array and text.",
+      "evidence": [
+        "src/tickets/create.ts:13 — VALID_MODES = ['AUTO','BUILD','FIX','RESEARCH','EXECUTE'] as const",
+        "src/tickets/create.ts:17 — help text shows --mode <AUTO|BUILD|FIX|RESEARCH|EXECUTE>",
+        "src/docs/cli-content.ts:109 — mode list in docs table"
+      ]
+    },
+    {
+      "answer": "Deploy server first. The CLI sends mode to POST /api/tickets — if PLAY is sent before the server knows PLAY, the server rejects with 400 (mode not in platformConfig.allowedModes). With server deployed first, CLI sending PLAY works immediately.",
+      "evidence": [
+        "create.ts:147 — mode sent in POST body",
+        "ticket-controller.ts:152-154 — server validates mode against allowedModes"
+      ]
+    }
+  ],
+  "statement": "CLI needs 2-file change: replace EXECUTE with PLAY in VALID_MODES (create.ts) and docs (cli-content.ts). Smallest change of all repos. Deploy server first to avoid 400 rejections. No new subcommands needed for L1. L2/L3 may add play-specific CLI commands (hlx plays list/preview/run) but those are deferred.",
+  "followups": []
+}

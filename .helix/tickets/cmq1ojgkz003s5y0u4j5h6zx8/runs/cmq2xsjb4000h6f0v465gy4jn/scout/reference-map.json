@@ -1,0 +1,42 @@
+{
+  "problem": "Support Play mode in the Helix CLI. The CLI validates mode strings locally and delegates platform restrictions to the server API. Must add PLAY to VALID_MODES array and update help text. Smallest change surface of the 4 repos.",
+  "files": [
+    {
+      "path": "src/tickets/create.ts",
+      "why": "VALID_MODES array (line 13) has AUTO/BUILD/FIX/RESEARCH/EXECUTE. Help text (line 17) lists allowed --mode values. L1 adds PLAY to both."
+    },
+    {
+      "path": "src/tickets/index.ts",
+      "why": "Dispatcher for ticket subcommands (create, get, list, continue, rerun, etc.). Context for understanding ticket command structure."
+    },
+    {
+      "path": "src/tickets/continue.ts",
+      "why": "Continuation context for running tickets. May need play-specific continuation logic at L3+."
+    },
+    {
+      "path": "skill-content/SKILL.md",
+      "why": "Bundled skill documentation listing commands and valid modes. L1 updates mode list."
+    },
+    {
+      "path": "skill-content/references/commands.md",
+      "why": "Detailed CLI command reference. L1 updates --mode flag documentation."
+    },
+    {
+      "path": "package.json",
+      "why": "Build: tsc. Test: tsc + node test. Typecheck: tsc --noEmit. Quality gates."
+    }
+  ],
+  "facts": [
+    "VALID_MODES = ['AUTO', 'BUILD', 'FIX', 'RESEARCH', 'EXECUTE'] as const (line 13).",
+    "Help text: --mode <AUTO|BUILD|FIX|RESEARCH|EXECUTE> (line 17).",
+    "Mode is case-insensitive (normalized to uppercase at line 82).",
+    "Platform restrictions (NETSUITE-only for EXECUTE) are server-side, not CLI-side.",
+    "CLI validates mode string locally, then sends to server API which does platform enforcement.",
+    "Build: npm run build (tsc). Test: npm run test (compile + node test runner). Typecheck: npm run typecheck."
+  ],
+  "unknowns": [
+    "Whether PLAY should also appear in SKILL.md and commands.md alongside EXECUTE.",
+    "Whether the --mode flag help text should say PLAY replaces EXECUTE or lists both.",
+    "Whether ticket continuation (continue.ts) needs play-specific behavior at L3+."
+  ]
+}
