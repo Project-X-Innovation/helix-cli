@@ -1,0 +1,57 @@
+{
+  "questions": [
+    "Q1: What CLI interface should hlx inspect netsuite expose?",
+    "Q2: What CLI interface should hlx run expose?",
+    "Q3: Should the CLI expose an --env flag for either command?",
+    "Q4: What basePath should hlx run use -- the default /api/inspect or an override?",
+    "Q5: Does either command need NetSuite-specific error handling or a custom timeout?"
+  ],
+  "answers": [
+    {
+      "answer": "hlx inspect netsuite supports two modes via body type discriminator: (a) SuiteQL queries matching the db subcommand interface: --repo <name> --query '<SuiteQL>' (recommended), --query-file <path> (complex queries), and positional query argument (convenience); (b) Script log retrieval with --logs flag: --repo <name> --logs --script-id <id> [--date-from <date>] [--date-to <date>] [--log-type <type>]. Default mode (no --logs) is SuiteQL query. New handler file src/inspect/netsuite.ts follows db.ts pattern (~20 lines for both modes).",
+      "evidence": [
+        "src/inspect/db.ts:5-12 -- cmdDb(config, repo, query) pattern with resolveRepo + hxFetch POST",
+        "src/inspect/index.ts:69-91 -- db case parses --repo, --query, --query-file flags",
+        "product/product.md SCN-01: 'hlx inspect netsuite --repo <name> \"SELECT id, companyname FROM customer\"'",
+        "helix-global-server AD-5: single endpoint with { type: 'query' | 'logs' } discriminator"
+      ]
+    },
+    {
+      "answer": "hlx run is a new top-level command (not under inspect) following the configOrHelp pattern from src/index.ts:26-35. Interface: hlx run --repo <name> '<code>' (inline), hlx run --repo <name> --script-file <path> (from file), optional --modules <comma-separated>. Handler follows resolveRepo -> hxFetch POST -> console.log pattern. New module at src/run/index.ts with new case in src/index.ts switch. Both hlx run and hlx inspect netsuite use the default basePath '/api/inspect' since the server routes both under the inspect prefix (helix-global-server AD-1).",
+      "evidence": [
+        "src/index.ts:81-156 -- no 'run' case exists; configOrHelp pattern established at L26-35",
+        "src/lib/http.ts:43 -- basePath defaults to '/api/inspect'",
+        "helix-global-server AD-1: both surfaces under /api/inspect/ prefix",
+        "product/product.md SCN-03: 'hlx run --repo <name> --script-file ./migration.js --modules N/record,N/search'"
+      ]
+    },
+    {
+      "answer": "No. The environment (PRODUCTION vs SANDBOX) is determined server-side from the inspection token's nsEnv claim (set by configureInspectionForStep in the orchestrator). Exposing an --env flag would be misleading and insecure -- the server ignores client-specified environments. The agent doesn't need to know which environment it's querying. A human-facing --env flag is a future consideration.",
+      "evidence": [
+        "helix-global-server AD-3: environment embedded in signed JWT, not request body",
+        "credentials.ts:9-14: resolveNsGmCredentialEnvironmentForStep() maps stepId server-side",
+        "session.ts: JWT signed with authJwtSecret -- cannot be forged by agent",
+        "product/product.md: '--env flag' listed under 'Features Explicitly Out of Scope'"
+      ]
+    },
+    {
+      "answer": "hlx run uses the default basePath '/api/inspect' because the server endpoint is POST /api/inspect/:repositoryId/run (under the inspect prefix, per helix-global-server AD-1). No basePath override needed. The hxFetch call is: hxFetch(config, '/${repoId}/run', { method: 'POST', body: { code, modules? } }).",
+      "evidence": [
+        "helix-global-server AD-1: both surfaces under /api/inspect/ prefix",
+        "src/lib/http.ts:43 -- basePath defaults to '/api/inspect'",
+        "src/inspect/db.ts: existing pattern uses '/${repoId}/database' relative to default basePath"
+      ]
+    },
+    {
+      "answer": "No NetSuite-specific error handling needed. The existing hxFetch() covers 429 (rate limit with Retry-After), 401 (unauthorized), and 5xx (server errors) with 3-attempt retry and exponential backoff (http.ts:71-130). The server translates NetSuite errors into standard HTTP errors with descriptive messages. For timeout, the existing 30s REQUEST_TIMEOUT_MS (http.ts:5) is adequate for MVP -- the server-side RESTlet timeout is 25s (helix-global-server TD-6), leaving headroom. A custom --timeout flag is deferred to Round 2 for long-running SuiteScript.",
+      "evidence": [
+        "src/lib/http.ts:71-130 -- retry logic handles 429 and 5xx with exponential backoff, Retry-After support",
+        "src/lib/http.ts:5 -- REQUEST_TIMEOUT_MS = 30_000",
+        "helix-global-server TD-6 -- 25s RESTlet timeout; 15s OAuth2 timeout",
+        "Existing subcommands (db, logs, api) have no type-specific error handling in the CLI"
+      ]
+    }
+  ],
+  "statement": "helix-cli needs two additions: (1) hlx inspect netsuite -- new case in inspect router (src/inspect/index.ts) + new handler file (src/inspect/netsuite.ts) following the db.ts 12-line template for SuiteQL queries and a --logs mode for script log retrieval, and (2) hlx run -- new top-level case in main dispatcher (src/index.ts) + new module (src/run/index.ts) for arbitrary SuiteScript execution with --repo, --script-file, and --modules flags. Both use the default basePath '/api/inspect' because the server routes both surfaces under the inspect prefix. Both use existing hxFetch with dual-mode auth, 3-attempt retry, and 30s timeout. No --env flag (token-bounded). No NetSuite-specific error handling. Zero new dependencies. All line references verified against current source.",
+  "followups": []
+}
