@@ -1,0 +1,33 @@
+{
+  "problem": "Add PLAY mode to the Helix CLI, replacing EXECUTE in VALID_MODES, help text, and documentation strings.",
+  "files": [
+    {
+      "path": "src/tickets/create.ts",
+      "why": "VALID_MODES array (line 13) defines allowed modes: ['AUTO','BUILD','FIX','RESEARCH','EXECUTE']. Help text (line 17) references mode options. PLAY must be added/replace EXECUTE."
+    },
+    {
+      "path": "src/tickets/index.ts",
+      "why": "Help/usage strings (lines 21, 73) hardcode mode options including EXECUTE. Must update for PLAY."
+    },
+    {
+      "path": "src/docs/cli-content.ts",
+      "why": "Documentation content (lines 109, 250) lists 'AUTO, BUILD, FIX, RESEARCH, or EXECUTE'. Must update for PLAY."
+    },
+    {
+      "path": "package.json",
+      "why": "Build/quality scripts: build (tsc), typecheck (tsc --noEmit), test (tsc && node --test). Binary: hlx."
+    }
+  ],
+  "facts": [
+    "VALID_MODES is a local const array in create.ts (line 13), not imported from a shared library",
+    "Mode validation happens client-side in CLI before API call (lines 79-88 of create.ts)",
+    "Help text strings are hardcoded in 3 locations: create.ts:17, index.ts:21, index.ts:73",
+    "CLI docs content at docs/cli-content.ts:109 and :250 reference mode options — this content is also exported as a package export for use by the client",
+    "Mode is passed to server API as a string field in POST body (create.ts:141-153)",
+    "Branch naming and prefix generation happen server-side, not in CLI"
+  ],
+  "unknowns": [
+    "Whether EXECUTE should be fully removed from VALID_MODES or kept alongside PLAY during transition",
+    "Whether the CLI needs a PLAYBOOK_CHECK entry in VALID_MODES to match server capabilities"
+  ]
+}
